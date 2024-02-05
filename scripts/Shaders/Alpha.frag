@@ -1,7 +1,9 @@
+#version 300 es
+precision mediump float;
 in vec2 vTextureCoord;
 out vec4 finalColor;
 
-uniform sampler2D uTexture;
+uniform sampler2D uSampler;
 uniform float alpha;
 uniform float bodyAlpha;
 uniform vec4 borderColor;
@@ -10,7 +12,7 @@ uniform vec4 outerColor;
 uniform float borderWidth;
 
 void main() {
-    vec4 tex = texture(uTexture, vTextureCoord);
+    vec4 tex = texture(uSampler, vTextureCoord);
     float dist = 1.0 - tex.r;
 
     float a = 1.0;

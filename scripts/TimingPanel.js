@@ -33,18 +33,18 @@ class TimingPoint {
         this.obj.eventMode = "none";
 
         this.marker = new PIXI.Graphics()
-            .roundRect(
+            .beginFill(0x1b1b1b)
+            .drawRoundedRect(
                 90 * devicePixelRatio,
                 5 * devicePixelRatio,
                 TimingPanel.WIDTH - 105 * devicePixelRatio,
                 30 * devicePixelRatio,
                 5 * devicePixelRatio
-            )
-            .fill(0x1b1b1b);
+            );
 
         this.indicator = new PIXI.Graphics()
-            .roundRect(95 * devicePixelRatio, 10 * devicePixelRatio, 5 * devicePixelRatio, 20 * devicePixelRatio, 5 * devicePixelRatio)
-            .fill(this.timingPoint.beatstep ? 0xf5425a : 0x42f560);
+            .beginFill(this.timingPoint.beatstep ? 0xf5425a : 0x42f560)
+            .drawRoundedRect(95 * devicePixelRatio, 10 * devicePixelRatio, 5 * devicePixelRatio, 20 * devicePixelRatio, 5 * devicePixelRatio);
 
         let currentTime = timingPoint.time;
         const isNeg = currentTime < 0;
@@ -58,31 +58,31 @@ class TimingPoint {
             .toFixed(0)
             .padStart(3, "0")}`;
 
-        this.timestamp = new PIXI.Text({
-            text: timestamp,
-            style: {
+        this.timestamp = new PIXI.Text(
+            timestamp,
+            {
                 fontFamily: "Torus",
                 fontWeight: 400,
                 fontSize: TimingPoint.FONT_SIZE * devicePixelRatio,
                 fill: 0xffffff,
             },
-        });
+        );
 
         this.timestamp.x = 10 * devicePixelRatio;
         this.timestamp.y = 20 * devicePixelRatio;
         this.timestamp.anchor.set(0, 0.5);
 
-        this.value = new PIXI.Text({
-            text: `${(timingPoint.beatstep ? 60000 / timingPoint.beatstep : timingPoint.svMultiplier).toFixed(2)}${
+        this.value = new PIXI.Text(
+            `${(timingPoint.beatstep ? 60000 / timingPoint.beatstep : timingPoint.svMultiplier).toFixed(2)}${
                 timingPoint.beatstep ? " BPM" : "x"
             }`,
-            style: {
+            {
                 fontFamily: "Torus",
                 fontWeight: 500,
                 fontSize: TimingPoint.FONT_SIZE * devicePixelRatio,
                 fill: 0xffffff,
             },
-        });
+        );
 
         this.value.x = 120 * devicePixelRatio;
         this.value.y = 20 * devicePixelRatio;
@@ -95,28 +95,28 @@ class TimingPoint {
         this.obj.addChild(this.value);
         // TimingPanel.stage.addChild(this.obj);
 
-        this.sample = new PIXI.Text({
-            text: `${HitSound.HIT_SAMPLES[timingPoint.sampleSet][0].toUpperCase()}${timingPoint.sampleIdx !== 0 ? ":C" + timingPoint.sampleIdx : ""}`,
-            style: {
+        this.sample = new PIXI.Text(
+            `${HitSound.HIT_SAMPLES[timingPoint.sampleSet][0].toUpperCase()}${timingPoint.sampleIdx !== 0 ? ":C" + timingPoint.sampleIdx : ""}`,
+            {
                 fontFamily: "Torus",
                 fontWeight: 500,
                 fontSize: TimingPoint.FONT_SIZE * devicePixelRatio,
                 fill: 0xffffff,
             },
-        });
+        );
         this.sample.x = 210 * devicePixelRatio;
         this.sample.y = 20 * devicePixelRatio;
         this.sample.anchor.set(0, 0.5);
 
-        this.volume = new PIXI.Text({
-            text: `${timingPoint.sampleVol}%`,
-            style: {
+        this.volume = new PIXI.Text(
+            `${timingPoint.sampleVol}%`,
+            {
                 fontFamily: "Torus",
                 fontWeight: 500,
                 fontSize: TimingPoint.FONT_SIZE * devicePixelRatio,
                 fill: 0xffffff,
             },
-        });
+        );
         this.volume.x = 270 * devicePixelRatio;
         this.volume.y = 20 * devicePixelRatio;
         this.volume.anchor.set(0, 0.5);
@@ -132,14 +132,14 @@ class TimingPoint {
 
         this.marker
             .clear()
-            .roundRect(
+            .beginFill(this.timingPoint.isKiai ? accent : bg)
+            .drawRoundedRect(
                 90 * devicePixelRatio,
                 5 * devicePixelRatio,
                 TimingPanel.WIDTH - 105 * devicePixelRatio,
                 30 * devicePixelRatio,
                 5 * devicePixelRatio
-            )
-            .fill(this.timingPoint.isKiai ? accent : bg);
+            );
 
         this.value.style.fill = this.timingPoint.isKiai ? bgDark : 0xffffff;
         this.sample.style.fill = this.timingPoint.isKiai ? bgDark : 0xffffff;
@@ -152,8 +152,8 @@ class TimingPoint {
         if (Game.DEVE_RATIO !== devicePixelRatio) {
             this.indicator
                 .clear()
-                .roundRect(95 * devicePixelRatio, 10 * devicePixelRatio, 5 * devicePixelRatio, 20 * devicePixelRatio, 5 * devicePixelRatio)
-                .fill(this.timingPoint.beatstep ? 0xf5425a : 0x42f560);
+                .beginFill(this.timingPoint.beatstep ? 0xf5425a : 0x42f560)
+                .drawRoundedRect(95 * devicePixelRatio, 10 * devicePixelRatio, 5 * devicePixelRatio, 20 * devicePixelRatio, 5 * devicePixelRatio);
 
             this.timestamp.style.fontSize = TimingPoint.FONT_SIZE * devicePixelRatio;
             this.timestamp.x = 10 * devicePixelRatio;
@@ -183,7 +183,7 @@ class TimingPoint {
         if (this.idx === TimingPanel.CURRENT_SV_IDX) {
             const bg = Game.COLOR_PALETTES.primary5;
 
-            this.graphics.roundRect(0, 0, TimingPanel.WIDTH - 10 * devicePixelRatio, 40 * devicePixelRatio, 5 * devicePixelRatio).fill(bg);
+            this.graphics.beginFill(bg).drawRoundedRect(0, 0, TimingPanel.WIDTH - 10 * devicePixelRatio, 40 * devicePixelRatio, 5 * devicePixelRatio);
         }
     }
 }
@@ -397,12 +397,12 @@ export class TimingPanel {
         this.MAX_HEIGHT = 40 * devicePixelRatio * Beatmap.timingPointsList.length;
         this.scrollbar
             .clear()
-            .roundRect(0, 0, 5 * devicePixelRatio, this.HEIGHT * (this.HEIGHT / this.MAX_HEIGHT))
-            .fill({ color: 0xaaaaaa, alpha: this.MAX_HEIGHT <= this.HEIGHT ? 0 : 1 });
+            .beginFill(0xaaaaaa, this.MAX_HEIGHT <= this.HEIGHT ? 0 : 1)
+            .drawRoundedRect(0, 0, 5 * devicePixelRatio, this.HEIGHT * (this.HEIGHT / this.MAX_HEIGHT));
         this.POINTS = [];
         this.SCROLLED = 0;
         Beatmap.timingPointsList.forEach((point, idx) => {
-            const p = new TimingPoint(point, idx)
+            const p = new TimingPoint(point, idx);
             this.POINTS.push(p);
         });
     }
@@ -457,8 +457,8 @@ export class TimingPanel {
 
         this.scrollbar
             .clear()
-            .roundRect(0, 0, 5 * devicePixelRatio, this.HEIGHT * (this.HEIGHT / this.MAX_HEIGHT))
-            .fill({ color: 0xaaaaaa, alpha: this.MAX_HEIGHT <= this.HEIGHT ? 0 : 1 });
+            .beginFill(0xaaaaaa, this.MAX_HEIGHT <= this.HEIGHT ? 0 : 1)
+            .drawRoundedRect(0, 0, 5 * devicePixelRatio, this.HEIGHT * (this.HEIGHT / this.MAX_HEIGHT));
     }
 
     static resize() {

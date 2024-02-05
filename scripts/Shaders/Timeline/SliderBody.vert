@@ -4,11 +4,10 @@ attribute float dist;
 
 varying float colorDist;
 
-uniform mat3 uProjectionMatrix;
-uniform mat3 uWorldTransformMatrix;
-uniform mat3 uTransformMatrix;
+uniform mat3 projectionMatrix;
+uniform mat3 translationMatrix;
 
 void main() {
     colorDist = dist;
-    gl_Position = vec4((uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
+    gl_Position = vec4((projectionMatrix * translationMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
 }

@@ -69,16 +69,16 @@ export class Timestamp {
     static EMIT_CHANGE = false;
 
     static createDigit(x = 0, type = "digit") {
-        const digit = new PIXI.Text({
-            text: type === "digit" ? `0` : ":",
-            renderMode: "bitmap",
-            style: {
-                fontFamily: "TorusBitmap16",
+        const digit = new PIXI.BitmapText(
+            type === "digit" ? `0` : ":",
+            // renderMode: "bitmap",
+            {
+                fontName: "Torus",
                 fontSize: 16 * devicePixelRatio,
                 align: "center",
                 fontWeight: 500,
             },
-        });
+        );
 
         digit.anchor.set(0.5);
         digit.x = x;
@@ -167,25 +167,25 @@ export class Timestamp {
         this.colons.forEach((colon) => {
             colon.x = 16 * devicePixelRatio;
             colon.y = this.HEIGHT / 2 - 1 * devicePixelRatio;
-            colon.style.fontSize = 16 * devicePixelRatio;
+            // colon.style.fontSize = 16 * devicePixelRatio;
         });
 
         this.digits.minutes.forEach((digit, idx) => {
             digit.x = 9 * idx * devicePixelRatio;
             digit.y = this.HEIGHT / 2;
-            digit.style.fontSize = 16 * devicePixelRatio;
+            // digit.style.fontSize = 16 * devicePixelRatio;
         });
 
         this.digits.seconds.forEach((digit, idx) => {
             digit.x = 9 * idx * devicePixelRatio;
             digit.y = this.HEIGHT / 2;
-            digit.style.fontSize = 16 * devicePixelRatio;
+            // digit.style.fontSize = 16 * devicePixelRatio;
         });
 
         this.digits.miliseconds.forEach((digit, idx) => {
             digit.x = 9 * idx * devicePixelRatio;
             digit.y = this.HEIGHT / 2;
-            digit.style.fontSize = 16 * devicePixelRatio;
+            // digit.style.fontSize = 16 * devicePixelRatio;
         });
     }
 

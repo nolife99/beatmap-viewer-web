@@ -56,7 +56,7 @@ export class GreenLineInfo {
         svHeight += 3;
 
         this.sv = new PIXI.Container();
-        this.svGraphics = new PIXI.Graphics().roundRect(-svWidth / 2, 0, svWidth, svHeight, 10).fill(0x89f0a3);
+        this.svGraphics = new PIXI.Graphics().beginFill(0x89f0a3).drawRoundedRect(-svWidth / 2, 0, svWidth, svHeight, 10);
 
         this.sv.addChild(this.svGraphics, svText);
         this.sv.cullable = true;
@@ -88,8 +88,8 @@ export class GreenLineInfo {
         sampleText.y = -sampleHeight / 2;
 
         this.sample = new PIXI.Container();
-        this.sampleGraphics = new PIXI.Graphics().roundRect(-sampleWidth / 2, -sampleHeight, sampleWidth, sampleHeight, 10).fill(0xfaff75);
-        
+        this.sampleGraphics = new PIXI.Graphics().beginFill(0xfaff75).drawRoundedRect(-sampleWidth / 2, -sampleHeight, sampleWidth, sampleHeight, 10);
+
         this.sample.addChild(this.sampleGraphics, sampleText);
         this.sample.cullable = true;
 
@@ -193,15 +193,14 @@ export class BeatLines {
             const y = Timeline.HEIGHT;
 
             this.obj
-                .setStrokeStyle({
+                .lineStyle({
                     width: 1,
                     color: timingPointList[i].beatstep ? 0xe34653 : 0x1bcc20,
                     alignment: 0.5,
                     alpha: 0.9,
                 })
                 .moveTo(x, y)
-                .lineTo(x, y - 40 * devicePixelRatio)
-                .stroke();
+                .lineTo(x, y - 40 * devicePixelRatio);
         }
 
         for (let i = -ticksNumber; i <= ticksNumber; i++) {
@@ -216,14 +215,13 @@ export class BeatLines {
             const x = center + i * step - delta;
             const y = Timeline.HEIGHT;
             this.obj
-                .setStrokeStyle({
+                .lineStyle({
                     width: 1,
                     color: BeatLines.BEAT_LINE_COLOR[denominator] ?? 0x929292,
                     alignment: 0.5,
                 })
                 .moveTo(x, y)
-                .lineTo(x, y - 10 * devicePixelRatio)
-                .stroke();
+                .lineTo(x, y - 10 * devicePixelRatio);
         }
 
         this.drawList.forEach((line) => {

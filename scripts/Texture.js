@@ -27,22 +27,22 @@ export class Texture {
 
     static createSelectedHitCircle() {
         return new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 10,
                 color: 0xf2cc0f,
                 alpha: 1,
                 cap: "round",
                 alignment: 1,
             })
-            .arc(0, 0, 59, 0, Math.PI * 2).stroke();
+            .arc(0, 0, 59, 0, Math.PI * 2);
     }
 
     static createHitCircle() {
         const hitCircle = new PIXI.Container();
 
-        const circle_1 = new PIXI.Graphics().circle(0, 0, 59).fill(0xffffff);
-        const circle_2 = new PIXI.Graphics().circle(0, 0, 47).fill(0x9a9a9a);
-        const circle_3 = new PIXI.Graphics().circle(0, 0, 35).fill(0x2f2f2f);
+        const circle_1 = new PIXI.Graphics().beginFill(0xffffff).drawCircle(0, 0, 59);
+        const circle_2 = new PIXI.Graphics().beginFill(0x9a9a9a).drawCircle(0, 0, 47);
+        const circle_3 = new PIXI.Graphics().beginFill(0x2f2f2f).drawCircle(0, 0, 35);
 
         hitCircle.addChild(circle_1);
         hitCircle.addChild(circle_2);
@@ -53,38 +53,38 @@ export class Texture {
 
     static createHitCircleOverlay() {
         return new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 4,
                 color: 0xffffff,
                 alpha: 1,
                 cap: "round",
                 alignment: 1,
             })
-            .arc(0, 0, 67, 0, Math.PI * 2).stroke();
+            .arc(0, 0, 67, 0, Math.PI * 2);
     }
 
     static createApproachCircle() {
         return new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 4,
                 color: 0xffffff,
                 alpha: 1,
                 cap: "round",
                 alignment: 0,
             })
-            .circle(0, 0, 59).stroke();
+            .drawCircle(0, 0, 59);
     }
 
     static createSliderBall() {
         const sliderBallOutLine = new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 15,
                 color: 0xffffff,
                 alpha: 1,
                 cap: "round",
                 alignment: 1,
             })
-            .arc(0, 0, 59, 0, Math.PI * 2).stroke();
+            .arc(0, 0, 59, 0, Math.PI * 2);
 
         const sliderBallContainer = new PIXI.Container();
         sliderBallContainer.addChild(sliderBallOutLine);
@@ -120,15 +120,15 @@ export class Texture {
 
     static createSliderFollowCircle() {
         const graphic = new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 8,
                 color: 0xffffff,
                 alpha: 1,
                 cap: "round",
                 alignment: 1,
             })
-            .circle(0, 0, 128)
-            .fill({ color: 0xffffff, alpha: 0.3} ).stroke()
+            .beginFill(0xffffff, 0.3)
+            .drawCircle(0, 0, 128);
 
         return graphic;
     }
@@ -162,18 +162,16 @@ export class Texture {
         const renderTexture = PIXI.RenderTexture.create({
             width: width,
             height: height,
-            antialias: true
+            antialias: true,
             // resolution: window.devicePixelRatio,
         });
 
-        Game.APP.renderer.render({
-            container: graphics,
-            target: renderTexture,
-            clearColor: new PIXI.Color([0, 0, 0, 0.0]),
+        Game.APP.renderer.render(graphics, {
+            renderTexture,
             transform: new PIXI.Matrix(1, 0, 0, 1, width / 2, height / 2),
         });
 
-        // Game.APP.renderer.framebuffer.blit();
+        Game.APP.renderer.framebuffer.blit();
 
         graphics.destroy(true);
 
@@ -276,7 +274,7 @@ export class Texture {
         for (const [idx, obj] of arr.entries()) {
             const { base64, isHD } = obj;
             const texture = base64 ? await PIXI.Assets.load(base64) : await PIXI.Assets.load(`static/legacy/default-${idx}@2x.png`);
-            
+
             Texture.LEGACY.DEFAULTS.push({
                 texture,
                 isHD: base64 ? isHD : false,

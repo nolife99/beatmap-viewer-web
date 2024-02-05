@@ -1,7 +1,7 @@
 document.querySelector("#record")?.addEventListener("click", () => {
     if (!Game.BEATMAP_FILE) return;
 
-    const canvas = Game.APP.canvas;
+    const canvas = Game.APP.view;
     const videoStream = canvas.captureStream(0);
 
     if (!videoStream.getVideoTracks()[0]) return;

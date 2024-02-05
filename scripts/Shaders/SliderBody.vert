@@ -1,6 +1,7 @@
+#version 300 es
 precision mediump float;
-attribute vec4 position;
-attribute float isCirc;
+in vec4 position;
+in float isCirc;
 
 out float dist;
 

@@ -7,9 +7,9 @@ import { Skinning } from "../Skinning.js";
 import { Game } from "../Game.js";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import * as PIXI from "pixi.js";
-import gpuShader from "../Shaders/Timeline/SliderBody.wgsl?raw"
-import glVertexShader from "../Shaders/Timeline/SliderBody.vert?raw"
-import glFragmentShader from "../Shaders/Timeline/SliderBody.frag?raw"
+import gpuShader from "../Shaders/Timeline/SliderBody.wgsl?raw";
+import glVertexShader from "../Shaders/Timeline/SliderBody.vert?raw";
+import glFragmentShader from "../Shaders/Timeline/SliderBody.frag?raw";
 
 export class TimelineSlider {
     obj;
@@ -35,53 +35,21 @@ export class TimelineSlider {
         this.hitObject = hitObject;
         this.length = 1;
 
-        this.hitArea = new PIXI.Graphics().rect(0, 0, 0, 0);
+        this.hitArea = new PIXI.Graphics().drawRect(0, 0, 0, 0);
         this.obj.addChild(this.hitArea);
 
         const headGeometry = this.createArc(-1, 0);
         const tailGeometry = this.createArc(1, 0);
         const bodyGeometry = this.createLine(1);
 
-        // const shader = PIXI.Shader.from(vertexShader, fragmentShader, uniforms);
-        const gpu = PIXI.GpuProgram.from({
-            vertex: {
-                source: gpuShader,
-                entryPoint: "vsMain"
-            },
-            fragment: {
-                source: gpuShader,
-                entryPoint: "fsMain"
-            }
-        })
-        gpu.autoAssignGlobalUniforms = true;
-        gpu.autoAssignLocalUniforms = true;
+        const shader = PIXI.Shader.from(glVertexShader, glFragmentShader, {
+            tint: [0.0, 0.0, 0.0, 1.0],
+            selected: 0,
+        });
 
-        const gl = PIXI.GlProgram.from({
-            name: "timeline-shader",
-            vertex: glVertexShader,
-            fragment: glFragmentShader
-        })
-
-        const shader = PIXI.Shader.from({
-            gl,
-            gpu,
-            resources: {
-                customUniforms: {
-                    tint: {
-                        value: [0.0, 0.0, 0.0, 1.0],
-                        type: "vec4<f32>"
-                    },
-                    selected: {
-                        value: 0,
-                        type: "f32"
-                    }
-                }
-            }
-        })
-
-        const meshHead = new PIXI.Mesh({ geometry: headGeometry, shader: shader });
-        const meshBody = new PIXI.Mesh({ geometry: bodyGeometry, shader: shader });
-        const meshTail = new PIXI.Mesh({ geometry: tailGeometry, shader: shader });
+        const meshHead = new PIXI.Mesh(headGeometry, shader);
+        const meshBody = new PIXI.Mesh(bodyGeometry, shader);
+        const meshTail = new PIXI.Mesh(tailGeometry, shader);
 
         // console.log(shader)
 
@@ -163,18 +131,18 @@ export class TimelineSlider {
 
         this.meshHead.position.set(headPosition, Timeline.HEIGHT / 2);
         this.meshHead.scale.set(Timeline.HEIGHT / (Timeline.SHOW_GREENLINE ? 1.5 : 1) / 60);
-        this.meshHead.shader.resources.customUniforms.uniforms.tint = tint;
-        this.meshHead.shader.resources.customUniforms.uniforms.selected = selected ? 1 : 0;
+        this.meshHead.shader.uniforms.tint = tint;
+        this.meshHead.shader.uniforms.selected = selected ? 1 : 0;
 
         this.meshBody.position.set(headPosition, Timeline.HEIGHT / 2);
         this.meshBody.scale.set(this.length * ratio, Timeline.HEIGHT / (Timeline.SHOW_GREENLINE ? 1.5 : 1) / 60);
-        this.meshBody.shader.resources.customUniforms.uniforms.tint = tint;
-        this.meshBody.shader.resources.customUniforms.uniforms.selected = selected ? 1 : 0;
+        this.meshBody.shader.uniforms.tint = tint;
+        this.meshBody.shader.uniforms.selected = selected ? 1 : 0;
 
         this.meshTail.position.set(endPosition, Timeline.HEIGHT / 2);
         this.meshTail.scale.set(Timeline.HEIGHT / (Timeline.SHOW_GREENLINE ? 1.5 : 1) / 60);
-        this.meshTail.shader.resources.customUniforms.uniforms.tint = tint;
-        this.meshTail.shader.resources.customUniforms.uniforms.selected = selected ? 1 : 0;
+        this.meshTail.shader.uniforms.tint = tint;
+        this.meshTail.shader.uniforms.selected = selected ? 1 : 0;
 
         this.sliderHead.draw(timestamp);
         this.sliderTail.draw(timestamp, true);
@@ -183,7 +151,7 @@ export class TimelineSlider {
         this.sliderTail.obj.x = endPosition;
 
         this.hitArea.clear();
-        this.hitArea.rect(headPosition, 0, this.length * ratio, Timeline.HEIGHT).fill({ color: 0xffff00, alpha: 0.0001 });
+        this.hitArea.beginFill(0xffff00, 0.0001).drawRect(headPosition, 0, this.length * ratio, Timeline.HEIGHT);
 
         this.sliderReverses.forEach((arrow) => arrow.draw(timestamp));
 
@@ -218,12 +186,7 @@ export class TimelineSlider {
             dist.push(0.0, 1.0, 1.0);
         }
 
-        const geometry = new PIXI.Geometry({
-            attributes: {
-                position:  indices,
-                dist: dist,
-            }
-        });
+        const geometry = new PIXI.Geometry().addAttribute("position", indices, 2).addAttribute("dist", dist, 1);
         return geometry;
     }
 
@@ -257,12 +220,7 @@ export class TimelineSlider {
 
         const dist = [1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0];
 
-        const geometry = new PIXI.Geometry({
-            attributes: {
-                position: indices,
-                dist: dist,
-            }
-        });
+        const geometry = new PIXI.Geometry().addAttribute("position", indices, 2).addAttribute("dist", dist, 1);
         return geometry;
     }
 }

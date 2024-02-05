@@ -12,34 +12,6 @@ import * as PIXI from "pixi.js";
 document.querySelector(".loading").style.opacity = 1;
 document.querySelector("#loadingText").textContent = `Initializing`;
 
-PIXI.BitmapFontManager.install(
-    "TorusBitmap15",
-    {
-        fontSize: 15,
-        align: "right",
-        fill: "white",
-        fontFamily: "Torus",
-        fontWeight: 500
-    },
-    {
-        chars: [["a", "z"], ["A", "Z"], ["0", "9"], ". :"],
-    }
-);
-
-PIXI.BitmapFontManager.install(
-    "TorusBitmap16",
-    {
-        fontSize: 16,
-        align: "right",
-        fill: "white",
-        fontFamily: "Torus",
-        fontWeight: 500
-    },
-    {
-        chars: [["a", "z"], ["A", "Z"], ["0", "9"], ". :"],
-    }
-);
-
 function setupDefaultStorage() {
     const settingsTemplate = {
         mirror: {
@@ -90,6 +62,20 @@ function setupDefaultStorage() {
         localStorage.setItem("settings", JSON.stringify(currentLocalStorage));
     }
 }
+
+PIXI.BitmapFont.from(
+    "Torus",
+    {
+        fontFamily: "Torus",
+        fontSize: 20,
+        fontWeight: 500,
+        fill: 0xffffff,
+        align: "right",
+    },
+    {
+        chars: [["a", "z"], ["A", "Z"], ["0", "9"], ". :"],
+    }
+);
 
 (async () => {
     setupDefaultStorage();

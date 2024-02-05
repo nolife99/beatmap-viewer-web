@@ -4,13 +4,13 @@ export class Text {
     constructor({ text, renderMode, style }) {
         this._text = text;
 
-        this._sprite = new PIXI.Text({
-            text: this.text,
-            renderMode: renderMode ?? "canvas",
-            style: style,
-        });
+        this._sprite = new PIXI.Text(
+            this.text,
+            // renderMode: renderMode ?? "canvas",
+            new PIXI.TextStyle(style)
+        );
 
-        this._metrics = PIXI.CanvasTextMetrics.measureText(text, style);
+        this._metrics = PIXI.TextMetrics.measureText(text, new PIXI.TextStyle(style));
         this._color = style.fill;
 
         this._x = 0;
@@ -23,10 +23,10 @@ export class Text {
 
     set text(val) {
         if (this._text === val) return;
-        
+
         this._text = val;
         this._sprite.text = val;
-        this._metrics = PIXI.CanvasTextMetrics.measureText(val, this._sprite.style);
+        this._metrics = PIXI.TextMetrics.measureText(val, this._sprite.style);
         this._resize();
     }
 
@@ -77,7 +77,7 @@ export class Text {
     }
 
     _resize() {
-        this._metrics = PIXI.CanvasTextMetrics.measureText(this.text, this.style);
+        this._metrics = PIXI.TextMetrics.measureText(this.text, this.style);
     }
 
     update() {

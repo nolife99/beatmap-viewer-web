@@ -50,7 +50,7 @@ export class Timeline {
         Timeline.MASTER_CONTAINER.container.addChild(Timeline.ZOOMER.container);
 
         Timeline.centerLine = new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 1,
                 color: 0xffffff,
                 alignment: 1,
@@ -58,8 +58,7 @@ export class Timeline {
             .moveTo(-1, 0)
             .lineTo(-1, 1)
             .moveTo(+1, 0)
-            .lineTo(+1, 1)
-            .stroke();
+            .lineTo(+1, 1);
         Timeline.BASE_CONTAINER.addChild(Timeline.centerLine);
 
         Timeline.beatLines = new BeatLines();

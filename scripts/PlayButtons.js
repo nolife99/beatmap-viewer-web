@@ -81,8 +81,8 @@ export class Button {
     redraw() {
         this.graphics
             .clear()
-            .rect(0, 0, 60 * devicePixelRatio, 60 * devicePixelRatio)
-            .fill(this.color);
+            .beginFill(this.color)
+            .drawRect(0, 0, 60 * devicePixelRatio, 60 * devicePixelRatio);
 
         this.container.x = this.x * devicePixelRatio;
         this.container.y = this.y * devicePixelRatio;

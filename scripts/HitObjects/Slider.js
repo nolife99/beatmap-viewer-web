@@ -112,7 +112,6 @@ export class Slider {
         this.selectedSliderEnd.y = y * Game.SCALE_RATE;
 
         this.selectedSliderEnd.scale.set(circleBaseScale * Game.SCALE_RATE * (236 / 256) ** 2 * 0.5);
-
     }
 
     playHitsound(timestamp) {
@@ -226,7 +225,7 @@ export class Slider {
 
         // this.SliderMesh.update();
 
-        this.nodesLine.clear().setStrokeStyle({ width: 2, color: 0xffffff });
+        this.nodesLine.clear().lineStyle({ width: 2, color: 0xffffff });
         this.nodesGraphics.forEach((node, idx) => {
             let { x, y } = this.nodes[idx].position;
             if (Game.MODS.HR) y = 384 - y;
@@ -242,7 +241,7 @@ export class Slider {
                 return;
             }
 
-            this.nodesLine.lineTo(x, y).stroke();
+            this.nodesLine.lineTo(x, y);
         });
 
         if (this.isHover) this.nodesContainer.visible = true;
@@ -857,7 +856,7 @@ export class Slider {
         this.nodesContainer = new PIXI.Container();
 
         this.nodesLine = new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 2,
                 color: 0xffffff,
             })
@@ -871,15 +870,11 @@ export class Slider {
 
             this.nodesLine.lineTo(x, y);
 
-            const graphic = new PIXI.Graphics()
-                .circle(0, 0, 5)
-                .fill(fillColor);
+            const graphic = new PIXI.Graphics().beginFill(fillColor).drawCircle(0, 0, 5);
             this.nodesContainer.addChild(graphic);
 
             return graphic;
         });
-
-        this.nodesLine.stroke();
 
         this.selectedSliderEnd = new PIXI.Sprite(Texture.SELECTED.texture);
         this.selectedSliderEnd.anchor.set(0.5);

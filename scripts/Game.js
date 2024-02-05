@@ -114,31 +114,30 @@ export class Game {
 
     static FPSInit() {
         const fpsStyle = {
-            fontFamily: "TorusBitmap15",
+            fontName: "Torus",
             align: "right",
             fontSize: 15,
             fill: "white",
             fontWeight: 500,
         };
 
-        const fpsSprite = new PIXI.Text({
-            text: `0fps\nInfinite ms`,
-            renderMode: "bitmap",
-            style: {
+        const fpsSprite = new PIXI.BitmapText(
+            `0fps\nInfinite ms`,
+            {
                 ...fpsStyle,
             },
-        });
+        );
 
         fpsSprite.anchor.set(1, 1);
-        fpsSprite.x = Game.APP.canvas.width - 10;
-        fpsSprite.y = Game.APP.canvas.height - 10;
+        fpsSprite.x = Game.APP.view.width - 10;
+        fpsSprite.y = Game.APP.view.height - 10;
 
         return fpsSprite;
     }
 
     static dragWindowInit() {
         // Drag window initialize
-        const dragWindow = new PIXI.Graphics().setStrokeStyle({
+        const dragWindow = new PIXI.Graphics().lineStyle({
             width: 2,
             color: 0xffffff,
             alpha: 1,
@@ -156,21 +155,20 @@ export class Game {
     static gridInit() {
         // Grid initialize
         const graphics = new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 1,
                 color: 0xffffff,
                 alpha: 0.1,
                 alignment: 0.5,
             })
-            .rect(0, 0, 512, 384)
-            .stroke();
+            .drawRect(0, 0, 512, 384);
 
         // Draw grid
         const gridWidth = 512 / 16;
         const gridHeight = 384 / 12;
         for (let i = 0; i < 16; i++) {
             for (let j = 0; j < 12; j++) {
-                graphics.rect(i * gridWidth, j * gridHeight, gridWidth, gridHeight).stroke();
+                graphics.drawRect(i * gridWidth, j * gridHeight, gridWidth, gridHeight);
             }
         }
 
@@ -249,14 +247,14 @@ export class Game {
             Game.START_Y = y;
 
             Game.DRAG_WINDOW.clear();
-            Game.DRAG_WINDOW.setStrokeStyle({
+            Game.DRAG_WINDOW.lineStyle({
                 width: 1,
                 color: 0xffffff,
                 alpha: 1,
                 alignment: 0,
             });
 
-            Game.DRAG_WINDOW.rect(x, y, 0, 0).fill({ color: 0xffffff, alpha: 0.2 }).stroke();
+            Game.DRAG_WINDOW.beginFill(0xffffff, 0.2).drawRect(x, y, 0, 0);
 
             Game.DRAG_WINDOW.alpha = 1;
 
@@ -295,21 +293,19 @@ export class Game {
                 handleCanvasDrag(e);
 
                 Game.DRAG_WINDOW.clear();
-                Game.DRAG_WINDOW.setStrokeStyle({
+                Game.DRAG_WINDOW.lineStyle({
                     width: 1,
                     color: 0xffffff,
                     alpha: 1,
                     alignment: 0,
                 });
 
-                Game.DRAG_WINDOW.rect(
+                Game.DRAG_WINDOW.beginFill(0xffffff, 0.2).drawRect(
                     (Math.min(Game.START_X, x) * Game.WIDTH) / 512,
                     (Math.min(Game.START_Y, y) * Game.WIDTH) / 512,
                     (Math.abs(x - Game.START_X) * Game.WIDTH) / 512,
                     (Math.abs(y - Game.START_Y) * Game.WIDTH) / 512
-                )
-                    .fill({ color: 0xffffff, alpha: 0.2 })
-                    .stroke();
+                );
             }
 
             const currentTime = Game.BEATMAP_FILE.audioNode.getCurrentTime();
@@ -371,7 +367,7 @@ export class Game {
         // Reposition FPS
         Game.FPS.x = Game.MASTER_CONTAINER.w - 10;
         Game.FPS.y = Game.MASTER_CONTAINER.h - 10;
-        Game.FPS.style.fontSize = 15 * devicePixelRatio;
+        // Game.FPS.style.fontSize = 15 * devicePixelRatio;
 
         Game.INFO.update();
         Game.STATS.update();
@@ -400,19 +396,17 @@ export class Game {
         // console.log("Stack Added! 0", width, height, Game.APP.renderer.width, Game.APP.renderer.height);
         Game.APP.renderer.resize(width, height);
 
-        Game.APP.canvas.style.transform = `scale(${1 / window.devicePixelRatio})`;
+        Game.APP.view.style.transform = `scale(${1 / window.devicePixelRatio})`;
     }
 
     static async appInit() {
         // App initialize
-        Game.APP = new PIXI.Application();
-
-        await Game.APP.init({
+        Game.APP = new PIXI.Application({
             antialias: true,
             autoDensity: true,
             backgroundAlpha: 0,
-            resizeTo: document.querySelector(".contentWrapper"),
-            preference: "webgl",
+            width: parseInt(getComputedStyle(document.querySelector(".contentWrapper")).width),
+            height: parseInt(getComputedStyle(document.querySelector(".contentWrapper")).height),
         });
 
         Game.appSizeSetup();
@@ -589,7 +583,7 @@ export class Game {
         Game.APP.stage.addChild(MetadataPanel.MASTER_CONTAINER.masterContainer);
 
         // Add Game Canvas to DOM
-        document.querySelector(".contentWrapper").prepend(Game.APP.canvas);
+        document.querySelector(".contentWrapper").prepend(Game.APP.view);
         globalThis.__PIXI_APP__ = Game.APP;
 
         HitSample.masterGainNode = Game.AUDIO_CTX.createGain();

@@ -1,3 +1,6 @@
+#version 300 es
+precision mediump float;
+
 in float dist;
 
 out vec4 finalColor;

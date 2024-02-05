@@ -139,6 +139,6 @@ export class Container {
             this.content.y = (this.height - (this._child?.height ?? 0)) / 2;
         }
 
-        this.background.clear().roundRect(0, 0, this.width, this.height, this.borderRadius).fill({ color: this.color, alpha: this.alpha });
+        this.background.clear().beginFill(this.color, this.alpha).drawRoundedRect(0, 0, this.width, this.height, this.borderRadius);
     }
 }

@@ -162,25 +162,25 @@ export class Component {
         this.container.y = this.padding;
 
         if (this.borderBox) {
-            this.paddingMask.clear().roundRect(0, 0, this._w, this._h, this.borderRadius).fill({ color: 0x000000, alpha: 0.01 });
-            this.background.clear().roundRect(0, 0, this._w, this._h, this.borderRadius).fill({ color: this._color, alpha: this._alpha });
+            this.paddingMask.clear().beginFill(0x000000, 0.01).drawRoundedRect(0, 0, this._w, this._h, this.borderRadius);
+            this.background.clear().beginFill(this._color, this._alpha).drawRoundedRect(0, 0, this._w, this._h, this.borderRadius);
             this.mask
                 .clear()
-                .roundRect(0, 0, this._w - this.padding * 2, this._h - this.padding * 2, 0)
-                .fill({ color: 0x000000, alpha: 0.01 });
+                .beginFill(0x000000, 0.01)
+                .drawRoundedRect(0, 0, this._w - this.padding * 2, this._h - this.padding * 2, 0);
 
             return;
         }
 
         this.paddingMask
             .clear()
-            .roundRect(0, 0, this._w + this.padding * 2, this._h + this.padding * 2, this.borderRadius)
-            .fill({ color: 0x000000, alpha: 0.01 });
+            .beginFill(0x000000, 0.01)
+            .drawRoundedRect(0, 0, this._w + this.padding * 2, this._h + this.padding * 2, this.borderRadius);
         this.background
             .clear()
-            .roundRect(0, 0, this._w + this.padding * 2, this._h + this.padding * 2, this.borderRadius)
-            .fill({ color: this._color, alpha: this._alpha });
-        this.mask.clear().roundRect(0, 0, this._w, this._h, 0).fill({ color: 0x000000, alpha: 0.01 });
+            .beginFill(this._color, this._alpha)
+            .drawRoundedRect(0, 0, this._w + this.padding * 2, this._h + this.padding * 2, this.borderRadius);
+        this.mask.clear().beginFill(0x000000, 0.01).drawRoundedRect(0, 0, this._w, this._h, 0);
 
         if (this.overflow === "hidden") {
             this.container.mask = this.mask;

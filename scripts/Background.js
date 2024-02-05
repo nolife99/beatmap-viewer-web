@@ -14,7 +14,7 @@ export class Background {
         this.sprite = new PIXI.Sprite();
         this.mask = new PIXI.Graphics();
 
-        this.mask.rect(0, 0, Game.MASTER_CONTAINER.w, Game.MASTER_CONTAINER.h);
+        this.mask.drawRect(0, 0, Game.MASTER_CONTAINER.w, Game.MASTER_CONTAINER.h);
 
         this.container.addChild(this.mask, this.sprite);
         this.container.mask = this.mask;

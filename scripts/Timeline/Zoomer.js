@@ -18,7 +18,7 @@ class Button {
         this.w = w;
         this.h = h;
 
-        this.graphics = new PIXI.Graphics().rect(0, 0, w, h).fill(Game.COLOR_PALETTES.primary3);
+        this.graphics = new PIXI.Graphics().beginFill(Game.COLOR_PALETTES.primary3).drawRect(0, 0, w, h);
 
         this.container = new PIXI.Container();
         this.container.on("mouseenter", () => {
@@ -64,8 +64,8 @@ class Button {
 
         this.graphics
             .clear()
-            .rect(0, 0, this.w * devicePixelRatio, this.h)
-            .fill(!this.isHover ? Game.COLOR_PALETTES.primary3 : Game.COLOR_PALETTES.primary4);
+            .beginFill(!this.isHover ? Game.COLOR_PALETTES.primary3 : Game.COLOR_PALETTES.primary4)
+            .drawRect(0, 0, this.w * devicePixelRatio, this.h);
 
         if (!this.sprite) return;
 
@@ -83,7 +83,7 @@ export class TimelineZoomer {
     container;
 
     async init() {
-        this.graphics = new PIXI.Graphics().rect(0, 0, 40, Timeline.HEIGHT).fill(Game.COLOR_PALETTES.primary3);
+        this.graphics = new PIXI.Graphics().beginFill(Game.COLOR_PALETTES.primary3).drawRect(0, 0, 40, Timeline.HEIGHT);
 
         this.container = new PIXI.Container();
         this.container.addChild(this.graphics);
@@ -111,8 +111,8 @@ export class TimelineZoomer {
     draw(timestamp) {
         this.graphics
             .clear()
-            .rect(0, 0, 40 * devicePixelRatio, Timeline.HEIGHT)
-            .fill(Game.COLOR_PALETTES.primary3);
+            .beginFill(Game.COLOR_PALETTES.primary3)
+            .drawRect(0, 0, 40 * devicePixelRatio, Timeline.HEIGHT);
         this.zoomIn.draw(timestamp);
         this.zoomOut.draw(timestamp);
     }

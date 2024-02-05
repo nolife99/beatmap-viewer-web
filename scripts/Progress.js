@@ -29,36 +29,34 @@ export class ProgressBar {
 
     static initLine() {
         this.line = new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 4 * window.devicePixelRatio,
                 cap: "round",
                 color: 0x88c0d0,
             })
             .moveTo(0, this.HEIGHT / 2)
-            .lineTo(this.WIDTH - 80 * window.devicePixelRatio, this.HEIGHT / 2)
-            .stroke();
+            .lineTo(this.WIDTH - 80 * window.devicePixelRatio, this.HEIGHT / 2);
     }
 
     static initThumb() {
         this.thumb = new PIXI.Graphics()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 4 * window.devicePixelRatio,
                 cap: "round",
                 alignment: 0,
                 color: 0x88c0d0,
             })
-            .roundRect(
+            .beginFill(0x171a1f)
+            .drawRoundedRect(
                 -20 * window.devicePixelRatio,
                 -5 * window.devicePixelRatio,
                 40 * window.devicePixelRatio,
                 10 * window.devicePixelRatio,
                 10 * window.devicePixelRatio
             )
-            .fill(0x171a1f)
-            .stroke()
-            .setStrokeStyle()
-            .circle(0, 0, 2)
-            .fill(0x88c0d0);
+            .lineStyle()
+            .beginFill(0x88c0d0)
+            .drawCircle(0, 0, 2);
         this.thumb.y = this.HEIGHT / 2;
 
         // this.thumb.interactive = true;
@@ -131,35 +129,19 @@ export class ProgressBar {
             colorBuffer.push(...[...color, ...color]);
         });
 
-        const geometry = new PIXI.Geometry({
-            attributes: {
-                aPosition: positionsBuffer,
-                aColor: colorBuffer,
-            },
-            topology: "line-list"
-        });
-
+        const geometry = new PIXI.Geometry().addAttribute("aPosition", positionsBuffer, 2).addAttribute("aColor", colorBuffer, 3);
         this.timeline.geometry = geometry;
     }
 
     static reinitPoints() {
         this.stage.removeChild(this.timeline);
 
-        this.timeline = new PIXI.Mesh({
-            geometry: new PIXI.Geometry({
-                attributes: {
-                    aPosition: [0, 0, 1, 0],
-                    aColor: [1, 0, 0, 1, 1, 1],
-                },
-                topology: "line-list",
-            }),
-            shader: PIXI.Shader.from({
-                gl: PIXI.GlProgram.from({
-                    vertex: vertexSrc,
-                    fragment: fragmentSrc,
-                }),
-            }),
-        });
+        this.timeline = new PIXI.Mesh(
+            new PIXI.Geometry().addAttribute("aPosition", [0, 0, 1, 0], 2).addAttribute("aColor", [1, 0, 0, 1, 1, 1], 3),
+            PIXI.Shader.from(vertexSrc, fragmentSrc),
+            undefined,
+            1
+        );
         this.timeline.x = 40 * devicePixelRatio;
         this.timeline.y = 10 * devicePixelRatio;
         this.stage.addChildAt(this.timeline, 0);
@@ -175,21 +157,12 @@ export class ProgressBar {
 
         this.stage = this.MASTER_CONTAINER.container;
 
-        this.timeline = new PIXI.Mesh({
-            geometry: new PIXI.Geometry({
-                attributes: {
-                    aPosition: [0, 0, 1, 0],
-                    aColor: [1, 0, 0, 1, 1, 1],
-                },
-                topology: "line-list",
-            }),
-            shader: PIXI.Shader.from({
-                gl: PIXI.GlProgram.from({
-                    vertex: vertexSrc,
-                    fragment: fragmentSrc,
-                }),
-            }),
-        });
+        this.timeline = new PIXI.Mesh(
+            new PIXI.Geometry().addAttribute("aPosition", [0, 0, 1, 0], 2).addAttribute("aColor", [1, 0, 0, 1, 1, 1], 3),
+            PIXI.Shader.from(vertexSrc, fragmentSrc),
+            undefined,
+            1
+        );
         this.timeline.x = 40 * devicePixelRatio;
         this.timeline.y = 10 * devicePixelRatio;
         this.stage.addChildAt(this.timeline, 0);
@@ -273,35 +246,33 @@ export class ProgressBar {
 
         this.line
             .clear()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 4 * window.devicePixelRatio,
                 cap: "round",
                 color: accentColor,
             })
             .moveTo(0, this.HEIGHT / 2)
-            .lineTo(this.WIDTH - 80 * window.devicePixelRatio, this.HEIGHT / 2)
-            .stroke();
+            .lineTo(this.WIDTH - 80 * window.devicePixelRatio, this.HEIGHT / 2);
 
         this.thumb
             .clear()
-            .setStrokeStyle({
+            .lineStyle({
                 width: 4 * window.devicePixelRatio,
                 cap: "round",
                 alignment: 0,
                 color: accentColor,
             })
-            .roundRect(
+            .beginFill(isHover ? accentColor : bgColor)
+            .drawRoundedRect(
                 -20 * window.devicePixelRatio,
                 -5 * window.devicePixelRatio,
                 40 * window.devicePixelRatio,
                 10 * window.devicePixelRatio,
                 10 * window.devicePixelRatio
             )
-            .fill(isHover ? accentColor : bgColor)
-            .stroke()
-            .setStrokeStyle()
-            .circle(0, 0, 2)
-            .fill(isHover ? bgColor : accentColor);
+            .lineStyle()
+            .beginFill(isHover ? bgColor : accentColor)
+            .drawCircle(0, 0, 2);
     }
 
     static update(time) {
