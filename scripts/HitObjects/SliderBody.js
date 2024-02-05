@@ -137,43 +137,43 @@ export class SliderBody {
         const SKIN_TYPE = parseInt(Game.SKINNING.type);
         const IS_SELECTED = this.isSelected;
 
-        const sliderTrackOverride = Skinning.SLIDER_TRACK_OVERRIDE;
-        const tint = this.tint;
-        const borderColor =
-            SKIN_TYPE === 0 || SKIN_TYPE === 1 || IS_SELECTED
-                ? tint
-                : SKIN_TYPE === 2 || SKIN_TYPE === 3
-                ? [1, 1, 1, 1]
-                : Skinning.SLIDER_BORDER ?? [1, 1, 1, 1];
-        const bodyColor = SKIN_TYPE === 0 || SKIN_TYPE === 1 ? tint : sliderTrackOverride ?? this.tint;
+        // const sliderTrackOverride = Skinning.SLIDER_TRACK_OVERRIDE;
+        // const tint = this.tint;
+        // const borderColor =
+        //     SKIN_TYPE === 0 || SKIN_TYPE === 1 || IS_SELECTED
+        //         ? tint
+        //         : SKIN_TYPE === 2 || SKIN_TYPE === 3
+        //         ? [1, 1, 1, 1]
+        //         : Skinning.SLIDER_BORDER ?? [1, 1, 1, 1];
+        // const bodyColor = SKIN_TYPE === 0 || SKIN_TYPE === 1 ? tint : sliderTrackOverride ?? this.tint;
         const circleBaseScale = (Beatmap.moddedStats.radius / 54.4) * (SKIN_TYPE !== 0 || IS_SELECTED ? 1 : 0.95);
-        const bodyAlpha = IS_SELECTED ? 0 : SKIN_TYPE !== 0 ? 0.7 : 1;
-        const borderWidth = SKIN_TYPE === 0 ? 0.128 * 1.65 : 0.115;
+        // const bodyAlpha = IS_SELECTED ? 0 : SKIN_TYPE !== 0 ? 0.7 : 1;
+        // const borderWidth = SKIN_TYPE === 0 ? 0.128 * 1.65 : 0.115;
 
-        let innerColor, outerColor;
+        // let innerColor, outerColor;
 
-        switch (SKIN_TYPE) {
-            case 0: {
-                outerColor = SliderBody.darken(bodyColor, 4.0);
-                innerColor = SliderBody.darken(bodyColor, 4.0);
-                break;
-            }
-            case 1: {
-                outerColor = SliderBody.darken(bodyColor, 2.0);
-                innerColor = SliderBody.darken(bodyColor, 0.5);
-                break;
-            }
-            case 3: {
-                outerColor = SliderBody.lighten(bodyColor, 0.1);
-                innerColor = SliderBody.darken(bodyColor, 0.5);
-                break;
-            }
-            default: {
-                outerColor = SliderBody.darken(bodyColor, 0.1);
-                innerColor = SliderBody.lighten(bodyColor, 0.5);
-                break;
-            }
-        }
+        // switch (SKIN_TYPE) {
+        //     case 0: {
+        //         outerColor = SliderBody.darken(bodyColor, 4.0);
+        //         innerColor = SliderBody.darken(bodyColor, 4.0);
+        //         break;
+        //     }
+        //     case 1: {
+        //         outerColor = SliderBody.darken(bodyColor, 2.0);
+        //         innerColor = SliderBody.darken(bodyColor, 0.5);
+        //         break;
+        //     }
+        //     case 3: {
+        //         outerColor = SliderBody.lighten(bodyColor, 0.1);
+        //         innerColor = SliderBody.darken(bodyColor, 0.5);
+        //         break;
+        //     }
+        //     default: {
+        //         outerColor = SliderBody.darken(bodyColor, 0.1);
+        //         innerColor = SliderBody.lighten(bodyColor, 0.5);
+        //         break;
+        //     }
+        // }
 
         const currentStackOffset = Beatmap.moddedStats.stackOffset;
         const dx = (2 * (Game.WIDTH / 512)) / Game.APP.renderer.width;
@@ -197,36 +197,36 @@ export class SliderBody {
         this.shader.uniforms.oy = transform.oy;
         this.shader.uniforms.inverse = Game.MODS.HR ? 1 : 0;
 
-        if (this.startt == 0.0 && this.endt == 1.0) {
-            this.shader.uniforms.dt = 0;
-            this.shader.uniforms.ot = 1;
+        // if (this.startt == 0.0 && this.endt == 1.0) {
+        //     this.shader.uniforms.dt = 0;
+        //     this.shader.uniforms.ot = 1;
 
-            const point = SliderBody.getPointAtT(this.angleList, this.endt);
-            this.shader.uniforms.ballPosition[0] = point.x;
-            this.shader.uniforms.ballPosition[1] = point.y;
-        } else if (this.startt == 0.0) {
-            this.shader.uniforms.dt = 1;
-            this.shader.uniforms.ot = this.endt;
+        //     const point = SliderBody.getPointAtT(this.angleList, this.endt);
+        //     this.shader.uniforms.ballPosition[0] = point.x;
+        //     this.shader.uniforms.ballPosition[1] = point.y;
+        // } else if (this.startt == 0.0) {
+        //     this.shader.uniforms.dt = 1;
+        //     this.shader.uniforms.ot = this.endt;
 
-            const point = SliderBody.getPointAtT(this.angleList, this.endt);
-            this.shader.uniforms.ballPosition[0] = point.x;
-            this.shader.uniforms.ballPosition[1] = point.y;
-        } else if (this.endt == 1.0) {
-            this.shader.uniforms.dt = -1;
-            this.shader.uniforms.ot = -this.startt;
+        //     const point = SliderBody.getPointAtT(this.angleList, this.endt);
+        //     this.shader.uniforms.ballPosition[0] = point.x;
+        //     this.shader.uniforms.ballPosition[1] = point.y;
+        // } else if (this.endt == 1.0) {
+        //     this.shader.uniforms.dt = -1;
+        //     this.shader.uniforms.ot = -this.startt;
 
-            const point = SliderBody.getPointAtT(this.angleList, this.startt);
-            this.shader.uniforms.ballPosition[0] = point.x;
-            this.shader.uniforms.ballPosition[1] = point.y;
-        }
+        //     const point = SliderBody.getPointAtT(this.angleList, this.startt);
+        //     this.shader.uniforms.ballPosition[0] = point.x;
+        //     this.shader.uniforms.ballPosition[1] = point.y;
+        // }
 
         this.shader.uniforms.circleBaseScale = circleBaseScale;
 
-        this.filter.filter.uniforms.bodyAlpha = bodyAlpha;
-        this.filter.filter.uniforms.borderColor = borderColor;
-        this.filter.filter.uniforms.innerColor = innerColor;
-        this.filter.filter.uniforms.outerColor = outerColor;
-        this.filter.filter.uniforms.borderWidth = borderWidth;
+        // this.filter.filter.uniforms.bodyAlpha = bodyAlpha;
+        // this.filter.filter.uniforms.borderColor = borderColor;
+        // this.filter.filter.uniforms.innerColor = innerColor;
+        // this.filter.filter.uniforms.outerColor = outerColor;
+        // this.filter.filter.uniforms.borderWidth = borderWidth;
     }
 
     get alpha() {
@@ -234,7 +234,7 @@ export class SliderBody {
     }
 
     set alpha(val) {
-        this.filter.alpha = val;
+        // this.filter.alpha = val;
         // this.shader.uniforms.alpha = val;
     }
 
