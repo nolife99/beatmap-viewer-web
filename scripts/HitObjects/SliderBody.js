@@ -122,8 +122,8 @@ export class SliderBody {
         this.container.y = -Game.OFFSET_Y;
         this.container.addChild(this.circleMesh, this.bodyMesh, this.graphics);
 
-        this.container.filters = [this.filter.filter];
-        this.filter.filter.state.depthTest = true;
+        // this.container.filters = [this.filter.filter];
+        // this.filter.filter.state.depthTest = true;
 
         this.tint = [0.0, 0.0, 0.0, 1.0];
     }
