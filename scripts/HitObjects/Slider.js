@@ -1,8 +1,6 @@
 import { Game } from "../Game.js";
 import { Texture } from "../Texture.js";
 import { Beatmap } from "../Beatmap.js";
-// import { ObjectsController } from "./ObjectsController.js";
-// import { ProgressBar } from "../Progress.js";
 import { SliderEnd } from "./SliderEnd.js";
 import { HitCircle } from "./HitCircle.js";
 import { SliderGeometryContainers } from "./SliderMesh.js";
@@ -89,7 +87,6 @@ export class Slider {
 
         return coeff;
     }
-
     bezier(t, plist) {
         var order = plist.length - 1;
 
@@ -781,13 +778,14 @@ export class Slider {
 
         const nodes = [];
         for (let i = 0; i < originalArr.length; i++) {
-            if (originalArr[i + 1] && this.Dist(originalArr[i], originalArr[i + 1]) === 0) {
+            if (originalArr[i + 1] && (this.Dist(originalArr[i], originalArr[i + 1]) === 0 || (sliderType === 'L' && i > 0))) {
                 nodes.push({
                     type: "Red Anchor",
                     position: originalArr[i],
                 });
 
-                i++;
+                if (sliderType === 'L') originalArr.splice(i, 0, originalArr[i]);
+                ++i;
                 continue;
             }
 

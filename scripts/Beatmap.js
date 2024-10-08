@@ -155,7 +155,7 @@ export class Beatmap {
             preempt: Beatmap.difficultyRange(approachRate, 1800, 1200, 450),
             fadeIn: Beatmap.difficultyRange(approachRate, 1200, 800, 300),
             radius: 54.4 - 4.48 * circleSize,
-            stackOffset: (-6.4 * (1 - (0.7 * (circleSize - 5)) / 5)) / 2,
+            stackOffset: (-6.4 * (1 - (0.7 * (circleSize - 5)) / 5)) / 2
         };
     }
 
@@ -505,8 +505,6 @@ export class Beatmap {
 
         Beatmap.stats.circleDiameter = (2 * (54.4 - 4.48 * Beatmap.stats.circleSize) * 236) / 256;
 
-        Beatmap.stackThreshold = Beatmap.stats.preempt * Beatmap.stats.stackLeniency;
-
         const difficultyPosition = rawBeatmap.indexOf("[Difficulty]") + "[Difficulty]\r\n".length;
         const timingPosition = rawBeatmap.indexOf("[TimingPoints]") + "[TimingPoints]\r\n".length;
         const colourPosition = rawBeatmap.indexOf("[Colours]") + "[Colours]\r\n".length;
@@ -712,6 +710,11 @@ export class Beatmap {
         const stackDistance = 3;
 
         // console.log(this.objectsController);
+        
+        Beatmap.updateStats();
+        Beatmap.updateModdedStats();
+
+        Beatmap.stackThreshold = Beatmap.stats.preempt * Beatmap.stats.stackLeniency;
 
         for (let i = extendedEndIndex; i > 0; i--) {
             let n = i;
@@ -794,9 +797,6 @@ export class Beatmap {
                 }
             }
         }
-
-        Beatmap.updateStats();
-        Beatmap.updateModdedStats();
 
         this.objectsController.objectsList.forEach((object, idx, arr) => {
             // Timeline.hitArea.obj.addChildAt(object.timelineObject.obj, 0);

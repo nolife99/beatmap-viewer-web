@@ -334,7 +334,6 @@ export class BeatmapFile {
 				Beatmap.HREF = null;
 			}
 		}
-
 		const modsTemplate = ["HARD_ROCK", "EASY", "DOUBLE_TIME", "HALF_TIME"];
 
 		const modsFlag = [Game.MODS.HR, Game.MODS.EZ, Game.MODS.DT, Game.MODS.HT];
