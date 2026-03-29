@@ -65,7 +65,7 @@ export default class Database {
 			};
 
 			request.onerror = (event) => {
-				console.error("Add to database error!");
+				console.error(request.error);
 				reject(event);
 			};
 		});

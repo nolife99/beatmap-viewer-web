@@ -1,133 +1,109 @@
 import type { Vector2 } from "osu-classes";
+import type { SliderProgressResult } from "@/BeatmapSet/Beatmap/HitObjects/CalculateSliderProgress.ts";
 
 const RADIUS = 20;
 const DIVIDES = 64;
-
-export type Vector3 = {
-	x: number;
-	y: number;
-	t: number;
-};
-
 const VECS = 3;
 
-export default function createGeometry(
-	// path: Vector3[],
-	path: Vector2[],
-	radius = RADIUS,
+export default function updateGeometry(
+	path: SliderProgressResult,
+	radius: number,
+	oldPositions: Float32Array | null,
+	oldIndices: Uint32Array | null
 ) {
-	const vertices: number[] = [];
-	const indices: number[] = [];
-	// const isCirc: number[] = [];
+	const pointsCount = path.length;
 
-	vertices.push(path[0].x, path[0].y, 0);
-	// isCirc.push(0);
+	const requiredVerts = (pointsCount * 5 + pointsCount * DIVIDES) * VECS;
+	const requiredIndices = (pointsCount * 12 + pointsCount * DIVIDES) * 3;
 
-	const pointsCount = path.length - 1;
-	for (let i = 1; i <= pointsCount; i++) {
-		const { x, y /* t */ } = path[i];
-		const { x: _x, y: _y /* t: _t */ } = path[i - 1];
+	let positions = (oldPositions && oldPositions.length >= requiredVerts)
+		? oldPositions : new Float32Array(requiredVerts);
+	let indices = (oldIndices && oldIndices.length >= requiredIndices)
+		? oldIndices : new Uint32Array(requiredIndices);
 
-		const dx = x - _x;
-		const dy = y - _y;
-		const length = Math.hypot(dx, dy);
+	let vIdx = 0;
+	let iIdx = 0;
 
-		const ox = length === 0 ? 0 : (radius * -dy) / length;
-		const oy = length === 0 ? 0 : (radius * dx) / length;
-
-		vertices.push(
-			_x + ox,
-			_y + oy,
-			1,
-
-			_x - ox,
-			_y - oy,
-			1,
-
-			x + ox,
-			y + oy,
-			1,
-
-			x - ox,
-			y - oy,
-			1,
-
-			x,
-			y,
-			0,
-		);
-
-		const n = 5 * i + 1;
-		indices.push(
-			n - 6,
-			n - 5,
-			n - 1,
-			n - 5,
-			n - 1,
-			n - 3,
-			n - 6,
-			n - 4,
-			n - 1,
-			n - 4,
-			n - 1,
-			n - 2,
-		);
-	}
-
-	const addArc = (c: number, p1: number, p2: number) => {
-		const theta1 = Math.atan2(
-			vertices[VECS * p1 + 1] - vertices[VECS * c + 1],
-			vertices[VECS * p1] - vertices[VECS * c],
-		);
-		let theta2 = Math.atan2(
-			vertices[VECS * p2 + 1] - vertices[VECS * c + 1],
-			vertices[VECS * p2] - vertices[VECS * c],
-		);
-
-		if (theta1 > theta2) theta2 += 2 * Math.PI;
-
-		let theta = theta2 - theta1;
-		const divs = Math.ceil((DIVIDES * Math.abs(theta)) / (2 * Math.PI));
-
-		theta /= divs;
-
-		let last = p1;
-		for (let i = 1; i < divs; ++i) {
-			vertices.push(
-				vertices[VECS * c] + radius * Math.cos(theta1 + i * theta),
-				vertices[VECS * c + 1] + radius * Math.sin(theta1 + i * theta),
-				1,
-			);
-
-			const newVert = vertices.length / VECS - 1;
-			indices.push(c, last, newVert);
-			last = newVert;
-		}
-
-		indices.push(c, last, p2);
+	const writeV = (x: number, y: number, t: number) => {
+		positions[vIdx++] = x || 0; // Guard against NaN
+		positions[vIdx++] = y || 0;
+		positions[vIdx++] = t;
 	};
 
-	for (let i = 1; i < pointsCount; ++i) {
-		const dx1 = path[i].x - path[i - 1].x;
-		const dy1 = path[i].y - path[i - 1].y;
+	// 1. Initial Point (Index 0)
+	const pathPts = path.points;
+	writeV(pathPts[0].x, pathPts[0].y, 0);
 
-		const dx2 = path[i + 1].x - path[i].x;
-		const dy2 = path[i + 1].y - path[i].y;
+	for (let i = 1; i < pointsCount; i++) {
+		const curr = pathPts[i];
+		const prev = pathPts[i - 1];
+		const dx = curr.x - prev.x;
+		const dy = curr.y - prev.y;
+		const len = Math.hypot(dx, dy);
 
-		const t = dx1 * dy2 - dx2 * dy1;
+		// If points are stacked, skip math to avoid NaN
+		const ox = len === 0 ? 0 : (radius * -dy) / len;
+		const oy = len === 0 ? 0 : (radius * dx) / len;
 
-		if (t > 0) {
-			addArc(5 * i, 5 * i - 1, 5 * i + 2);
-		} else {
-			addArc(5 * i, 5 * i + 1, 5 * i - 2);
+		// Vertices for this segment
+		writeV(prev.x + ox, prev.y + oy, 1); // Index: 5*i - 4
+		writeV(prev.x - ox, prev.y - oy, 1); // Index: 5*i - 3
+		writeV(curr.x + ox, curr.y + oy, 1); // Index: 5*i - 2
+		writeV(curr.x - ox, curr.y - oy, 1); // Index: 5*i - 1
+		writeV(curr.x, curr.y, 0);           // Index: 5*i
+
+		// Correct Indexing (n is the center of the current point)
+		const n = 5 * i;
+
+		// Quad 1
+		indices[iIdx++] = n - 5; indices[iIdx++] = n - 4; indices[iIdx++] = n;
+		indices[iIdx++] = n - 4; indices[iIdx++] = n;     indices[iIdx++] = n - 2;
+		// Quad 2
+		indices[iIdx++] = n - 5; indices[iIdx++] = n - 3; indices[iIdx++] = n;
+		indices[iIdx++] = n - 3; indices[iIdx++] = n;     indices[iIdx++] = n - 1;
+	}
+
+	const addArc = (centerIdx: number, p1Idx: number, p2Idx: number) => {
+		const cx = positions[VECS * centerIdx];
+		const cy = positions[VECS * centerIdx + 1];
+		const t1 = Math.atan2(positions[VECS * p1Idx + 1] - cy, positions[VECS * p1Idx] - cx);
+		let t2 = Math.atan2(positions[VECS * p2Idx + 1] - cy, positions[VECS * p2Idx] - cx);
+
+		if (t1 > t2) t2 += Math.PI * 2;
+		let delta = t2 - t1;
+		const divs = Math.ceil((DIVIDES * Math.abs(delta)) / (Math.PI * 2));
+		delta /= divs;
+
+		let last = p1Idx;
+		for (let j = 1; j < divs; ++j) {
+			writeV(cx + radius * Math.cos(t1 + j * delta), cy + radius * Math.sin(t1 + j * delta), 1);
+			const newV = (vIdx / VECS) - 1;
+			indices[iIdx++] = centerIdx;
+			indices[iIdx++] = last;
+			indices[iIdx++] = newV;
+			last = newV;
 		}
+		indices[iIdx++] = centerIdx;
+		indices[iIdx++] = last;
+		indices[iIdx++] = p2Idx;
+	};
+
+	// Joins and Caps
+	for (let i = 1; i < pointsCount - 1; ++i) {
+		const d1 = { x: pathPts[i].x - pathPts[i-1].x, y: pathPts[i].y - pathPts[i-1].y };
+		const d2 = { x: pathPts[i+1].x - pathPts[i].x, y: pathPts[i+1].y - pathPts[i].y };
+		if (d1.x * d2.y - d1.y * d2.x > 0) addArc(5 * i, 5 * i - 1, 5 * i + 2);
+		else addArc(5 * i, 5 * i + 1, 5 * i - 2);
 	}
 
 	addArc(0, 1, 2);
-	addArc(5 * path.length - 5, 5 * path.length - 6, 5 * path.length - 7);
+	const lastBase = 5 * (pointsCount - 1);
+	addArc(lastBase, lastBase - 1, lastBase - 2);
 
 	return {
-		aPosition: vertices,
-		indexBuffer: indices,
+		// We return subarrays so Pixi knows exactly how many elements to draw,
+		// but the underlying ArrayBuffer is reused.
+		positions: positions.subarray(0, vIdx),
+		indices: indices.subarray(0, iIdx)
 	};
 }

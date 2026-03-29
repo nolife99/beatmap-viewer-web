@@ -1,24 +1,10 @@
 import {
-	LayoutContainer,
-	type LayoutContainerOptions,
+	LayoutContainer
 } from "@pixi/layout/components";
-import { AlphaFilter, type FillInput, type StrokeInput } from "pixi.js";
 import AnimationController from "../animation/AnimationController";
 
-export interface ZContainerStyle {
-	backgroundColor?: FillInput;
-	border?: StrokeInput;
-	radius?: number;
-}
-
 export default class ZContainer extends LayoutContainer {
-	animationControler = new AnimationController();
-	alphaFilter = new AlphaFilter({ alpha: 1 });
-	
-	constructor(options?: LayoutContainerOptions) {
-		super(options);
-		this.filters = [this.alphaFilter];
-	}
+	animationController = new AnimationController();
 
 	triggerAnimation(
 		key: string,
@@ -30,7 +16,7 @@ export default class ZContainer extends LayoutContainer {
 		onComplete?: () => void,
 		onStop?: () => void
 	) {
-		return this.animationControler.addAnimation(
+		return this.animationController.addAnimation(
 			key,
 			from,
 			to,

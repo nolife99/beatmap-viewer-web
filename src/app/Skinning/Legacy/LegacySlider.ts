@@ -20,14 +20,14 @@ export const refreshSprite = (drawable: DrawableSlider) => {
 	const path = calculateSliderProgress(drawable.object.path, 0, 1);
 	if (!path.length) return;
 
-	const { aPosition, indexBuffer } = createGeometry(
+	const { positions, indices } = createGeometry(
 		path,
 		drawable.object.radius * (236 / 256),
+		new Float32Array(drawable._baseGeometry.attributes.aPosition.buffer.data.buffer),
+		new Uint32Array(drawable._baseGeometry.indexBuffer.data.buffer)
 	);
-	drawable._baseGeometry.attributes.aPosition.buffer.data = new Float32Array(
-		aPosition,
-	);
-	drawable._baseGeometry.indexBuffer.data = new Uint32Array(indexBuffer);
+	drawable._baseGeometry.attributes.aPosition.buffer.data = positions;
+	drawable._baseGeometry.indexBuffer.data = indices;
 };
 
 export const refreshColor = (drawable: DrawableSlider) => {

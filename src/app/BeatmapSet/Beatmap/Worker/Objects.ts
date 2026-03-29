@@ -78,6 +78,8 @@ onmessage = (event) => {
 
 			initTree(objectsTree, objects);
 			initTree(connectorsTree, connectors);
+
+			setInterval(() => loop(), 0);
 			break;
 		}
 		case "preempt": {
@@ -105,6 +107,8 @@ onmessage = (event) => {
 			isPlaying = false;
 			objectsTree.clear();
 			connectorsTree.clear();
+
+			postMessage({ type: "destroy" });
 			break;
 		}
 		case "playbackRate": {
@@ -113,8 +117,6 @@ onmessage = (event) => {
 		}
 	}
 };
-
-setInterval(() => loop(), 0);
 
 // function signal() {
 //     postMessage({

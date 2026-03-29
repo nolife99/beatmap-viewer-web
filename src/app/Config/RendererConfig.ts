@@ -24,7 +24,7 @@ export default class RendererConfig extends ConfigSection {
 		this.renderer =
 			(renderer as string) === "WEBGL2" ? "webgl" : (renderer ?? "webgl");
 		this.resolution = resolution ?? 1;
-		this.antialiasing = antialiasing ?? true;
+		this.antialiasing = antialiasing ?? false;
 	}
 
 	private _renderer: RENDERER = "webgl";
@@ -50,7 +50,7 @@ export default class RendererConfig extends ConfigSection {
 		this.emitChange("resolution", val);
 	}
 
-	private _antialiasing = true;
+	private _antialiasing = false;
 	get antialiasing() {
 		return this._antialiasing;
 	}

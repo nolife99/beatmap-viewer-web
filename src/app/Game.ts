@@ -25,7 +25,6 @@ import Loading from "./UI/loading";
 import Main from "./UI/main";
 import SidePanel from "./UI/sidepanel";
 import ZipHandler from "./ZipHandler";
-import type Gameplays from "./UI/main/viewer/Gameplay/Gameplays";
 
 // import { debounce } from "./utils";
 
@@ -88,19 +87,19 @@ export class Game {
 			// // biome-ignore lint/style/noNonNullAssertion: It should be there already lol
 			// resizeTo: document.querySelector<HTMLDivElement>("#app")!,
 			antialias: inject<RendererConfig>("config/renderer")?.antialiasing,
-			powerPreference: "high-performance",
 			backgroundAlpha: 0,
 			// useBackBuffer: true,
 			// clearBeforeRender: true,
-			// depth: true,
+			depth: true,
 			autoDensity: true,
 			resolution: devicePixelRatio,
 			preference:
 				inject<RendererConfig>("config/renderer")?.renderer ?? "webgl",
 		});
+
 		app.stage.layout = {
 			width: app.screen.width,
-			height: app.screen.width,
+			height: app.screen.height,
 			flexDirection: "row",
 			gap: 0,
 		};
@@ -520,8 +519,10 @@ export class Game {
 				bms?.destroy();
 				const blob = await getBeatmapFromId(IDs[0]);
 
-				if (blob === null) throw new Error("Cannot download beatmap");
-				console.log("Download Completed!");
+				if (blob === null) {
+					console.warn("Cannot download beatmap");
+					return;
+				}
 
 				bms = await this.loadBlob(blob);
 			}
@@ -556,8 +557,9 @@ export class Game {
 		} catch (e) {
 			console.error(e);
 		}
-
-		inject<Loading>("ui/loading")?.off();
+		finally {
+			inject<Loading>("ui/loading")?.off();
+		}
 	}
 
 	private async loadSetID(ID: string) {
@@ -574,8 +576,10 @@ export class Game {
 				bms?.destroy();
 				const blob = await getBeatmapFromId("", ID);
 
-				if (blob === null) throw new Error("Cannot download beatmap");
-				console.log("Download Completed!");
+				if (blob === null) {
+					console.warn("Cannot download beatmap");
+					return;
+				}
 
 				bms = await this.loadBlob(blob);
 			}
@@ -594,8 +598,9 @@ export class Game {
 		} catch (e) {
 			console.error(e);
 		}
-
-		inject<Loading>("ui/loading")?.off();
+		finally {
+			inject<Loading>("ui/loading")?.off();
+		}
 	}
 
 	private async loadHash(hash: string) {
@@ -607,8 +612,10 @@ export class Game {
 				bms?.destroy();
 				const blob = await getBeatmapFromHash(hash);
 
-				if (blob === null) throw new Error("Cannot download beatmap");
-				console.log("Download Completed!");
+				if (blob === null) {
+					console.warn("Cannot download beatmap");
+					return;
+				}
 
 				bms = await this.loadBlob(blob);
 			}
@@ -618,14 +625,14 @@ export class Game {
 		} catch (e) {
 			console.error(e);
 		}
-
-		inject<Loading>("ui/loading")?.off();
+		finally {
+			inject<Loading>("ui/loading")?.off();
+		}
 	}
 
 	async loadBlob(blob: Blob) {
 		const resources = await ZipHandler.extract(blob);
 		const bms = new BeatmapSet(resources);
-		console.log("Init beatmapset");
 
 		await bms.loadResources();
 		await bms.getDifficulties();

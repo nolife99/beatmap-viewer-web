@@ -46,7 +46,7 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 	if (span >= drawable.object.spans - 1) {
 		if (Math.min(span, drawable.object.spans - 1) % 2 === 1) {
 			start = 0;
-			end = spanProgress;
+			end = -spanProgress;
 		} else {
 			start = spanProgress;
 		}

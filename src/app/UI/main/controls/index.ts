@@ -4,12 +4,12 @@ import type ColorConfig from "@/Config/ColorConfig";
 import type FullscreenConfig from "@/Config/FullscreenConfig";
 import { inject, provide } from "@/Context";
 import type ResponsiveHandler from "@/ResponsiveHandler";
-import ZContainer from "@/UI/core/ZContainer";
 import Fullscreen from "./Fullscreen";
 import Metadata from "./Metadata";
 import Play from "./Play";
 import ProgressBar from "./ProgressBar";
 import Timestamp from "./Timestamp";
+import ZContainer from "@/UI/core/ZContainer.ts";
 
 export default class Controls {
 	container = new ZContainer({

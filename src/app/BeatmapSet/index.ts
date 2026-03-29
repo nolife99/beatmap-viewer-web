@@ -1,8 +1,8 @@
 import { Tween } from "@tweenjs/tween.js";
 import type { DifficultyPoint, SamplePoint, TimingPoint } from "osu-classes";
-import { Assets, type FederatedWheelEvent } from "pixi.js";
+import {Assets, type FederatedWheelEvent, Texture} from "pixi.js";
 import * as Tone from "tone";
-import { Context } from "tone";
+import {Context, getContext} from "tone";
 import Audio from "@/Audio";
 import type AudioConfig from "@/Config/AudioConfig";
 import type BackgroundConfig from "@/Config/BackgroundConfig";
@@ -24,7 +24,7 @@ import type Spectrogram from "@/UI/sidepanel/Modding/Spectrogram";
 import type Timing from "@/UI/sidepanel/Timing";
 import { getDiffColour, loadColorPalette } from "@/utils";
 import Video from "@/Video";
-import extraMode from "/assets/extra-mode.svg?raw";
+const extraMode = await (await fetch("/assets/extra-mode.svg")).text();
 import { inject, provide, ScopedClass } from "../Context";
 import type { Resource } from "../ZipHandler";
 import Beatmap from "./Beatmap";
@@ -35,8 +35,7 @@ import SampleManager from "./SampleManager";
 
 export default class BeatmapSet extends ScopedClass {
 	difficulties: Beatmap[] = [];
-	audioContext: AudioContext | Context =
-		"userAgentData" in navigator ? new AudioContext() : new Context();
+	audioContext = getContext();
 	animationFrame: number;
 	playbackRate = 1;
 
@@ -90,8 +89,6 @@ export default class BeatmapSet extends ScopedClass {
 			new Skin(this.context.consume<Map<string, Resource>>("resources")),
 		);
 		await skin.init();
-
-		console.log(skin);
 	}
 
 	async loadResources() {
@@ -199,11 +196,18 @@ export default class BeatmapSet extends ScopedClass {
 		inject<Loading>("ui/loading")?.setText("Loading audio");
 		inject<Spectrogram>("ui/sidepanel/modding/spectrogram")?.unloadTexture();
 
+		this.context.consume("audio")?.destroy();
+
 		const audio = this.context.provide(
 			"audio",
 			new Audio(this.audioContext).hook(this.context),
 		);
 		await audio.createBufferNode(audioFile);
+
+		inject<DifficultyGraph>("ui/sidepanel/modding/difficulty")?.setData(
+			beatmap.strains,
+			audio.duration / 1000
+		);
 
 		console.timeEnd("Constructing audio");
 	}
@@ -269,6 +273,8 @@ export default class BeatmapSet extends ScopedClass {
 
 		document.body.style.backgroundImage = `url("${url}")`;
 		await loadColorPalette(url);
+
+		URL.revokeObjectURL(url);
 	}
 
 	async loadStoryboard() {
@@ -383,12 +389,6 @@ export default class BeatmapSet extends ScopedClass {
 				this.loadPeripherals(beatmap),
 				this.loadBeatmap(beatmap, 0),
 			]);
-		}
-
-		const graph = inject<DifficultyGraph>("ui/sidepanel/modding/difficulty");
-
-		if (graph) {
-			graph.data = beatmap.strains;
 		}
 
 		inject<Timeline>("ui/main/viewer/timeline")?.loadObjects(
@@ -650,17 +650,20 @@ export default class BeatmapSet extends ScopedClass {
 		cancelAnimationFrame(this.animationFrame);
 		const audio = this.context.consume<Audio>("audio");
 		if (audio?.state === "PLAYING") {
+			const playButton = inject<Play>("ui/main/controls/play");
+			if (playButton) Assets.load("./assets/play.png").then(tex => playButton.sprite.texture = tex);
+
 			audio?.toggle();
 		}
+
+		audio?.destroy();
 
 		inject<Timeline>("ui/main/viewer/timeline")?.loadObjects([]);
 		inject<Background>("ui/main/viewer/background")?.ejectStoryboardContainer();
 
 		this.context.consume<Storyboard>("storyboard")?.destroy();
 
-		this.master?.destroy();
-
-		for (const slave of this.slaves) {
+		for (const slave of this.difficulties) {
 			slave.destroy();
 		}
 

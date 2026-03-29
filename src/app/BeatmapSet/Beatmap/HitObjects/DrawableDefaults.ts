@@ -1,13 +1,12 @@
-import type { Circle, StandardHitObject } from "osu-standard-stable";
-import { Container, Sprite } from "pixi.js";
-import { update } from "@/Skinning/Legacy/LegacyDefaults";
+import type {Circle, StandardHitObject} from "osu-standard-stable";
+import {Container, Sprite} from "pixi.js";
+import {update} from "@/Skinning/Legacy/LegacyDefaults";
 import type Skin from "@/Skinning/Skin";
 import SkinnableElement from "./SkinnableElement";
-import type { Context } from "@/Context";
+import type {Context} from "@/Context";
 
 export default class DrawableDefaults extends SkinnableElement {
 	container: Container;
-	sprites: Sprite[] = [];
 	digits: string[] = [];
 
 	constructor(object: StandardHitObject) {
@@ -15,25 +14,17 @@ export default class DrawableDefaults extends SkinnableElement {
 		this.container = new Container();
 		this.object = object;
 
-		const number = object.currentComboIndex + 1;
-		const digits = number.toString().split("");
-
-		this.sprites = digits.map<Sprite>(() => {
-			const text = new Sprite();
-			text.anchor.set(0, 0.5);
-			return text;
-		});
-
-		this.refreshSprites();
-
 		this.container.scale.set(0.8);
 		this.container.interactive = false;
 		this.container.interactiveChildren = false;
-		this.container.addChild(...this.sprites);
 
-		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
-			this.refreshSprites(),
-		);
+		const number = object.currentComboIndex + 1;
+		const digits = number.toString().split("");
+
+		this.container.addChild(...digits.map<Sprite>(() => new Sprite({ anchor: { x: 0, y: 0.5 } })));
+		this.refreshSprites();
+
+		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() => this.refreshSprites());
 	}
 
 	private _object!: Circle;
@@ -45,9 +36,7 @@ export default class DrawableDefaults extends SkinnableElement {
 		this._object = val;
 
 		const number = val.currentComboIndex + 1;
-		const digits = number.toString().split("");
-
-		this.digits = digits;
+		this.digits = number.toString().split("");
 	}
 
 	refreshSprites(skin?: Skin) {
@@ -55,8 +44,10 @@ export default class DrawableDefaults extends SkinnableElement {
 		if (!s) return;
 		
 		let width = s.config.Fonts.HitCircleOverlap;
-		for (let i = 0; i < this.sprites.length; i++) {
-			const text = this.sprites[i];
+
+		const children = this.container.children;
+		for (let i = 0; i < children.length; i++) {
+			const text = children[i];
 			const digit = this.digits[i];
 
 			width -= s.config.Fonts.HitCircleOverlap;
@@ -67,7 +58,7 @@ export default class DrawableDefaults extends SkinnableElement {
 			text.x = width;
 
 			if (texture) {
-				text.texture = texture;
+				(text as Sprite).texture = texture;
 				width += texture.width;
 			}
 		}
@@ -87,12 +78,9 @@ export default class DrawableDefaults extends SkinnableElement {
 	}
 
 	destroy() {
-		for (const text of this.sprites) {
-			text.destroy();
-		}
-
-		this.container.destroy();
 		if (this.skinEventCallback)
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
+
+		this.container.destroy({ children: true });
 	}
 }

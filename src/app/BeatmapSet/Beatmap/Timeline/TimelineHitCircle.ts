@@ -92,7 +92,7 @@ export default class TimelineHitCircle extends TimelineHitObject {
 			this.context.consume<DrawableHitCircle>("object")?.color ?? "rgb(0,0,0)";
 		this.hitCircle.tint = color;
 		this.defaults.container.tint = 0xffffff;
-		this.defaults.sprites.map((sprite) => {
+		this.defaults.container.children.map((sprite) => {
 			sprite.tint = 0xffffff;
 		});
 
@@ -106,7 +106,7 @@ export default class TimelineHitCircle extends TimelineHitObject {
 			0.587 * (col?.rgb().g / 255) +
 			0.114 * (col?.rgb().b / 255);
 		this.defaults.container.tint = lumi > 0.5 ? color : 0xffffff;
-		this.defaults.sprites.map((sprite) => {
+		this.defaults.container.children.map(sprite => {
 			sprite.tint = lumi > 0.5 ? 0x333333 : 0xe5e5e5;
 		});
 	}

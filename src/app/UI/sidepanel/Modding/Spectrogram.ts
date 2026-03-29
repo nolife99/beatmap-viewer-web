@@ -128,6 +128,9 @@ export default class Spectrogram {
 	}
 
 	unloadTexture() {
+		const oldSprite = this.sprite.texture;
+		if (oldSprite !== BLANK_TEXTURE) oldSprite?.destroy(true);
+
 		this.sprite.texture = BLANK_TEXTURE;
 		this.spin = true;
 	}

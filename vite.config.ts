@@ -17,6 +17,11 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./src/app"),
+			"wavesurfer.js/dist/plugins/spectrogram-worker.js":
+				path.resolve(
+					__dirname,
+					"node_modules/wavesurfer.js/dist/plugins/spectrogram-worker.js"
+				)
 		},
 	},
 	preview: {
@@ -24,6 +29,7 @@ export default defineConfig({
 	},
 	base: "",
 	server: {
+		allowedHosts: ['dielin.local'],
 		cors: true,
 		watch: {
 			usePolling: true,

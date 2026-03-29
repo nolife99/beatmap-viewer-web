@@ -51,9 +51,6 @@ export default class DrawableHitCircle
 	defaults?: DrawableDefaults;
 
 	hitSound?: HitSample;
-
-	samplePoint?: SamplePoint;
-
 	timelineObject?: TimelineHitCircle;
 
 	updateFn = legacyUpdate;
@@ -69,17 +66,10 @@ export default class DrawableHitCircle
 
 		this.wrapper.visible = false;
 
-		this.hitCircleSprite = new Sprite();
-		this.hitCircleOverlay = new Sprite();
-		this.flashPiece = new Sprite();
+		this.hitCircleSprite = new Sprite({ anchor: 0.5, alpha: 0.9 });
+		this.hitCircleOverlay = new Sprite({ anchor: 0.5 });
+		this.flashPiece = new Sprite({ anchor: 0.5, blendMode: 'add' });
 
-		this.flashPiece.anchor.set(0.5);
-		this.flashPiece.blendMode = "add";
-
-		this.hitCircleSprite.anchor.set(0.5);
-		this.hitCircleSprite.alpha = 0.9;
-
-		this.hitCircleOverlay.anchor.set(0.5);
 		this.sprite.addChild(this.hitCircleSprite, this.hitCircleOverlay);
 
 		this.approachCircle = new DrawableApproachCircle(object).hook(this.context);
@@ -309,10 +299,8 @@ export default class DrawableHitCircle
 			return HitResult.None;
 		};
 
-		const hitResult = resultFor(hitInstance.startTime - this.object.startTime);
-
 		return {
-			value: hitResult,
+			value: resultFor(hitInstance.startTime - this.object.startTime),
 			hitTime: hitInstance.startTime,
 		};
 	}
@@ -320,7 +308,12 @@ export default class DrawableHitCircle
 	destroy() {
 		this.hitCircleOverlay.destroy();
 		this.hitCircleSprite.destroy();
+		this.flashPiece.destroy();
 		this.defaults?.destroy();
+		this.judgement.container.destroy();
+
+		this.timelineObject?.destroy();
+		this.select.destroy();
 		this.approachCircle.destroy();
 
 		if (this.skinEventCallback)

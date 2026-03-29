@@ -10,7 +10,6 @@ import type { Context } from "@/Context";
 
 export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 	container: Container = new Container();
-	sprites: Sprite[] = [];
 
 	startTime!: number;
 	endTime!: number;
@@ -68,20 +67,15 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		this.container.y = this.startPosition.y;
 		this.container.rotation = angle;
 
-		this.container.removeChildren();
-		for (const sprite of this.sprites) {
+		for (const sprite of this.container.removeChildren()) {
 			sprite.destroy();
 		}
 
 		const numberOfSprites =
 			this.distance < 80 ? 0 : Math.floor((this.distance - 48) / (512 / 16));
-		this.sprites = [];
-		for (let i = 0; i < numberOfSprites; i++) {
-			const sprite = new Sprite();
-			sprite.anchor.set(0.5);
-			sprite.x = (1.5 + i) * (512 / 16);
 
-			this.sprites.push(sprite);
+		for (let i = 0; i < numberOfSprites; i++) {
+			this.container.addChild(new Sprite({ anchor: 0.5, x: (1.5 + i) * (512 / 16) }));
 		}
 
 		this.texturesList = this.skinManager
@@ -90,8 +84,6 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 				"followpoint",
 				this.context.consume<Skin>("beatmapSkin"),
 			) ?? [BLANK_TEXTURE];
-
-		if (this.sprites.length) this.container.addChild(...this.sprites);
 	}
 	
 	hook(context: Context) {
@@ -103,7 +95,7 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 	update(time: number) {
 		update(this, time);
 
-		for (const [idx, sprite] of Object.entries(this.sprites)) {
+		for (const [idx, sprite] of Object.entries(this.container.children)) {
 			const d = 32 * 1.5 + 32 * +idx;
 			const f = d / this.distance;
 
@@ -117,16 +109,12 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 				this.texturesList.length - 1,
 			);
 
-			sprite.texture = this.texturesList[frameIndex];
+			(sprite as Sprite).texture = this.texturesList[frameIndex];
 		}
 	}
 
 	destroy() {
-		for (const sprite of this.sprites) {
-			sprite.destroy();
-		}
-
-		this.container.destroy();
+		this.container.destroy({ children: true });
 
 		if (this.skinEventCallback)
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);

@@ -4,10 +4,11 @@ import type BackgroundConfig from "@/Config/BackgroundConfig";
 import { inject } from "@/Context";
 import type Background from "@/UI/main/viewer/Background";
 import { MessageType, type WorkerPayload } from "./types";
-import VideoWorker from "./Worker.ts?worker";
 
 export default class Video {
-	worker = new VideoWorker();
+	worker = new Worker(new URL("./Worker.ts", import.meta.url), {
+		type: "module",
+	});
 
 	constructor() {
 		this.worker.postMessage({

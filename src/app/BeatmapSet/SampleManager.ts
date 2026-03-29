@@ -1,6 +1,6 @@
 // @ts-ignore
 import { getFileAudioBuffer } from "@soundcut/decode-audio-data-fast";
-import type { Context } from "tone";
+import {BaseContext, type Context} from "tone";
 import { inject } from "../Context";
 import type SkinManager from "../Skinning/SkinManager";
 import type { Resource } from "../ZipHandler";
@@ -12,12 +12,12 @@ export default class SampleManager {
 	private map = new Map<string, AudioBuffer>();
 
 	constructor(
-		private audioContext: Context | AudioContext,
+		private audioContext: BaseContext,
 		private files: Map<string, Resource>,
 	) {}
 
-	async load() {
-		await Promise.all(
+	load() {
+		return Promise.all(
 			[...this.files].map(async ([filename, resource]) => {
 				if (!HITSOUND_REGEX.test(filename)) return;
 				if (!resource) return;
@@ -29,15 +29,12 @@ export default class SampleManager {
 						await resource.arrayBuffer(),
 					);
 				} catch (e) {
-					// console.warn(
-					// 	`Cannot decode ${filename}. Default to silent sample.`,
-					// );
+					console.warn(`Cannot decode ${filename}. Default to silent sample.`);
 					audioBuffer = this.audioContext.createBuffer(
 						1,
 						1,
 						this.audioContext.sampleRate,
 					);
-					return;
 				}
 
 				const key = filename.split(".").slice(0, -1).join(".");

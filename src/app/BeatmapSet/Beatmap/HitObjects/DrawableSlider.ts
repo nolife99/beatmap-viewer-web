@@ -45,11 +45,11 @@ import type SkinManager from "@/Skinning/SkinManager";
 import type ProgressBar from "@/UI/main/controls/ProgressBar";
 import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
 import HitSample from "../../../Audio/HitSample";
-import { Clamp, closestPointTo, darken, lighten } from "../../../utils";
+import { Clamp, closestPointTo, darken, lighten } from "@/utils.ts";
 import type Beatmap from "..";
 import type { SliderEvaluation } from "../Replay";
 import TimelineSlider from "../Timeline/TimelineSlider";
-import calculateSliderProgress from "./CalculateSliderProgress";
+import calculateSliderProgress, {type SliderProgressResult} from "./CalculateSliderProgress";
 import createGeometry from "./CreateSliderGeometry";
 import type DrawableHitCircle from "./DrawableHitCircle";
 import DrawableHitObject, {
@@ -169,7 +169,9 @@ export default class DrawableSlider
 		blendMode: "none",
 	});
 
-	path: Vector2[] = [];
+	path: SliderProgressResult = {
+		points: [], length: 0
+	};
 
 	ball: DrawableSliderBall;
 	followCircle: DrawableSliderFollowCircle;
@@ -185,7 +187,6 @@ export default class DrawableSlider
 
 	private layer = new RenderLayer();
 	private layer2 = new RenderLayer();
-	private layer3 = new RenderLayer();
 
 	wrapper = new Container();
 
@@ -264,7 +265,7 @@ export default class DrawableSlider
 
 		// this.container.visible = false;
 		const judgementLayer = new RenderLayer();
-		this.container.addChild(judgementLayer, this.wrapper, this.nodes);
+		this.container.addChild(judgementLayer, this.wrapper);
 		this.select.addChild(this.selectBody);
 
 		for (const drawable of this.drawableCircles.toReversed()) {
@@ -280,6 +281,7 @@ export default class DrawableSlider
 
 			if (d.select) this.select.addChild(d.select);
 		}
+		this.select.addChild(this.nodes);
 
 		const whistleSample = new Sample();
 		whistleSample.hitSound = "sliderwhistle";
@@ -424,7 +426,9 @@ export default class DrawableSlider
 		const path = calculateSliderProgress(this.object.path, 0, 1);
 		if (!path.length) return;
 
-		const { aPosition, indexBuffer } = createGeometry(
+		this.path = path;
+
+		const { positions, indices } = createGeometry(
 			path,
 			val.radius *
 				(236 / 256) *
@@ -432,11 +436,10 @@ export default class DrawableSlider
 					.Argon
 					? 0.95
 					: 1),
+			null, null
 		);
-		this._baseGeometry.attributes.aPosition.buffer.data = new Float32Array(
-			aPosition,
-		);
-		this._baseGeometry.indexBuffer.data = new Uint32Array(indexBuffer);
+		this._baseGeometry.attributes.aPosition.buffer.data = positions;
+		this._baseGeometry.indexBuffer.data = indices;
 	}
 
 	checkCollide(x: number, y: number, time: number) {
@@ -456,9 +459,11 @@ export default class DrawableSlider
 		);
 
 		let min = Infinity;
+
+		const pathPts = this.path.points;
 		for (let i = 0; i < this.path.length - 1; i++) {
-			const start = this.path[i].add(objectPosition);
-			const end = this.path[i + 1].add(objectPosition);
+			const start = pathPts[i].add(objectPosition);
+			const end = pathPts[i + 1].add(objectPosition);
 
 			const closestPoint = closestPointTo(point, start, end);
 			const dist = closestPoint.distance(point);
@@ -585,6 +590,7 @@ export default class DrawableSlider
 		);
 	}
 
+	lastGeometryState = { head: Infinity, tail: -Infinity, scale: -Infinity };
 	updateGeometry(progressHead = 0, progressTail = 0, scale = 1) {
 		const snakeIn = inject<GameplayConfig>("config/gameplay")?.snakeInSlider;
 		const snakeOut = inject<GameplayConfig>("config/gameplay")?.snakeOutSlider;
@@ -592,28 +598,37 @@ export default class DrawableSlider
 		let head = progressHead;
 		let tail = progressTail;
 
-		if (progressHead === progressTail) {
+		if (progressHead === Math.abs(progressTail)) {
 			const checkDistance = 0.1 / this.object.path.distance;
 			head = Math.min(1 - checkDistance, progressHead);
 			tail = Math.min(1, progressHead + checkDistance);
 		}
 
-		head = snakeOut ? head : 0;
-		tail = snakeIn ? tail : 1;
+		const isReversing = 1 / progressTail < 0;
+		head = (isReversing ? snakeIn : snakeOut) ? head : 0;
+		tail = (isReversing ? snakeOut : snakeIn) ? Math.abs(tail) : 1;
 
-		const path = calculateSliderProgress(this.object.path, head, tail);
-		this.path = path;
+		if (head === this.lastGeometryState.head &&
+			tail === this.lastGeometryState.tail &&
+			scale === this.lastGeometryState.scale) return;
 
+		this.lastGeometryState.head = head;
+		this.lastGeometryState.tail = tail;
+		this.lastGeometryState.scale = scale;
+
+		const path = calculateSliderProgress(this.object.path, head, tail, this.path.points);
 		if (!path.length) return;
 
-		const { aPosition, indexBuffer } = createGeometry(
+		this.path = path;
+
+		const { positions, indices } = createGeometry(
 			path,
 			this.object.radius * (236 / 256) * scale,
+			new Float32Array(this._geometry.attributes.aPosition.buffer.data.buffer),
+			new Uint32Array(this._geometry.indexBuffer.data.buffer)
 		);
-		this._geometry.attributes.aPosition.buffer.data = new Float32Array(
-			aPosition,
-		);
-		this._geometry.indexBuffer.data = new Uint32Array(indexBuffer);
+		this._geometry.attributes.aPosition.buffer.data = positions;
+		this._geometry.indexBuffer.data = indices;
 	}
 
 	spanAt(progress: number) {
@@ -755,8 +770,18 @@ export default class DrawableSlider
 
 		this.ball.destroy();
 		this.followCircle.destroy();
-		this.body.destroy();
-		this.container.destroy();
+
+		this._geometry.destroy(true);
+		this._baseGeometry.destroy(true);
+
+		this._shader.destroy();
+		this._selectShader.destroy();
+
+		this.body.destroy(true);
+		this.selectBody.destroy(true);
+
+		this.container.destroy({ children: true });
+		this.select.destroy({ children: true });
 
 		if (this.skinEventCallback)
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);

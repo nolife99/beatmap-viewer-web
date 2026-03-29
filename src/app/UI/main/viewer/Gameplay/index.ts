@@ -3,7 +3,6 @@ import { LayoutContainer } from "@pixi/layout/components";
 import { Tween } from "@tweenjs/tween.js";
 import { Vector2 } from "osu-classes";
 import {
-	AlphaFilter,
 	// Application,
 	Assets,
 	Container,
@@ -73,7 +72,6 @@ export default class Gameplay extends ScopedClass {
 				height: 0,
 				alignItems: "flex-start",
 			},
-			isRenderGroup: true,
 			interactive: true,
 		});
 		this.wrapper = new Container({
@@ -129,7 +127,7 @@ export default class Gameplay extends ScopedClass {
 			interactive: false,
 			eventMode: "none",
 			visible: inject<GameplayConfig>("config/gameplay")?.showGrid ?? true,
-			filters: [new AlphaFilter({ alpha: 0.5, antialias: true })],
+			alpha: 0.5
 		});
 		this.drawGrid(512);
 

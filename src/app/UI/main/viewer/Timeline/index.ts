@@ -1,7 +1,7 @@
 import IntervalTree from "@flatten-js/interval-tree";
-import type { TimingPoint } from "osu-classes";
-import type { Slider } from "osu-standard-stable";
-import { Container, Graphics, GraphicsContext } from "pixi.js";
+import type {TimingPoint} from "osu-classes";
+import type {Slider} from "osu-standard-stable";
+import {Container, Graphics, GraphicsContext} from "pixi.js";
 import type Audio from "@/Audio";
 import type BeatmapSet from "@/BeatmapSet";
 import type Beatmap from "@/BeatmapSet/Beatmap";
@@ -11,10 +11,10 @@ import type TimelineHitObject from "@/BeatmapSet/Beatmap/Timeline/TimelineHitObj
 import TimelineTimingPoint from "@/BeatmapSet/Beatmap/Timeline/TimelineTimingPoint";
 import type FullscreenConfig from "@/Config/FullscreenConfig";
 import type TimelineConfig from "@/Config/TimelineConfig";
-import { inject } from "@/Context";
+import {inject} from "@/Context";
 import ZContainer from "@/UI/core/ZContainer";
 import Easings from "@/UI/Easings";
-import { binarySearch, gcd } from "@/utils";
+import {binarySearch, gcd} from "@/utils";
 
 export const DEFAULT_SCALE = 1;
 const BEAT_LINE_COLOR = {
@@ -39,9 +39,7 @@ export default class Timeline {
 		},
 	});
 
-	private _objectsContainer = new Container({
-		isRenderGroup: true,
-	});
+	private _objectsContainer = new Container();
 	private _dragWindow = new Graphics()
 		.rect(0, 0, 1, 80)
 		.fill({ color: 0xffffff, alpha: 0.3 });
@@ -83,7 +81,7 @@ export default class Timeline {
 			thumb.x = width / 2;
 			thumb.y = height / 2;
 
-			const thumbContext = new GraphicsContext()
+			thumb.context = new GraphicsContext()
 				.moveTo(0, -height / 2)
 				.lineTo(0, height / 2)
 				.stroke(0xcdd6f4)
@@ -103,8 +101,6 @@ export default class Timeline {
 				.moveTo(-width / 2, height / 2)
 				.lineTo(width / 2, height / 2)
 				.stroke(0xa6adc8);
-
-			thumb.context = thumbContext;
 		});
 
 		this.loadEventListeners();

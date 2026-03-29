@@ -166,8 +166,7 @@ class VideoEngine {
 	frameTimer?: number;
 
 	async reInitDecoder() {
-		console.log("Decoder Borked!");
-		console.log("Attempt to restart VideoDecoder...");
+		console.log("Restarting VideoDecoder");
 
 		this.decoder = new VideoDecoder({
 			output: (frame) => {

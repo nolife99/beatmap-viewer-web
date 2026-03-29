@@ -1,7 +1,7 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import { Assets, type FederatedPointerEvent, Sprite } from "pixi.js";
+import {LayoutContainer} from "@pixi/layout/components";
+import {Assets, type FederatedPointerEvent, Sprite} from "pixi.js";
 import type ColorConfig from "@/Config/ColorConfig";
-import { inject } from "@/Context";
+import {inject} from "@/Context";
 
 export default class Button {
     container = new LayoutContainer({
@@ -25,8 +25,7 @@ export default class Button {
         public onClick?: (e?: FederatedPointerEvent) => void,
     ) {
         (async () => {
-            const texture = await Assets.load(icon);
-            this.sprite.texture = texture;
+            this.sprite.texture = await Assets.load(icon);
             this.sprite.width = 20;
             this.sprite.height = 20;
             this.sprite.layout = {

@@ -12,6 +12,7 @@ export default class DifficultyGraph {
 	container: LayoutContainer;
 	graph = new Graphics();
 	context = new GraphicsContext();
+	maxTime = 0;
 
 	_data: StrainPoint[] = [];
 
@@ -19,8 +20,9 @@ export default class DifficultyGraph {
 		return this._data;
 	}
 
-	set data(val: StrainPoint[]) {
-		this._data = val;
+	setData(data: StrainPoint[], audioDuration: number) {
+		this._data = data;
+		this.maxTime = audioDuration;
 		this.drawGraph();
 	}
 
@@ -61,7 +63,7 @@ export default class DifficultyGraph {
 		const newContext = new GraphicsContext();
 
 		const maxStrain = Math.max(...this.data.map(({ strain }) => strain));
-		const maxTime = this.data.at(-1)?.time ?? 1;
+		const maxTime = this.maxTime || this.data.at(-1)?.time || 1;
 
 		for (let i = 0; i < 6; i++) {
 			if (i === 0 || i === 5) continue;
@@ -84,14 +86,18 @@ export default class DifficultyGraph {
 		}
 
 		newContext.moveTo(0, height);
+
+		let lastX = 0;
 		for (const { time, strain } of this.data) {
 			newContext.lineTo(
-				(time / maxTime) * width,
-				-(strain / maxStrain) * height + height,
+				lastX = (time / maxTime) * width,
+				Math.min(-(strain / maxStrain) * height + height, height - 1),
 			);
 		}
 
+		newContext.lineTo(lastX, height);
 		newContext.moveTo(0, height);
+
 		newContext.fill({ color: 0xffffff, alpha: 0.2 });
 		newContext.stroke({ color: 0xffffff, width: 1 });
 

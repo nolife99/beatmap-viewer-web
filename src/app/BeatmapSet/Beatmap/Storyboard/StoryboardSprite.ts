@@ -549,7 +549,7 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	destroy() {
-		this.container.destroy();
+		this.container.destroy(true);
 	}
 
 	off() {

@@ -18,9 +18,7 @@ export default class Audio extends ScopedClass {
 
 	init = false;
 
-	spectrogramProcessor: SpectrogramProcessor;
-
-	constructor(private audioContext: Tone.Context | AudioContext) {
+	constructor(private audioContext: Tone.BaseContext) {
 		super();
 		this.localGainNode = audioContext.createGain();
 		this.localGainNode.gain.value =
@@ -31,8 +29,6 @@ export default class Audio extends ScopedClass {
 
 		Tone.setContext(audioContext);
 		this.lookahead = 0.1;
-
-		this.spectrogramProcessor = new SpectrogramProcessor();
 	}
 
 	get playbackRate() {
@@ -48,8 +44,7 @@ export default class Audio extends ScopedClass {
 			(this.audioContext.currentTime * 1000 - this.startTime);
 
 		if (offset > 20) {
-			this.pause();
-			this.play();
+			this.currentTime = this._currentTime;
 			console.warn(`Audio desynced: ${offset.toFixed(2)}ms`);
 		}
 
@@ -91,16 +86,19 @@ export default class Audio extends ScopedClass {
 	}
 
 	async createBufferNode(blob: Blob) {
-		const url = URL.createObjectURL(blob);
+		const data = await Tone.getContext().decodeAudioData(await blob.arrayBuffer());
+		new SpectrogramProcessor(data);
 
-		this.spectrogramProcessor.initSpectrogram(url);
-		this.grainPlayer = new Tone.GrainPlayer(url);
-		this.normalPlayer = new Tone.Player(url);
+		this.grainPlayer = new Tone.GrainPlayer(data);
+		this.normalPlayer = new Tone.Player(data);
 
 		this.player = this.normalPlayer;
 		this.player.sync().start(0);
 
-		await Tone.loaded();
+		const sizeMb = data.length * data.numberOfChannels * 4 / (1024 * 1024);
+		const sizePerChannel = data.length * 4 / (1024 * 1024);
+
+		console.log(`Audio buffer size: ${sizeMb.toFixed()}MB (~${sizePerChannel.toFixed()}MB per channel)`);
 
 		Tone.getTransport().seconds = this.lookahead;
 
@@ -180,11 +178,16 @@ export default class Audio extends ScopedClass {
 		this._currentTime +=
 			(performance.now() - this.previousTimestamp) * this.playbackRate;
 
-		Tone.disconnect(this.player, this.localGainNode);
+		Tone.disconnect(this.player);
 		this.localGainNode.disconnect();
 	}
 
 	get duration() {
 		return (this.player?.buffer.duration ?? 0) * 1000;
+	}
+
+	destroy() {
+		this.grainPlayer?.dispose();
+		this.normalPlayer?.dispose();
 	}
 }

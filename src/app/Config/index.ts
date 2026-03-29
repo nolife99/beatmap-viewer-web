@@ -137,7 +137,7 @@ export default class Config {
 		}
 
 		document.addEventListener("keydown", (event) => {
-			if (event.key.toLowerCase() !== "o" || !event.ctrlKey) return;
+			if (event.key && event.key.toLowerCase() !== "o" || !event.ctrlKey) return;
 
 			event.preventDefault();
 			settings?.classList.toggle("show");

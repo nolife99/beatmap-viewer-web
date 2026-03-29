@@ -31,11 +31,19 @@ function progressToDistance(path: SliderPath, progress: number) {
 	return MathUtils.clamp01(progress) * path.distance;
 }
 
+export type SliderProgressResult = {
+	points: Vector2[];
+	length: number;
+};
+
 export default function calculateSliderProgress(
 	path: SliderPath,
 	p0: number,
 	p1: number,
-) {
+	out: Vector2[] = [],
+): SliderProgressResult {
+	let len = 0;
+
 	const d0 = progressToDistance(path, p0);
 	const d1 = progressToDistance(path, p1);
 
@@ -49,33 +57,31 @@ export default function calculateSliderProgress(
 		i++;
 	}
 
-	const ret: Vector2[] = [interpolateVertices(path, i, d0)];
+	out[len++] = interpolateVertices(path, i, d0);
 
 	while (
 		i < path.calculatedPath.length &&
 		// biome-ignore lint/suspicious/noExplicitAny: Reimplementing requires accessing to private properties
 		(path as any)._cumulativeLength[i] <= d1
 	) {
-		if (ret.length > 0) {
-			const lastPoint = ret[ret.length - 1];
-			const distance = lastPoint.fdistance(path.calculatedPath[i]);
+		const lastPoint = out[len - 1];
+		const distance = lastPoint.fdistance(path.calculatedPath[i]);
 
-			if (distance <= 0) {
-				i++;
-				continue;
-			}
+		if (distance <= 0) {
+			i++;
+			continue;
 		}
 
-		ret.push(path.calculatedPath[i]);
+		out[len++] = path.calculatedPath[i];
 		++i;
 	}
 
 	const lastPoint = interpolateVertices(path, i, d1);
-	const distance = lastPoint.fdistance(ret[ret.length - 1]);
+	const distance = lastPoint.fdistance(out[len - 1]);
 
 	if (distance > 0) {
-		ret.push(interpolateVertices(path, i, d1));
+		out[len++] = lastPoint;
 	}
-	
-    return ret;
+
+	return { points: out, length: len };
 }

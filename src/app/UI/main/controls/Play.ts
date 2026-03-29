@@ -1,8 +1,8 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import { Assets, Color, Sprite } from "pixi.js";
+import {LayoutContainer} from "@pixi/layout/components";
+import {Assets, Color, Sprite} from "pixi.js";
 import type BeatmapSet from "@/BeatmapSet";
 import type ColorConfig from "@/Config/ColorConfig";
-import { inject } from "@/Context";
+import {inject} from "@/Context";
 
 export default class Play {
 	container = new LayoutContainer({
@@ -21,8 +21,7 @@ export default class Play {
 
 	constructor() {
 		(async () => {
-			const texture = await Assets.load("./assets/play.png");
-			this.sprite.texture = texture;
+			this.sprite.texture = await Assets.load("./assets/play.png");
 			this.sprite.width = 20;
 			this.sprite.height = 20;
 			this.sprite.layout = {

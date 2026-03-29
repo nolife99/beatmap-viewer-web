@@ -54,7 +54,6 @@ export default class SidePanel {
 			flexDirection: "column",
 			justifyContent: "flex-start",
 			boxSizing: "border-box",
-			overflow: "hidden",
 			padding: 20,
 			paddingInline: 0,
 			gap: 20,
@@ -66,7 +65,7 @@ export default class SidePanel {
 	headers: LayoutContainer[];
 
 	constructor() {
-		this.container.alphaFilter.alpha = 0;
+		this.container.alpha = 0;
 		this.headers = this.tabs.map(({ title }, idx) => {
 			const container = new LayoutContainer({
 				layout: {
@@ -263,10 +262,10 @@ export default class SidePanel {
 
 				this.container.triggerAnimation(
 					"opacity",
-					this.container.alphaFilter.alpha,
+					this.container.alpha,
 					1,
 					(val) => {
-						this.container.alphaFilter.alpha = val;
+						this.container.alpha = val;
 					},
 					ANIMATION_DURATION,
 				);
@@ -319,10 +318,10 @@ export default class SidePanel {
 
 				this.container.triggerAnimation(
 					"opacity",
-					this.container.alphaFilter.alpha,
+					this.container.alpha,
 					0,
 					(val) => {
-						this.container.alphaFilter.alpha = val;
+						this.container.alpha = val;
 					},
 					ANIMATION_DURATION,
 				);

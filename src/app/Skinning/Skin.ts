@@ -5,6 +5,7 @@ import { inject } from "@/Context";
 import type { Resource } from "../ZipHandler";
 import type SkinManager from "./SkinManager";
 import type { SkinMetadata } from "./SkinManager";
+import {getContext} from "tone";
 
 const sanitizeINI = (str: string) =>
 	str
@@ -236,7 +237,7 @@ export default class Skin {
 	}
 
 	private async loadHitsounds() {
-		const audioContext = new AudioContext();
+		const audioContext = getContext();
 		const hitSounds = ["drum", "normal", "soft"]
 			.map((hitSample) =>
 				[

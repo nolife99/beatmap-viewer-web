@@ -23,7 +23,7 @@ import type Timeline from "@/UI/main/viewer/Timeline";
 import type { StrainPoint } from "@/UI/sidepanel/Modding/DifficultyGraph";
 import type Timing from "@/UI/sidepanel/Timing";
 import { difficultyRange, getDiffColour } from "@/utils";
-import { inject, ScopedClass } from "../../Context";
+import { inject, ScopedClass } from "@/Context.ts";
 import type BeatmapSet from "..";
 import DrawableFollowPoints from "./HitObjects/DrawableFollowPoints";
 import DrawableHitCircle from "./HitObjects/DrawableHitCircle";
@@ -32,10 +32,11 @@ import type { IHasApproachCircle } from "./HitObjects/DrawableHitObject";
 import DrawableSlider from "./HitObjects/DrawableSlider";
 import DrawableSpinner from "./HitObjects/DrawableSpinner";
 import type Replay from "./Replay";
-import ObjectsWorker from "./Worker/Objects?worker";
 
 const decoder = new BeatmapDecoder();
 const ruleset = new StandardRuleset();
+
+import ObjectsWorker from "./Worker/Objects.ts?worker";
 
 export default class Beatmap extends ScopedClass {
 	data: StandardBeatmap;
@@ -86,6 +87,12 @@ export default class Beatmap extends ScopedClass {
 
 		this.context.provide("beatmapObject", this);
 		this.container = new Gameplay(this);
+
+		this.worker.addEventListener("message", (event: any) => {
+			if (event.data.type === "destroy") {
+				this.worker.terminate();
+			}
+		});
 
 		this.worker.postMessage({
 			type: "preempt",
@@ -149,13 +156,16 @@ export default class Beatmap extends ScopedClass {
 		const skills: StandardStrainSkill[] = this.difficultyCalculator[
 			// biome-ignore lint/complexity/useLiteralKeys: Access Private
 			"_createSkills"
-		](beatmap, modsCombination);
+		](beatmap, modsCombination).filter(
+			(skill): skill is StandardStrainSkill => "difficultyValue" in skill,
+		);
 
 		// biome-ignore lint/complexity/useLiteralKeys: Access Private
 		const aimStrainPeaks = skills[1]["_strainPeaks"];
 		// biome-ignore lint/complexity/useLiteralKeys: Access Private
 		const speedStrainPeaks = skills[1]["_strainPeaks"];
 
+		// @ts-ignore
 		for (const hitObject of this.difficultyCalculator._getDifficultyHitObjects(
 			beatmap,
 			clockRate,
@@ -472,7 +482,7 @@ export default class Beatmap extends ScopedClass {
 		});
 
 		// biome-ignore lint/suspicious/noExplicitAny: Can't specify event type
-		this.worker.onmessage = (event: any) => {
+		this.worker.addEventListener("message", (event: any) => {
 			switch (event.data.type) {
 				case "update": {
 					const { objects, connectors, currentTime, previousTime } = event.data;
@@ -505,7 +515,7 @@ export default class Beatmap extends ScopedClass {
 					break;
 				}
 			}
-		};
+		});
 	}
 
 	frame(time: number) {

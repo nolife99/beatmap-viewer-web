@@ -36,21 +36,18 @@ export default class Storyboard extends ScopedClass {
 		label: "backgroundLayer",
 		interactive: false,
 		interactiveChildren: false,
-		isRenderGroup: true,
 		sortableChildren: true,
 	});
 	foregroundLayer = new Container({
 		label: "foregroundLayer",
 		interactive: false,
 		interactiveChildren: false,
-		isRenderGroup: true,
 		sortableChildren: false,
 	});
 	overlayLayer = new Container({
 		label: "overlayLayer",
 		interactive: false,
 		interactiveChildren: false,
-		isRenderGroup: true,
 		sortableChildren: false,
 	});
 
@@ -119,7 +116,7 @@ export default class Storyboard extends ScopedClass {
 
 				textureMap.set(key.toLowerCase(), texture);
 			} catch {
-				console.log(`Cannot load resource with name: ${key}`);
+				console.warn(`Cannot load resource with name: ${key}`);
 			}
 		});
 
@@ -393,9 +390,9 @@ export default class Storyboard extends ScopedClass {
 			sprite.destroy();
 		}
 
-		this.foregroundLayer.destroy();
-		this.backgroundLayer.destroy();
-		this.overlayLayer.destroy();
-		this.container.destroy();
+		this.foregroundLayer.destroy(true);
+		this.backgroundLayer.destroy(true);
+		this.overlayLayer.destroy(true);
+		this.container.destroy(true);
 	}
 }
