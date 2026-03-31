@@ -93,6 +93,7 @@ export class Game {
 			depth: true,
 			autoDensity: true,
 			resolution: devicePixelRatio,
+			sharedTicker: true,
 			preference:
 				inject<RendererConfig>("config/renderer")?.renderer ?? "webgl",
 		});

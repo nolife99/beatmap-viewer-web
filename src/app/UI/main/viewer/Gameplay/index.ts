@@ -65,7 +65,6 @@ export default class Gameplay extends ScopedClass {
 		super();
 
 		this.container = new Container({
-			label: "gameplay",
 			layout: {
 				position: "absolute",
 				width: 0,
@@ -75,7 +74,6 @@ export default class Gameplay extends ScopedClass {
 			interactive: true,
 		});
 		this.wrapper = new Container({
-			label: "wrapper",
 			layout: {
 				width: "100%",
 				height: "100%",
@@ -83,7 +81,6 @@ export default class Gameplay extends ScopedClass {
 			interactive: true,
 		});
 		this.background = new LayoutContainer({
-			label: "dim",
 			layout: {
 				width: "100%",
 				height: "100%",
@@ -106,17 +103,15 @@ export default class Gameplay extends ScopedClass {
 			.stroke({ width: 1, color: 0xffffff, pixelLine: true });
 
 		this.objectsContainer = new Container({
-			label: "objectsContainer",
 			boundsArea: new Rectangle(0, 0, 512, 384),
+			isRenderGroup: true
 		});
 
 		this.cursorLayer = new Container({
-			label: "cursorContainer",
 			boundsArea: new Rectangle(0, 0, 512, 384),
 		});
 
 		this.selectContainer = new Container({
-			label: "selectContainer",
 			boundsArea: new Rectangle(0, 0, 512, 384),
 		});
 

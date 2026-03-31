@@ -6,7 +6,6 @@ import { inject } from "@/Context";
 
 export default class Fullscreen {
 	container = new LayoutContainer({
-		label: "play",
 		layout: {
 			aspectRatio: 1,
 			backgroundColor: new Color(inject<ColorConfig>("config/color")?.color.crust).setAlpha(0.7),

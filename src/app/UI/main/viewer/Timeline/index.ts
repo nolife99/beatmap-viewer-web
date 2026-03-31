@@ -39,7 +39,7 @@ export default class Timeline {
 		},
 	});
 
-	private _objectsContainer = new Container();
+	private _objectsContainer = new Container({ isRenderGroup: true });
 	private _dragWindow = new Graphics()
 		.rect(0, 0, 1, 80)
 		.fill({ color: 0xffffff, alpha: 0.3 });

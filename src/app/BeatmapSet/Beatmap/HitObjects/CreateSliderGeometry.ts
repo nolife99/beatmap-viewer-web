@@ -1,7 +1,5 @@
-import type { Vector2 } from "osu-classes";
 import type { SliderProgressResult } from "@/BeatmapSet/Beatmap/HitObjects/CalculateSliderProgress.ts";
 
-const RADIUS = 20;
 const DIVIDES = 64;
 const VECS = 3;
 
@@ -25,12 +23,11 @@ export default function updateGeometry(
 	let iIdx = 0;
 
 	const writeV = (x: number, y: number, t: number) => {
-		positions[vIdx++] = x || 0; // Guard against NaN
+		positions[vIdx++] = x || 0;
 		positions[vIdx++] = y || 0;
 		positions[vIdx++] = t;
 	};
 
-	// 1. Initial Point (Index 0)
 	const pathPts = path.points;
 	writeV(pathPts[0].x, pathPts[0].y, 0);
 
@@ -41,11 +38,9 @@ export default function updateGeometry(
 		const dy = curr.y - prev.y;
 		const len = Math.hypot(dx, dy);
 
-		// If points are stacked, skip math to avoid NaN
 		const ox = len === 0 ? 0 : (radius * -dy) / len;
 		const oy = len === 0 ? 0 : (radius * dx) / len;
 
-		// Vertices for this segment
 		writeV(prev.x + ox, prev.y + oy, 1); // Index: 5*i - 4
 		writeV(prev.x - ox, prev.y - oy, 1); // Index: 5*i - 3
 		writeV(curr.x + ox, curr.y + oy, 1); // Index: 5*i - 2
@@ -88,7 +83,6 @@ export default function updateGeometry(
 		indices[iIdx++] = p2Idx;
 	};
 
-	// Joins and Caps
 	for (let i = 1; i < pointsCount - 1; ++i) {
 		const d1 = { x: pathPts[i].x - pathPts[i-1].x, y: pathPts[i].y - pathPts[i-1].y };
 		const d2 = { x: pathPts[i+1].x - pathPts[i].x, y: pathPts[i+1].y - pathPts[i].y };

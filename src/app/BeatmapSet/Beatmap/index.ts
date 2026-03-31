@@ -88,12 +88,6 @@ export default class Beatmap extends ScopedClass {
 		this.context.provide("beatmapObject", this);
 		this.container = new Gameplay(this);
 
-		this.worker.addEventListener("message", (event: any) => {
-			if (event.data.type === "destroy") {
-				this.worker.terminate();
-			}
-		});
-
 		this.worker.postMessage({
 			type: "preempt",
 			preempt: difficultyRange(
@@ -583,35 +577,29 @@ export default class Beatmap extends ScopedClass {
 	update(time: number, objects: Set<number>, connectors: Set<number>) {
 		if (!this.loaded) return;
 
-		if (
-			this.container.dragWindow[0].distance(this.container.dragWindow[1]) > 0
-		) {
+		if (this.container.dragWindow[0].distance(this.container.dragWindow[1]) > 0) {
 			for (const idx of objects) {
 				const obj = this.objects[idx];
 				const isInBound = this.container.checkInBound(obj.object.startPosition);
 
-				if (isInBound) {
+				if (isInBound)
 					this.container.addSelected(idx);
-				} else {
+				else
 					this.container.removeSelected(idx);
-				}
 			}
 		}
 
 		const objectsWithSelected = objects.union(this.container.selected);
-
-		// const audio = this.context.consume<Audio>("audio");
 		const objectContainer = this.container.objectsContainer;
 
-		const disposedObjects =
-			this.previousObjects.difference(objectsWithSelected);
+		const disposedObjects = this.previousObjects.difference(objectsWithSelected);
 		const disposedConnectors = this.previousConnectors.difference(connectors);
+
 		this.previousObjects = objectsWithSelected;
 		this.previousConnectors = connectors;
 
 		for (const idx of disposedObjects) {
 			objectContainer?.removeChild(this.objects[idx].container);
-
 			if ((this.objects[idx] as unknown as IHasApproachCircle).approachCircle)
 				objectContainer?.removeChild(
 					(this.objects[idx] as unknown as IHasApproachCircle).approachCircle
@@ -619,13 +607,11 @@ export default class Beatmap extends ScopedClass {
 				);
 		}
 
-		for (const idx of disposedConnectors) {
+		for (const idx of disposedConnectors)
 			objectContainer?.removeChild(this.connectors[idx].container);
-		}
 
-		for (const idx of objects) {
+		for (const idx of objects)
 			this.objects[idx].playHitSound(time);
-		}
 	}
 
 	toggle() {

@@ -10,7 +10,6 @@ import Viewer from "./viewer";
 
 export default class Main {
 	container = new LayoutContainer({
-		label: "main",
 		layout: {
 			position: "relative",
 			flex: 1,

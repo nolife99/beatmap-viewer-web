@@ -1,8 +1,7 @@
 import { Tween } from "@tweenjs/tween.js";
 import type { DifficultyPoint, SamplePoint, TimingPoint } from "osu-classes";
-import {Assets, type FederatedWheelEvent, Texture} from "pixi.js";
-import * as Tone from "tone";
-import {Context, getContext} from "tone";
+import {Assets, type FederatedWheelEvent} from "pixi.js";
+import {connect, getContext} from "tone";
 import Audio from "@/Audio";
 import type AudioConfig from "@/Config/AudioConfig";
 import type BackgroundConfig from "@/Config/BackgroundConfig";
@@ -45,22 +44,9 @@ export default class BeatmapSet extends ScopedClass {
 			?.doubleTime
 			? 1.5
 			: 1;
-		this.context.provide("audioContext", this.audioContext);
+			
 		this.context.provide("resources", resources);
 		this.context.provide("beatmapset", this);
-
-		const gainNode = this.context.provide(
-			"masterGainNode",
-			this.audioContext.createGain(),
-		);
-		// gainNode.connect();
-		Tone.connect(gainNode, this.audioContext.destination);
-		gainNode.gain.value =
-			inject<AudioConfig>("config/audio")?.masterVolume ?? 0.8;
-
-		inject<AudioConfig>("config/audio")?.onChange("masterVolume", (val) => {
-			gainNode.gain.value = val;
-		});
 
 		provide("beatmapset", this);
 		this.animationFrame = requestAnimationFrame(() => this.frame());
@@ -198,9 +184,17 @@ export default class BeatmapSet extends ScopedClass {
 
 		this.context.consume("audio")?.destroy();
 
+		const gainNode = this.context.provide("masterGainNode", this.audioContext.createGain());
+		gainNode.connect(this.audioContext.rawContext.destination);
+
+		gainNode.gain.value = inject<AudioConfig>("config/audio")?.masterVolume ?? 0.8;
+		inject<AudioConfig>("config/audio")?.onChange("masterVolume", (val) => {
+			gainNode.gain.value = val;
+		});
+
 		const audio = this.context.provide(
 			"audio",
-			new Audio(this.audioContext).hook(this.context),
+			new Audio(gainNode).hook(this.context),
 		);
 		await audio.createBufferNode(audioFile);
 

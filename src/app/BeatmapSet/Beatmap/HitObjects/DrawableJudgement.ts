@@ -23,7 +23,6 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 		this.text = new Sprite({ anchor: 0.5 });
 
 		this.container = new Container({
-			label: "judgement",
 			interactive: false,
 			eventMode: "none",
 		});

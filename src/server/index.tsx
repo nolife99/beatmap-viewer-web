@@ -33,8 +33,7 @@ if (vite) {
 		staticPlugin({
 			assets: "./dist/",
 			prefix: "",
-			alwaysStatic: false,
-			noCache: true,
+			alwaysStatic: false
 		}),
 	);
 }

@@ -246,9 +246,7 @@ export default class DrawableSlider
 		this.context.provide("slider", this);
 
 		this.ball = new DrawableSliderBall(this.object).hook(this.context);
-		this.followCircle = new DrawableSliderFollowCircle(this.object).hook(
-			this.context,
-		);
+		this.followCircle = new DrawableSliderFollowCircle(this.object).hook(this.context);
 
 		this.wrapper.addChild(
 			this.body,
@@ -617,7 +615,7 @@ export default class DrawableSlider
 		this.lastGeometryState.scale = scale;
 
 		const path = calculateSliderProgress(this.object.path, head, tail, this.path.points);
-		if (!path.length) return;
+		if (path.length === 0) return;
 
 		this.path = path;
 
@@ -644,6 +642,8 @@ export default class DrawableSlider
 	update(time: number) {
 		this.ball.update(time);
 		this.followCircle.update(time);
+		this.followCircle.container.position = this.ball.container.position;
+
 		for (const circle of this.drawableCircles) {
 			const offset =
 				circle instanceof DrawableSliderTail &&

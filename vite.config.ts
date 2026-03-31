@@ -29,13 +29,18 @@ export default defineConfig({
 	},
 	base: "",
 	server: {
-		allowedHosts: ['dielin.local'],
-		cors: true,
-		watch: {
-			usePolling: true,
-		},
 		hmr: {
-			port: 12345
+			port: 24678,
+		},
+		cors: {
+			origin: true,
+			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      		allowedHeaders: ['Content-Type', 'Authorization'],
+      		credentials: true,
+      		maxAge: 86400
+		},
+		watch: {
+			usePolling: false,
 		}
 	},
 });

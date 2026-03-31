@@ -4,6 +4,7 @@ import type AudioConfig from "@/Config/AudioConfig";
 import type SampleManager from "../BeatmapSet/SampleManager";
 import { inject, ScopedClass } from "../Context";
 import type Audio from ".";
+import { getContext } from "tone";
 
 export default class HitSample extends ScopedClass {
 	localGainNode?: GainNode;
@@ -32,13 +33,12 @@ export default class HitSample extends ScopedClass {
 
 		if (!audio || audio.state === "STOPPED") return;
 
-		const audioContext = this.context.consume<AudioContext>("audioContext");
-		if (!audioContext) return;
-
 		const sampleManager = this.context.consume<SampleManager>("sampleManager");
 		if (!sampleManager) return;
 
 		this.srcs = [];
+
+		const masterNode = this.context.consume<GainNode>("masterGainNode")!;
 		for (const hitSample of this.hitSamples) {
 			let { sampleSet, hitSound } = hitSample;
 			if (sampleSet === "None") sampleSet = samplePoint.sampleSet;
@@ -54,10 +54,10 @@ export default class HitSample extends ScopedClass {
 			);
 			if (!buffer) continue;
 
-			const src = audioContext.createBufferSource();
+			const src = masterNode.context.createBufferSource();
 			src.buffer = buffer;
 
-			const localGainNode = audioContext?.createGain();
+			const localGainNode = masterNode.context.createGain();
 			localGainNode.gain.value =
 				(samplePoint.volume *
 					(inject<AudioConfig>("config/audio")?.effectVolume ?? 1)) /
@@ -66,8 +66,7 @@ export default class HitSample extends ScopedClass {
 			this.localGainNode = localGainNode;
 
 			src.connect(localGainNode);
-			// biome-ignore lint/style/noNonNullAssertion: Ensured
-			localGainNode.connect(this.context.consume<GainNode>("masterGainNode")!);
+			localGainNode.connect(masterNode);
 
 			src.onended = () => {
 				src.disconnect();

@@ -18,16 +18,15 @@ export default class Audio extends ScopedClass {
 
 	init = false;
 
-	constructor(private audioContext: Tone.BaseContext) {
+	constructor(private masterNode: AudioNode) {
 		super();
-		this.localGainNode = audioContext.createGain();
+		this.localGainNode = masterNode.context.createGain();
 		this.localGainNode.gain.value =
 			inject<AudioConfig>("config/audio")?.musicVolume ?? 0.8;
 		inject<AudioConfig>("config/audio")?.onChange("musicVolume", (val) => {
 			this.localGainNode.gain.value = val;
 		});
 
-		Tone.setContext(audioContext);
 		this.lookahead = 0.1;
 	}
 
@@ -35,24 +34,28 @@ export default class Audio extends ScopedClass {
 		return this.context.consume<BeatmapSet>("beatmapset")?.playbackRate ?? 1;
 	}
 
+	private desyncedFrames = 0;
 	get currentTime() {
 		if (this.state === "STOPPED") return this._currentTime;
 
+		const now = this._currentTime +
+			(performance.now() - this.previousTimestamp) * this.playbackRate;
 		const offset =
-			performance.now() -
+			(performance.now() -
 			this.previousTimestamp -
-			(this.audioContext.currentTime * 1000 - this.startTime);
+			(this.masterNode.context.currentTime * 1000 - this.startTime)) * this.playbackRate;
 
-		if (offset > 20) {
-			this.currentTime = this._currentTime;
-			console.warn(`Audio desynced: ${offset.toFixed(2)}ms`);
+		if (Math.abs(offset) > 10) this.desyncedFrames++;
+		else this.desyncedFrames = 0;
+
+		if (this.desyncedFrames > 2) {
+			this.context.consume<BeatmapSet>("beatmapset")?.seek(now);
+			this.desyncedFrames = 0;
+
+			console.warn(`Audio desynced: ${offset.toFixed()}ms`);
 		}
 
-		if (
-			this._currentTime +
-				(performance.now() - this.previousTimestamp) * this.playbackRate >
-			this.duration
-		) {
+		if (now > this.duration) {
 			if (this.state === "PLAYING") {
 				this.context.consume<BeatmapSet>("beatmapset")?.toggle();
 				this.context.consume<BeatmapSet>("beatmapset")?.seek(0);
@@ -60,10 +63,7 @@ export default class Audio extends ScopedClass {
 			return this.duration;
 		}
 
-		return (
-			this._currentTime +
-			(performance.now() - this.previousTimestamp) * this.playbackRate
-		);
+		return now;
 	}
 
 	set currentTime(val: number) {
@@ -140,7 +140,9 @@ export default class Audio extends ScopedClass {
 		}
 
 		if (this.state === "STOPPED") {
+			this.currentTime;
 			this.play();
+
 			return;
 		}
 	}
@@ -154,16 +156,14 @@ export default class Audio extends ScopedClass {
 		Tone.getTransport().seconds =
 			this._currentTime / 1000 / this.playbackRate + this.lookahead;
 
-		this.startTime = this.audioContext.currentTime * 1000;
+		this.startTime = this.masterNode.context.currentTime * 1000;
 
 		this.player?.unsync();
 		this.player?.sync().start(0);
-		Tone.getTransport().start(undefined);
-		Tone.connect(this.player, this.localGainNode);
-		this.localGainNode.connect(
-			// biome-ignore lint/style/noNonNullAssertion: Ensured
-			this.context.consume<GainNode>("masterGainNode")!,
-		);
+		Tone.getTransport().start();
+
+		this.player?.connect(this.localGainNode);
+		this.localGainNode.connect(this.masterNode);
 
 		this.previousTimestamp = performance.now();
 	}

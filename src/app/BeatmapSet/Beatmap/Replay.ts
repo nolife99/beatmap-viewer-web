@@ -26,7 +26,6 @@ export default class Replay {
 	data?: Score;
 	evals: BaseObjectEvaluation[] = [];
 	cursor: Sprite = new Sprite({
-		label: "cursor",
 		anchor: 0.5,
 		interactive: false,
 		eventMode: "none",

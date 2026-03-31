@@ -1,4 +1,4 @@
-import IntervalTree from "@flatten-js/interval-tree";
+import IntervalTree, { IntervalBase, Node, type IntervalInput } from "@flatten-js/interval-tree";
 
 type HitObjectMini = {
 	startTime: number;
@@ -11,38 +11,26 @@ const connectorsTree = new IntervalTree<number>();
 
 let objects: HitObjectMini[] = [];
 let connectors: HitObjectMini[] = [];
-let isPlaying = false;
 
 let currentTime = 0;
 let startTime = 0;
 let previousTime = 0;
+let interval: NodeJS.Timeout;
 
 let preempt = 1200;
 
 let playbackRate = 1;
 
-function getTimeRange(object: HitObjectMini) {
-	return {
-		start: object.startTime,
-		end: (object.endTime ?? object.startTime) + 800,
-	};
-}
-
 function getCurrentTime() {
-	if (!isPlaying) return currentTime;
 	return currentTime + (performance.now() - startTime) * playbackRate;
-}
-
-function searchObjects(tree: IntervalTree, time: number) {
-	return findRange(tree, time);
 }
 
 function loop() {
 	if (objects.length === 0) return;
 
 	const currentTime = getCurrentTime();
-	const _objects = searchObjects(objectsTree, currentTime);
-	const _connectors = searchObjects(connectorsTree, currentTime);
+	const _objects = findRange(objectsTree, currentTime);
+	const _connectors = findRange(connectorsTree, currentTime);
 
 	postMessage({
 		type: "update",
@@ -55,18 +43,70 @@ function loop() {
 	previousTime = currentTime;
 }
 
-function findRange(tree: IntervalTree, time: number) {
-	const res = tree.search([time - 800, time + preempt]);
-	return new Set<number>(res as Array<number>);
+const nodeStack: Node<number>[] = [];
+const stateStack: number[] = [];
+
+function findRange(tree: IntervalTree<number>, time: number) {
+	const res = new Set<number>();
+
+	const node = tree.root;
+	if (node == null || node === tree.nil_node)
+		return res;
+
+	nodeStack.push(node);
+	stateStack.push(0);
+
+	const search_node = new Node([time - 800, time + preempt]);
+	while (nodeStack.length > 0) {
+		const current = nodeStack[nodeStack.length - 1];
+		const state = stateStack[stateStack.length - 1];
+
+		if (current === tree.nil_node) {
+			nodeStack.pop();
+			stateStack.pop();
+			continue;
+		}
+
+		if (state === 0) {
+			stateStack[stateStack.length - 1] = 1;
+
+			const shouldGoLeft = current.left !== tree.nil_node &&
+				!current.not_intersect_left_subtree(search_node);
+			if (shouldGoLeft) {
+				nodeStack.push(current.left!);
+				stateStack.push(0);
+			}
+		} else if (state === 1) {
+			// Left done - process current node
+			if (current.intersect(search_node))
+				for (const v of current.item.values)
+					res.add(v);
+
+			stateStack[stateStack.length - 1] = 2;
+
+			const shouldGoRight = current.right !== tree.nil_node &&
+				!current.not_intersect_right_subtree(search_node);
+			if (shouldGoRight) {
+				nodeStack.push(current.right!);
+				stateStack.push(0);
+			}
+		} else {
+			nodeStack.pop();
+			stateStack.pop();
+		}
+	}
+
+	nodeStack.length = 0;
+	stateStack.length = 0;
+	
+	return res;
 }
 
 function initTree(tree: IntervalTree, objects: HitObjectMini[]) {
 	tree.clear();
 
-	for (let i = 0; i < objects.length; i++) {
-		const { start, end } = getTimeRange(objects[i]);
-		tree.insert([start, end], i);
-	}
+	objects.forEach((object, i) =>
+		tree.insert([object.startTime, (object.endTime ?? object.startTime) + 800], i));
 }
 
 // biome-ignore lint/suspicious/noGlobalAssign: Shut!
@@ -79,7 +119,7 @@ onmessage = (event) => {
 			initTree(objectsTree, objects);
 			initTree(connectorsTree, connectors);
 
-			setInterval(() => loop(), 0);
+			loop();
 			break;
 		}
 		case "preempt": {
@@ -87,28 +127,27 @@ onmessage = (event) => {
 			break;
 		}
 		case "start": {
-			isPlaying = true;
 			startTime = performance.now();
+
+			interval = setInterval(loop);
 			break;
 		}
 		case "stop": {
-			isPlaying = false;
 			currentTime += (performance.now() - startTime) * playbackRate;
+
+			clearInterval(interval);
 			break;
 		}
 		case "seek": {
 			currentTime = event.data.time;
 			startTime = performance.now();
+
+			loop();
 			break;
 		}
 		case "destroy": {
-			objects = [];
-			connectors = [];
-			isPlaying = false;
-			objectsTree.clear();
-			connectorsTree.clear();
-
-			postMessage({ type: "destroy" });
+			clearInterval(interval);
+			close();
 			break;
 		}
 		case "playbackRate": {
@@ -117,11 +156,3 @@ onmessage = (event) => {
 		}
 	}
 };
-
-// function signal() {
-//     postMessage({
-//         type: "signal"
-//     })
-// }
-
-// setInterval(() => signal(), 0);

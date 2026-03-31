@@ -22,8 +22,6 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 
 		this.container = new Sprite();
 		this.container.visible = false;
-		this.container.x = object.startX;
-		this.container.y = object.startY;
 		this.container.anchor.set(0.5);
 		this.container.scale.set(this.object.scale);
 		this.container.eventMode = "none";
@@ -53,8 +51,6 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		this._object = val;
 
 		if (this.container) {
-			this.container.x = val.startX;
-			this.container.y = val.startY;
 			this.container.scale.set(val.scale);
 		}
 	}
