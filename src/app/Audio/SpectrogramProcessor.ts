@@ -1,4 +1,4 @@
-import { Assets, Texture } from "pixi.js";
+import { Texture } from "pixi.js";
 import WaveSurfer from "wavesurfer.js";
 import { inject } from "@/Context";
 import type SpectrogramContainer from "@/UI/sidepanel/Modding/Spectrogram";
@@ -90,7 +90,8 @@ export default class SpectrogramProcessor {
 				console.timeEnd("Spectrogram ready");
 				waveSurfer.destroy();
 
-				inject<SpectrogramContainer>("ui/sidepanel/modding/spectrogram",)?.setTexture(Texture.from(canvas));
+				inject<SpectrogramContainer>("ui/sidepanel/modding/spectrogram",)
+					?.setTexture(Texture.from(canvas));
 			});
 		}, { once: true });
 

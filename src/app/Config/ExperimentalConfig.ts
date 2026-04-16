@@ -1,3 +1,4 @@
+import type Config from ".";
 import ConfigSection from "./ConfigSection";
 
 export type ExperimentalProps = {
@@ -12,8 +13,8 @@ export type ExperimentalProps = {
 type Mods = "hidden" | "hardRock" | "doubleTime" | "easy"
 
 export default class ExperimentalConfig extends ConfigSection {
-	constructor(defaultOptions?: ExperimentalProps) {
-		super();
+	constructor(config: Config, defaultOptions?: ExperimentalProps) {
+		super(config);
 
 		this.loadEventListeners();
 

@@ -1,3 +1,4 @@
+import type Config from ".";
 import ConfigSection from "./ConfigSection";
 
 export type AudioProps = {
@@ -8,8 +9,8 @@ export type AudioProps = {
 };
 
 export default class AudioConfig extends ConfigSection {
-	constructor(defaultOptions?: AudioProps) {
-		super();
+	constructor(config: Config, defaultOptions?: AudioProps) {
+		super(config);
 		this.loadEventListeners();
 
 		if (!defaultOptions) return;

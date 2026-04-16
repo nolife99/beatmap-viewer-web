@@ -14,7 +14,7 @@ export default class FPS {
 			borderRadius: 10,
 			display: "flex",
 			flexDirection: "column",
-			alignItems: "flex-end",
+			alignItems: "flex-end"
 		},
 	});
 

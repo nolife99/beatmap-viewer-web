@@ -32,20 +32,16 @@ import type SkinningConfig from "@/Config/SkinningConfig";
 import { type Context, inject } from "@/Context";
 import {
 	refreshColor as argonRefreshColor,
-	refreshSprite as argonRefreshSprite,
-	update as argonUpdate,
 } from "@/Skinning/Argon/ArgonSlider";
 import {
 	refreshColor as legacyRefreshColor,
-	refreshSprite as legacyRefreshSprite,
-	update as legacyUpdate,
 } from "@/Skinning/Legacy/LegacySlider";
 import type Skin from "@/Skinning/Skin";
 import type SkinManager from "@/Skinning/SkinManager";
 import type ProgressBar from "@/UI/main/controls/ProgressBar";
 import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
 import HitSample from "../../../Audio/HitSample";
-import { Clamp, closestPointTo, darken, lighten } from "@/utils.ts";
+import { Clamp, darken, lighten } from "@/utils.ts";
 import type Beatmap from "..";
 import type { SliderEvaluation } from "../Replay";
 import TimelineSlider from "../Timeline/TimelineSlider";
@@ -65,9 +61,7 @@ import DrawableSliderTick from "./DrawableSliderTick";
 import fragment from "./Shaders/sliderShader.frag?raw";
 import vertex from "./Shaders/sliderShader.vert?raw";
 import gpuSrc from "./Shaders/sliderShader.wgsl?raw";
-
-// import init, { calculate_slider_geometry, vector2 } from "../../../../lib/calculate_slider_geometry";
-// await init();
+import {sharedUpdate} from "@/Skinning/Shared/Slider.ts";
 
 const GL = { vertex, fragment };
 const GPU = GpuProgram.from({
@@ -100,10 +94,10 @@ export default class DrawableSlider
 					usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
 				}),
 				format: "float32x3",
-				stride: 3 * 4,
+				stride: 4 * 3,
 			},
 		},
-		indexBuffer: [],
+		indexBuffer: []
 	});
 	public _shader = Shader.from({
 		gl: GL,
@@ -144,29 +138,35 @@ export default class DrawableSlider
 		geometry: this._geometry,
 		shader: this._shader,
 		filters: [this._alphaFilter],
-		x: 0,
-		y: 0,
 		blendMode:
 			inject<RendererConfig>("config/renderer")?.renderer === "webgl"
 				? "none"
-				: "max",
+				: "max"
 	});
 
 	public select = new Container();
 
 	public _baseGeometry: Geometry = new Geometry({
 		attributes: {
-			aPosition: new Float32Array([]),
+			aPosition: {
+				buffer: new Buffer({
+					data: new Float32Array([]),
+					usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
+				}),
+				format: "float32x3",
+				stride: 4 * 3,
+			},
 		},
-		indexBuffer: [],
+		indexBuffer: []
 	});
 	public selectBody: Mesh<Geometry, Shader> = new Mesh({
 		geometry: this._baseGeometry,
 		shader: this._selectShader,
 		filters: [new AlphaFilter({ alpha: 1 })],
-		x: 0,
-		y: 0,
-		blendMode: "none",
+		blendMode:
+			inject<RendererConfig>("config/renderer")?.renderer === "webgl"
+				? "none"
+				: "max"
 	});
 
 	path: SliderProgressResult = {
@@ -206,7 +206,6 @@ export default class DrawableSlider
 						return new DrawableSliderTick(
 							object,
 							this.object,
-							// biome-ignore lint/style/noNonNullAssertion: Always Available
 							this.object.samples.find(
 								(sample) => sample.hitSound === "Normal",
 							)!,
@@ -246,9 +245,7 @@ export default class DrawableSlider
 		this.context.provide("slider", this);
 
 		this.ball = new DrawableSliderBall(this.object).hook(this.context);
-		this.followCircle = new DrawableSliderFollowCircle(this.object).hook(
-			this.context,
-		);
+		this.followCircle = new DrawableSliderFollowCircle(this.object).hook(this.context);
 
 		this.wrapper.addChild(
 			this.body,
@@ -263,7 +260,6 @@ export default class DrawableSlider
 			this.layer2,
 		);
 
-		// this.container.visible = false;
 		const judgementLayer = new RenderLayer();
 		this.container.addChild(judgementLayer, this.wrapper);
 		this.select.addChild(this.selectBody);
@@ -281,6 +277,7 @@ export default class DrawableSlider
 
 			if (d.select) this.select.addChild(d.select);
 		}
+
 		this.select.addChild(this.nodes);
 
 		const whistleSample = new Sample();
@@ -357,33 +354,13 @@ export default class DrawableSlider
 	set object(val: Slider) {
 		this._object = val;
 
-		this.nodes.clear();
-		for (let i = 0; i < val.path.controlPoints.length; i++) {
-			const point = val.path.controlPoints[i];
-			if (i === 0) {
-				this.nodes.lineTo(point.position.x, point.position.y);
-			} else {
-				this.nodes
-					.lineTo(point.position.x, point.position.y)
-					.stroke({ width: 1, alignment: 0.5, color: 0xefefef });
-			}
-		}
-
-		for (let i = 0; i < val.path.controlPoints.length; i++) {
-			const point = val.path.controlPoints[i];
-
-			this.nodes
-				.circle(point.position.x, point.position.y, 2)
-				.fill(i === 0 || point.type === null ? 0xefefef : 0xff0000);
-		}
-
 		this.body.x = val.startPosition.x + val.stackedOffset.x;
-		this.body.y = val.startPosition.y + val.stackedOffset.x;
+		this.body.y = val.startPosition.y + val.stackedOffset.y;
 		this.selectBody.x = val.startPosition.x + val.stackedOffset.x;
-		this.selectBody.y = val.startPosition.y + val.stackedOffset.x;
+		this.selectBody.y = val.startPosition.y + val.stackedOffset.y;
 
 		this.nodes.x = val.startPosition.x + val.stackedOffset.x;
-		this.nodes.y = val.startPosition.y + val.stackedOffset.x;
+		this.nodes.y = val.startPosition.y + val.stackedOffset.y;
 
 		const nodes = val.nestedHitObjects.filter(
 			(object) => object instanceof StandardHitObject,
@@ -423,10 +400,53 @@ export default class DrawableSlider
 			this.judgement.container.scale.set(val.scale);
 		}
 
-		const path = calculateSliderProgress(this.object.path, 0, 1);
+		const path = calculateSliderProgress(this.object.path, 0, 1, this.path.points);
 		if (!path.length) return;
 
 		this.path = path;
+
+		this.nodes.clear();
+		for (let i = 0; i < val.path.controlPoints.length; i++) {
+			const point = val.path.controlPoints[i];
+			if (i === 0) {
+				this.nodes.moveTo(point.position.x, point.position.y);
+			} else {
+				this.nodes.lineTo(point.position.x, point.position.y);
+			}
+		}
+		this.nodes.stroke({ width: 1, alignment: 0.5, color: 0xefefef });
+
+		for (let i = 0; i < val.path.controlPoints.length; i++) {
+			const p = val.path.controlPoints[i];
+			if (i === 0 || p.type === null) {
+				this.nodes.circle(p.position.x, p.position.y, 2);
+			}
+		}
+		this.nodes.fill(0xefefef);
+
+		for (let i = 0; i < val.path.controlPoints.length; i++) {
+			const p = val.path.controlPoints[i];
+			if (i !== 0 && p.type !== null) {
+				this.nodes.circle(p.position.x, p.position.y, 2);
+			}
+		}
+		this.nodes.fill(0xff0000);
+
+		/* for (let i = 0; i < path.length; i++) {
+			const point = path.points[i];
+			if (i === 0) {
+				this.nodes.moveTo(point.x, point.y);
+			} else {
+				this.nodes.lineTo(point.x, point.y);
+			}
+		}
+		this.nodes.stroke({ width: 1, alignment: 0.5, color: 0xefefef });
+
+		for (let i = 0; i < path.length; i++) {
+			const p = path.points[i];
+			const prog = 1 - i / path.length;
+			this.nodes.circle(p.x, p.y, 2).fill([prog, prog, prog, 1]);
+		} */
 
 		const { positions, indices } = createGeometry(
 			path,
@@ -436,42 +456,60 @@ export default class DrawableSlider
 					.Argon
 					? 0.95
 					: 1),
-			null, null
+			this._baseGeometry.attributes.aPosition.buffer.data,
+			this._baseGeometry.indexBuffer.data
 		);
 		this._baseGeometry.attributes.aPosition.buffer.data = positions;
 		this._baseGeometry.indexBuffer.data = indices;
+
+		if (this.object.path.curveType === 'B')
+			console.log(`Slider at ${val.startTime} has ${indices.length} points`);
+
+		if (this._geometry.attributes.aPosition.buffer.data.length !== positions.length)
+			this._geometry.attributes.aPosition.buffer.data = new Float32Array(positions.length);
+		if (this._geometry.indexBuffer.data.length !== indices.length)
+			this._geometry.indexBuffer.data = new Uint32Array(indices.length);
 	}
 
 	checkCollide(x: number, y: number, time: number) {
-		if (
-			!(
-				this.object.startTime - this.object.timePreempt < time &&
-				time < this.object.endTime + 240
-			)
-		)
+		const obj = this.object;
+		if (time < obj.startTime - obj.timePreempt || time > obj.endTime + 240) {
 			return false;
-
-		const radius = 64 * this.object.scale;
-		const point = new Vector2(x, y);
-		const objectPosition = new Vector2(
-			this.object.startX + this.object.stackedOffset.x,
-			this.object.startY + this.object.stackedOffset.y,
-		);
-
-		let min = Infinity;
-
-		const pathPts = this.path.points;
-		for (let i = 0; i < this.path.length - 1; i++) {
-			const start = pathPts[i].add(objectPosition);
-			const end = pathPts[i + 1].add(objectPosition);
-
-			const closestPoint = closestPointTo(point, start, end);
-			const dist = closestPoint.distance(point);
-
-			if (dist < min) min = dist;
 		}
 
-		return min < radius;
+		const radiusSq = (64 * obj.scale) ** 2;
+		const objX = obj.startX + obj.stackedOffset.x;
+		const objY = obj.startY + obj.stackedOffset.y;
+
+		const pathPts = this.path.points;
+		const len = pathPts.length;
+
+		for (let i = 0; i < len - 1; i++) {
+			const p1 = pathPts[i];
+			const p2 = pathPts[i + 1];
+
+			const x1 = p1.x + objX;
+			const y1 = p1.y + objY;
+			const x2 = p2.x + objX;
+			const y2 = p2.y + objY;
+
+			const dx = x2 - x1;
+			const dy = y2 - y1;
+			const l2 = dx * dx + dy * dy;
+
+			if (l2 === 0) continue;
+
+			let t = ((x - x1) * dx + (y - y1) * dy) / l2;
+			t = Math.max(0, Math.min(1, t));
+
+			const closestX = x1 + t * dx;
+			const closestY = y1 + t * dy;
+
+			const distSq = (x - closestX) ** 2 + (y - closestY) ** 2;
+			if (distSq < radiusSq) return true;
+		}
+
+		return false;
 	}
 
 	hook(context: Context) {
@@ -498,19 +536,33 @@ export default class DrawableSlider
 	borderColor: number[] = [0, 0, 0];
 	color = "0,0,0";
 
-	updateFn = legacyUpdate;
-
 	refreshSprite() {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
 
 		if (skin.config.General.Argon) {
-			argonRefreshSprite(this);
-			this.updateFn = argonUpdate;
+			argonRefreshColor(this);
+			this.timelineObject?.refreshSprite();
 		} else {
-			legacyRefreshSprite(this);
-			this.updateFn = legacyUpdate;
+			legacyRefreshColor(this);
+			this.timelineObject?.refreshSprite();
 		}
+
+		const path = calculateSliderProgress(this.object.path, 0, 1, this.path.points);
+		if (path.length === 0) return;
+
+		const { positions, indices } = createGeometry(
+			path,
+			this.object.radius *
+			(236 / 256) *
+			(skin.config.General.Argon
+				? 0.95
+				: 1),
+			this._baseGeometry.attributes.aPosition.buffer.data,
+			this._baseGeometry.indexBuffer.data
+		);
+		this._baseGeometry.attributes.aPosition.buffer.data = positions;
+		this._baseGeometry.indexBuffer.data = indices;
 	}
 
 	refreshColor() {
@@ -578,15 +630,13 @@ export default class DrawableSlider
 		if (this.object.hitSound !== 0) {
 			this.sliderWhistleSample.playLoop(
 				currentSamplePoint,
-				time >= this.object.startTime && time <= this.object.endTime,
-				this.object.endTime - time,
+				time, this.object.startTime, this.object.endTime
 			);
 		}
 
 		this.sliderSlideSample.playLoop(
 			currentSamplePoint,
-			time >= this.object.startTime && time <= this.object.endTime,
-			this.object.endTime - time,
+			time, this.object.startTime, this.object.endTime
 		);
 	}
 
@@ -617,15 +667,15 @@ export default class DrawableSlider
 		this.lastGeometryState.scale = scale;
 
 		const path = calculateSliderProgress(this.object.path, head, tail, this.path.points);
-		if (!path.length) return;
+		if (path.length === 0) return;
 
 		this.path = path;
 
 		const { positions, indices } = createGeometry(
 			path,
 			this.object.radius * (236 / 256) * scale,
-			new Float32Array(this._geometry.attributes.aPosition.buffer.data.buffer),
-			new Uint32Array(this._geometry.indexBuffer.data.buffer)
+			this._geometry.attributes.aPosition.buffer.data,
+			this._geometry.indexBuffer.data
 		);
 		this._geometry.attributes.aPosition.buffer.data = positions;
 		this._geometry.indexBuffer.data = indices;
@@ -644,6 +694,8 @@ export default class DrawableSlider
 	update(time: number) {
 		this.ball.update(time);
 		this.followCircle.update(time);
+		this.followCircle.container.position = this.ball.container.position;
+
 		for (const circle of this.drawableCircles) {
 			const offset =
 				circle instanceof DrawableSliderTail &&
@@ -653,7 +705,11 @@ export default class DrawableSlider
 			circle.update(time - offset);
 		}
 
-		this.updateFn(this, time);
+		const { start, end } = sharedUpdate(this, time);
+		this.updateGeometry(start, end, inject<SkinManager>("skinManager")?.getCurrentSkin()?.config.General
+			.Argon
+			? 0.95
+			: 1);
 
 		this.judgement.frame(time);
 

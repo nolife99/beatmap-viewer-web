@@ -1,11 +1,11 @@
 import { parse } from "js-ini";
-import { Assets, Texture } from "pixi.js";
+import { Assets, Spritesheet, Texture } from "pixi.js";
 import type SkinningConfig from "@/Config/SkinningConfig";
 import { inject } from "@/Context";
 import type { Resource } from "../ZipHandler";
 import type SkinManager from "./SkinManager";
 import type { SkinMetadata } from "./SkinManager";
-import {getContext} from "tone";
+import { getAudioContext } from "@/Audio";
 
 const sanitizeINI = (str: string) =>
 	str
@@ -14,7 +14,7 @@ const sanitizeINI = (str: string) =>
 		.join("\n")
 		.replaceAll(/((\/\/)|(;)|(==)).*/g, "");
 
-export type SkinConfig = {
+type SkinConfig = {
 	General: {
 		Name: string;
 		Author?: string;
@@ -44,6 +44,16 @@ export type SkinConfig = {
 };
 
 export const BLANK_TEXTURE = new Texture();
+
+const ANIMATED_FILENAMES = [
+	"followpoint",
+	"hit300",
+	"hit100",
+	"hit50",
+	"hit0",
+	"sliderb",
+	"sliderfollowcircle",
+] as const;
 
 export default class Skin {
 	config: SkinConfig = {
@@ -76,9 +86,12 @@ export default class Skin {
 		public metadata?: SkinMetadata,
 	) {}
 
-	async init() {
+	async init(atlasUrls?: string[]) {
 		await this.loadConfig();
-		await Promise.all([this.loadTextures(), this.loadHitsounds()]);
+		await Promise.all([
+			atlasUrls ? this.loadTexturesFromAtlases(atlasUrls) : this.loadTextures(),
+			this.loadHitsounds(),
+		]);
 	}
 
 	private async loadConfig() {
@@ -108,6 +121,68 @@ export default class Skin {
 		this.colorsLength = Object.keys(this.config.Colours).filter((key) =>
 			/Combo[1-8]/g.test(key),
 		).length;
+	}
+
+	private async loadTexturesFromAtlases(atlasUrls: string[]) {
+		const allFrames = new Map<string, Texture>();
+
+		for (const url of atlasUrls) {
+			const loaded = Assets.cache.has(url);
+			const sheet = loaded ? Assets.get<Spritesheet>(url) : await Assets.load<Spritesheet>(url);
+
+			for (const [frameName, texture] of Object.entries<Texture>(sheet.textures)) {
+				if (!loaded && frameName.includes("@2x")) {
+					texture.orig.width /= 2;
+					texture.orig.height /= 2;
+
+					texture.trim?.x && (texture.trim.x /= 2);
+					texture.trim?.y && (texture.trim.y /= 2);
+					texture.trim?.width && (texture.trim.width /= 2);
+					texture.trim?.height && (texture.trim.height /= 2);
+
+					texture.updateUvs();
+				}
+
+				const baseName = frameName.replace("@2x.png", ".png").replace(".png", "");
+				const extracted = baseName.split("/").at(-1) as string;
+				const isDefault = /default-[0-9]+/.test(extracted);
+				const storeKey = isDefault ? extracted : baseName;
+
+				allFrames.set(frameName, texture);
+
+				if (!this.textures.has(storeKey)) {
+					this.textures.set(storeKey, texture);
+				}
+			}
+		}
+
+		for (const filenameBase of ANIMATED_FILENAMES) {
+			const regex =
+				filenameBase === "sliderb"
+					? /^sliderb\d+(@2x)?\.png$/
+					: new RegExp(`^${filenameBase}-\\d+(@2x)?\\.png$`);
+
+			const entries = [...allFrames.entries()]
+				.filter(([name]) => regex.test(name))
+				.sort(([a], [b]) => {
+					const stripSuffix = (s: string) =>
+						s.replace("@2x.png", "").replace(".png", "");
+					const aNum =
+						filenameBase === "sliderb"
+							? +(stripSuffix(a).replace("sliderb", "") ?? 0)
+							: +(stripSuffix(a).split("-").at(-1) ?? 0);
+					const bNum =
+						filenameBase === "sliderb"
+							? +(stripSuffix(b).replace("sliderb", "") ?? 0)
+							: +(stripSuffix(b).split("-").at(-1) ?? 0);
+					return aNum - bNum;
+				})
+				.map(([, tex]) => tex);
+
+			if (entries.length > 0) {
+				this.animatedTextures.set(filenameBase, entries);
+			}
+		}
 	}
 
 	private async loadTextures() {
@@ -151,7 +226,7 @@ export default class Skin {
 			"hit50",
 			"hit0",
 			"sliderb",
-			"sliderfollowcircle"
+			"sliderfollowcircle",
 		];
 
 		await Promise.all([
@@ -204,7 +279,8 @@ export default class Skin {
 							const blob =
 								this.resources?.get(`${filename}@2x.png`) ??
 								this.resources?.get(`${filename}.png`);
-							const isHD = this.resources?.has(`${filename}@2x.png`) ?? false;
+							const isHD =
+								this.resources?.has(`${filename}@2x.png`) ?? false;
 
 							if (!blob) return null;
 
@@ -226,7 +302,8 @@ export default class Skin {
 					filenameBase === "sliderb"
 						? +(a[0].replaceAll("sliderb", "") ?? 0) -
 							+(b[0].replaceAll("sliderb", "") ?? 0)
-						: +(a[0].split("-").at(-1) ?? 0) - +(b[0].split("-").at(-1) ?? 0),
+						: +(a[0].split("-").at(-1) ?? 0) -
+							+(b[0].split("-").at(-1) ?? 0),
 				);
 				this.animatedTextures.set(
 					filenameBase,
@@ -237,7 +314,7 @@ export default class Skin {
 	}
 
 	private async loadHitsounds() {
-		const audioContext = getContext();
+		const audioContext = getAudioContext();
 		const hitSounds = ["drum", "normal", "soft"]
 			.map((hitSample) =>
 				[
@@ -269,7 +346,6 @@ export default class Skin {
 						await resource.arrayBuffer(),
 					);
 				} catch {
-					// console.warn(`Cannot decode ${filename}. Default to silent sample.`);
 					audioBuffer = audioContext.createBuffer(
 						1,
 						1,

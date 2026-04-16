@@ -1,12 +1,13 @@
+import type Config from ".";
 import ConfigSection from "./ConfigSection";
 
-export type FullscreenProps = {
+type FullscreenProps = {
 	fullscreen: boolean;
 };
 
 export default class FullscreenConfig extends ConfigSection {
-	constructor(defaultOptions?: FullscreenProps) {
-		super();
+	constructor(config: Config, defaultOptions?: FullscreenProps) {
+		super(config);
 
 		if (!defaultOptions) return;
 

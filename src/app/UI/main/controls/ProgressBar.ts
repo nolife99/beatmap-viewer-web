@@ -19,7 +19,6 @@ export default class ProgressBar {
 			alignItems: "center",
 			justifyContent: "center",
 			paddingInline: 30,
-			overflow: "hidden",
 		},
 	});
 
@@ -32,7 +31,7 @@ export default class ProgressBar {
 		},
 	});
 
-	thumb = new Graphics()
+	thumb = new Graphics({ x: 30, y: 30, roundPixels: true })
 		.rect(-1, -30, 2, 60)
 		.moveTo(-6, -30)
 		.lineTo(-1, -26)
@@ -49,23 +48,13 @@ export default class ProgressBar {
 	timeline: Graphics;
 
 	constructor() {
-		this.timeline = new Graphics();
-		this.timeline.interactive = false;
-
+		this.timeline = new Graphics({ interactive: false, x: 30, y: 20 });
+		this.thumb.cacheAsTexture(true);
+		
 		this.container.addChild(this.line, this.thumb, this.timeline);
-		this.thumb.x = 30;
-		this.thumb.y = 30;
-
-		this.timeline.x = 30;
-		this.timeline.y = 20;
 
 		this.container.on("layout", () => {
 			this.thumb.y = (this.container.layout?.computedLayout.height ?? 0) / 2;
-
-			this.timeline.scale.set(
-				(this.container.layout?.computedLayout.width ?? 60) - 60,
-				1,
-			);
 			this.timeline.y =
 				(this.container.layout?.computedLayout.height ?? 0) / 2 - 10;
 		});
@@ -90,7 +79,8 @@ export default class ProgressBar {
 					.lineTo(1, 26)
 					.lineTo(6, 30)
 					.lineTo(-6, 30)
-					.fill(text);
+					.fill(text)
+					.updateCacheTexture();
 			},
 		);
 	}
@@ -166,28 +156,46 @@ export default class ProgressBar {
 			end: number;
 		}[] = [],
 	) {
-		this.timeline.clear();
-
-		for (const { start, end } of kiai) {
-			this.timeline
-				.rect(start, 8, end - start, 4)
-				.fill({ color: 0xffd978, alpha: 0.7 });
+		this.container.once("layout", () => this.drawTimeline(points, kiai, breaks));
+		if (!this.container.layout) {
+			return;
 		}
+
+		this.timeline.clear();
+		const width = ((this.container.layout.computedLayout.width ?? 60) - 60);
+		
+		for (const { start, end } of kiai) {
+			this.timeline.moveTo(start * width, 5).lineTo(end * width, 5);
+		}
+		this.timeline.stroke({ color: 0xffd978, alpha: 0.7, width: 2 });
 
 		for (const { start, end } of breaks) {
-			this.timeline
-				.rect(start, 8, end - start, 4)
-				.fill({ color: 0xffffff, alpha: 0.3 });
+			this.timeline.moveTo(start * width, 5).lineTo(end * width, 5);
 		}
+		this.timeline.stroke({ color: 0xffffff, alpha: 0.3, width: 2 });
 
-		for (const point of points) {
-			if (!point) continue;
-			const { position, color } = point;
-			this.timeline
-				.moveTo(position, 0)
-				.lineTo(position, -12)
-				.stroke({ color, alpha: 0.7, pixelLine: true });
+		const pointsByColor = points.reduce((acc, point) => {
+			if (!point) return acc;
+
+			if (!acc.has(point.color)) {
+				acc.set(point.color, []);
+			}
+			acc.get(point.color)!.push(point);
+
+			return acc;
+		}, new Map<ColorSource, any[]>());
+
+		for (const [color, colorPoints] of pointsByColor) {
+			for (const point of colorPoints) {
+				this.timeline
+					.moveTo(point.position * width, -6)
+					.lineTo(point.position * width, 0);
+			}
+			this.timeline.stroke({ color, alpha: 0.7, width: 1 });
 		}
+		this.timeline.scale.y = 2;
+
+		this.timeline.cacheAsTexture({ antialias: false, scaleMode: 'nearest' });
 		this.container.addChild(this.line, this.timeline, this.thumb);
 	}
 }

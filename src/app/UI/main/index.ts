@@ -10,15 +10,12 @@ import Viewer from "./viewer";
 
 export default class Main {
 	container = new LayoutContainer({
-		label: "main",
 		layout: {
 			position: "relative",
 			flex: 1,
 			height: "100%",
 			boxSizing: "border-box",
 			flexDirection: "column",
-
-			overflow: "hidden",
 		},
 	});
 

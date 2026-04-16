@@ -1,5 +1,5 @@
 import { LayoutContainer } from "@pixi/layout/components";
-import { Container, Text } from "pixi.js";
+import { Container, BitmapText } from "pixi.js";
 import type ColorConfig from "@/Config/ColorConfig";
 import { inject, provide } from "@/Context";
 import type ResponsiveHandler from "@/ResponsiveHandler";
@@ -68,7 +68,7 @@ export default class Modding {
 			},
 		});
 
-		const text = new Text({
+		const text = new BitmapText({
 			text: label,
 			style: {
 				...defaultStyle,

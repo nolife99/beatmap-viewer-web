@@ -1,4 +1,3 @@
-import BeatmapSet from "@/BeatmapSet";
 import type Beatmap from "@/BeatmapSet/Beatmap";
 import type DrawableHitCircle from "@/BeatmapSet/Beatmap/HitObjects/DrawableHitCircle";
 import ExperimentalConfig from "@/Config/ExperimentalConfig";

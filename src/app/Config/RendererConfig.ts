@@ -1,3 +1,4 @@
+import type Config from ".";
 import ConfigSection from "./ConfigSection";
 
 export type RENDERER = "webgl" | "webgpu";
@@ -13,8 +14,8 @@ enum RENDERER_VAL {
 }
 
 export default class RendererConfig extends ConfigSection {
-	constructor(defaultOptions?: RendererProps) {
-		super();
+	constructor(config: Config, defaultOptions?: RendererProps) {
+		super(config);
 
 		this.loadEventListeners();
 

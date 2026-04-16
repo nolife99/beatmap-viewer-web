@@ -8,7 +8,7 @@ export default class TimelineTimingPoint {
 	container: Container = new Container();
 
 	constructor(public data: TimingPoint) {
-		const graphics = new Graphics();
+		const graphics = new Graphics;
 
 		const text = new Text({
 			text: `${data.bpm.toFixed(0)}BPM`,

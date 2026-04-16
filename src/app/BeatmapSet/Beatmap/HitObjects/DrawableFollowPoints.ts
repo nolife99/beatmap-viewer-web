@@ -72,7 +72,7 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		}
 
 		const numberOfSprites =
-			this.distance < 80 ? 0 : Math.floor((this.distance - 48) / (512 / 16));
+			Math.floor(this.distance) <= 80 ? 0 : Math.floor((this.distance - 48) / (512 / 16));
 
 		for (let i = 0; i < numberOfSprites; i++) {
 			this.container.addChild(new Sprite({ anchor: 0.5, x: (1.5 + i) * (512 / 16) }));

@@ -50,7 +50,7 @@ export default class Beatmap extends ScopedClass {
 	color: ColorSource;
 	randomColor: ColorSource = new Color(Math.floor(Math.random() * 0xffffff)).toHex();
 
-	private worker = new ObjectsWorker();
+	worker = new ObjectsWorker();
 
 	private loaded = false;
 
@@ -72,7 +72,7 @@ export default class Beatmap extends ScopedClass {
 		this.data = this.context.provide(
 			"beatmap",
 			ruleset.applyToBeatmapWithMods(
-				decoder.decodeFromString(this.raw),
+				decoder.decodeFromString(raw),
 				ruleset.createModCombination(initialMods),
 			),
 		);
@@ -87,12 +87,6 @@ export default class Beatmap extends ScopedClass {
 
 		this.context.provide("beatmapObject", this);
 		this.container = new Gameplay(this);
-
-		this.worker.addEventListener("message", (event: any) => {
-			if (event.data.type === "destroy") {
-				this.worker.terminate();
-			}
-		});
 
 		this.worker.postMessage({
 			type: "preempt",
@@ -280,7 +274,7 @@ export default class Beatmap extends ScopedClass {
 						}
 
 						resolve(new DrawableFollowPoints(startObject, endObject).hook(this.context));
-					}, 5);
+					});
 				});
 			}),
 		);
@@ -444,13 +438,14 @@ export default class Beatmap extends ScopedClass {
 							if (object instanceof Spinner)
 								resolve(new DrawableSpinner(object).hook(this.context));
 							resolve(null);
-						}, 5);
+						});
 					});
 				}),
 			)
 		).filter((object) => object !== null);
 	}
 
+	private workerUpdate: ((this: Worker, ev: MessageEvent<any>) => any) | null = null; 
 	async loadHitObjects() {
 		console.time("Constructing hitObjects");
 		const async = inject<ExperimentalConfig>(
@@ -482,7 +477,7 @@ export default class Beatmap extends ScopedClass {
 		});
 
 		// biome-ignore lint/suspicious/noExplicitAny: Can't specify event type
-		this.worker.addEventListener("message", (event: any) => {
+		this.worker.addEventListener("message", this.workerUpdate = (event: any) => {
 			switch (event.data.type) {
 				case "update": {
 					const { objects, connectors, currentTime, previousTime } = event.data;
@@ -583,35 +578,29 @@ export default class Beatmap extends ScopedClass {
 	update(time: number, objects: Set<number>, connectors: Set<number>) {
 		if (!this.loaded) return;
 
-		if (
-			this.container.dragWindow[0].distance(this.container.dragWindow[1]) > 0
-		) {
+		if (this.container.dragWindow[0].distance(this.container.dragWindow[1]) > 0) {
 			for (const idx of objects) {
 				const obj = this.objects[idx];
 				const isInBound = this.container.checkInBound(obj.object.startPosition);
 
-				if (isInBound) {
+				if (isInBound)
 					this.container.addSelected(idx);
-				} else {
+				else
 					this.container.removeSelected(idx);
-				}
 			}
 		}
 
 		const objectsWithSelected = objects.union(this.container.selected);
-
-		// const audio = this.context.consume<Audio>("audio");
 		const objectContainer = this.container.objectsContainer;
 
-		const disposedObjects =
-			this.previousObjects.difference(objectsWithSelected);
+		const disposedObjects = this.previousObjects.difference(objectsWithSelected);
 		const disposedConnectors = this.previousConnectors.difference(connectors);
+
 		this.previousObjects = objectsWithSelected;
 		this.previousConnectors = connectors;
 
 		for (const idx of disposedObjects) {
 			objectContainer?.removeChild(this.objects[idx].container);
-
 			if ((this.objects[idx] as unknown as IHasApproachCircle).approachCircle)
 				objectContainer?.removeChild(
 					(this.objects[idx] as unknown as IHasApproachCircle).approachCircle
@@ -619,13 +608,11 @@ export default class Beatmap extends ScopedClass {
 				);
 		}
 
-		for (const idx of disposedConnectors) {
+		for (const idx of disposedConnectors)
 			objectContainer?.removeChild(this.connectors[idx].container);
-		}
 
-		for (const idx of objects) {
+		for (const idx of objects)
 			this.objects[idx].playHitSound(time);
-		}
 	}
 
 	toggle() {
@@ -704,7 +691,10 @@ export default class Beatmap extends ScopedClass {
 			this.container,
 		);
 
-		this.worker.postMessage({ type: "destroy" });
+		if (this.workerUpdate) {
+			this.worker.postMessage({ type: "stop" });
+			this.worker.removeEventListener("message", this.workerUpdate);
+		}
 		this.loaded = false;
 
 		this.container.objectsContainer.removeChildren();

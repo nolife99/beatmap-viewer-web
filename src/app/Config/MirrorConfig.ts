@@ -1,3 +1,4 @@
+import type Config from ".";
 import ConfigSection from "./ConfigSection";
 
 export type Mirror = {
@@ -10,8 +11,8 @@ export type MirrorProps = {
 };
 
 export default class MirrorConfig extends ConfigSection {
-	constructor(defaultOptions?: MirrorProps) {
-		super();
+	constructor(config: Config, defaultOptions?: MirrorProps) {
+		super(config);
 
 		this.loadEventListeners();
 

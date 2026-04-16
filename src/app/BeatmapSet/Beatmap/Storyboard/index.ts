@@ -27,25 +27,20 @@ export default class Storyboard extends ScopedClass {
 	private masterData!: StoryboardData;
 	private masterSprites!: StoryboardSprite[];
 	container: Container = new Container({
-		label: "storyboard",
-		isRenderGroup: true,
 		visible: inject<BackgroundConfig>("config/background")?.storyboard,
 	});
 
 	backgroundLayer = new Container({
-		label: "backgroundLayer",
 		interactive: false,
 		interactiveChildren: false,
 		sortableChildren: true,
 	});
 	foregroundLayer = new Container({
-		label: "foregroundLayer",
 		interactive: false,
 		interactiveChildren: false,
 		sortableChildren: false,
 	});
 	overlayLayer = new Container({
-		label: "overlayLayer",
 		interactive: false,
 		interactiveChildren: false,
 		sortableChildren: false,

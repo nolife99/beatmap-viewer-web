@@ -4,32 +4,36 @@ import type ColorConfig from "./Config/ColorConfig";
 import type { ColorPalette } from "./Config/ColorConfig";
 import { inject } from "./Context";
 import type { Vector2 } from "osu-classes";
+import { Color, type ColorSource } from "pixi.js";
 
 export function lighten(
-	color: [number, number, number, number?],
+	color: ColorSource,
 	amount: number,
 ) {
 	const a = amount * 0.5;
+	const col = new Color(color);
 
 	const ret = [];
-	ret[0] = Math.min(1.0, color[0] * (1.0 + 0.5 * a) + 1.0 * a);
-	ret[1] = Math.min(1.0, color[1] * (1.0 + 0.5 * a) + 1.0 * a);
-	ret[2] = Math.min(1.0, color[2] * (1.0 + 0.5 * a) + 1.0 * a);
+	ret[0] = Math.min(1.0, col.red * (1.0 + 0.5 * a) + 1.0 * a);
+	ret[1] = Math.min(1.0, col.green * (1.0 + 0.5 * a) + 1.0 * a);
+	ret[2] = Math.min(1.0, col.blue * (1.0 + 0.5 * a) + 1.0 * a);
 
-	return ret;
+	return col.setValue(ret);
 }
 
 export function darken(
-	color: [number, number, number, number?],
+	color: ColorSource,
 	amount: number,
 ) {
+	const col = new Color(color);
+	
 	const scalar = Math.max(1.0, 1.0 + amount);
 	const ret = [];
-	ret[0] = Math.min(1.0, color[0] / scalar);
-	ret[1] = Math.min(1.0, color[1] / scalar);
-	ret[2] = Math.min(1.0, color[2] / scalar);
+	ret[0] = col.red / scalar;
+	ret[1] = col.green / scalar;
+	ret[2] = col.blue / scalar;
 
-	return ret;
+	return col.setValue(ret);
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: Could be any
@@ -171,7 +175,7 @@ export const difficultyRange = (
 	return mid;
 };
 
-export const closestPointTo = (p: Vector2, start: Vector2, end: Vector2): Vector2 => {
+const closestPointTo = (p: Vector2, start: Vector2, end: Vector2): Vector2 => {
 	const v = end.subtract(start);
 	const w = p.subtract(start);
 

@@ -1,12 +1,6 @@
 in float dist;
-// in float progress;
-// in float isCircle;
 out vec4 finalColor;
 
-// uniform float progressHead;
-// uniform float progressTail;
-
-// uniform float scale;
 uniform vec4 borderColor;
 uniform vec4 innerColor;
 uniform vec4 outerColor;
@@ -15,37 +9,20 @@ uniform float bodyAlpha;
 
 void main() {
     float position = dist;
-
-    float a = 1.0;
-    float innerWidth = 1.0 - borderWidth;
     float blurRate = 0.02;
+    float innerWidth = 1.0 - borderWidth;
 
-    // Set body color
-    vec4 color = mix(innerColor, outerColor, position);
+    float t = (position - innerWidth) / blurRate;
+    float factor = clamp(t, 0.0, 1.0);
 
-    // Set border color
-    if (position >= innerWidth + blurRate) {
-        color = borderColor;
-    }
+    vec4 innerBody = mix(innerColor, outerColor, position);
+    vec4 color = mix(innerBody, borderColor, factor);
 
-    // Set body alpha
-    if (position < innerWidth) {
-        a = bodyAlpha;
-    }
+    float innerAlpha = mix(bodyAlpha, 1.0, factor);
 
-    // Anti-aliasing at outer edge
-    if (1.0 - position < blurRate) {
-        a = (1.0 - position) / blurRate; 
-    }
+    float outerFade = clamp((1.0 - position) / blurRate, 0.0, 1.0);
+    float isOuter = step(1.0 - blurRate, position);
+    float alpha = mix(innerAlpha, outerFade, isOuter);
 
-    // Anti-aliasing at inner edge
-    if (position >= innerWidth && position < innerWidth + blurRate) {
-        float mu = (position - innerWidth) / blurRate;
-        color = borderColor * mu + (1.0 - mu) * color;
-
-        a = 1.0 * mu + (1.0 - mu) * 1.0 * bodyAlpha;
-    }
-
-    color.a = 1.0;
-    finalColor = vec4(color.rgb, 1.0) * a;
+    finalColor = vec4(color.rgb * alpha, alpha);
 }

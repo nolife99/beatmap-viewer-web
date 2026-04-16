@@ -1,3 +1,4 @@
+import type Config from ".";
 import ConfigSection from "./ConfigSection";
 
 export type SkinningProps = {
@@ -7,8 +8,8 @@ export type SkinningProps = {
 };
 
 export default class SkinningConfig extends ConfigSection {
-	constructor(defaultOptions?: SkinningProps) {
-		super();
+	constructor(config: Config, defaultOptions?: SkinningProps) {
+		super(config);
 		this.loadEventListeners();
 
 		if (!defaultOptions) return;

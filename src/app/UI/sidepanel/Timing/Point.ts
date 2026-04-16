@@ -1,5 +1,5 @@
 import { DifficultyPoint, type SamplePoint, TimingPoint } from "osu-classes";
-import { type ColorSource, Container, Graphics, Text } from "pixi.js";
+import { type ColorSource, Container, Graphics, BitmapText } from "pixi.js";
 import type ColorConfig from "@/Config/ColorConfig";
 import { inject } from "@/Context";
 import { millisecondsToMinutesString } from "@/utils";
@@ -7,9 +7,9 @@ import { millisecondsToMinutesString } from "@/utils";
 export default class Point {
 	container: Container;
 	private indicator: Graphics;
-	private timestamp: Text;
-	private content1: Text;
-	private content2: Text;
+	private timestamp: BitmapText;
+	private content1: BitmapText;
+	private content2: BitmapText;
 	private color: Graphics;
 
 	private accent: ColorSource;
@@ -30,6 +30,8 @@ export default class Point {
 			width: 360,
 			height: 40,
 			alpha: 0.5,
+			visible: false,
+			interactiveChildren: false
 		});
 
 		inject<ColorConfig>("config/color")?.onChange("color", ({ mantle }) => {
@@ -47,7 +49,7 @@ export default class Point {
 			if (!this.indicator.visible) this.unselect();
 		});
 
-		this.timestamp = new Text({
+		this.timestamp = new BitmapText({
 			text: millisecondsToMinutesString(data.startTime),
 			style: {
 				fontSize: 14,
@@ -58,7 +60,7 @@ export default class Point {
 			layout: false,
 		});
 
-		this.content1 = new Text({
+		this.content1 = new BitmapText({
 			text:
 				data instanceof TimingPoint
 					? `${Math.round(data.bpm)} BPM`
@@ -73,10 +75,10 @@ export default class Point {
 				fontWeight: "500",
 			},
 			layout: false,
+			x: 80
 		});
-		this.content1.x = 80;
 
-		this.content2 = new Text({
+		this.content2 = new BitmapText({
 			text:
 				data instanceof TimingPoint
 					? `Signature ${data.timeSignature}/4`
@@ -92,17 +94,14 @@ export default class Point {
 			layout: false,
 		});
 
-		this.indicator = new Graphics()
+		this.indicator = new Graphics({ tint: this.accent, x: 10, y: 15, visible: false })
 			.moveTo(0, 0)
 			.lineTo(0, 10)
 			.lineTo(5, 5)
 			.lineTo(0, 0)
 			.fill(0xffffff);
-		this.indicator.tint = this.accent;
-
-		this.indicator.x = 10;
-		this.indicator.y = 15;
-		this.indicator.visible = false;
+		
+		this.indicator.cacheAsTexture(true);
 
 		this.container.addChild(
 			this.color,
@@ -111,15 +110,13 @@ export default class Point {
 			this.content2,
 			this.indicator,
 		);
-		this.container.visible = false;
-		this.container.interactiveChildren = false;
 
 		this.reWidth(360);
 	}
 
 	reWidth(width: number, height = 40) {
 		this.color.clear().roundRect(0, 0, width, 40, 10).fill(0xffffff);
-
+		
 		this.content2.x = width - this.content2.width - 20;
 		this.content2.y = (height - this.content2.height) / 2;
 

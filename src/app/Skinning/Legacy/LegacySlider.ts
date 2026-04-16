@@ -1,34 +1,13 @@
-import type BeatmapSet from "@/BeatmapSet";
 import type Beatmap from "@/BeatmapSet/Beatmap";
-import calculateSliderProgress from "@/BeatmapSet/Beatmap/HitObjects/CalculateSliderProgress";
-import createGeometry from "@/BeatmapSet/Beatmap/HitObjects/CreateSliderGeometry";
 import type DrawableSlider from "@/BeatmapSet/Beatmap/HitObjects/DrawableSlider";
 import type ExperimentalConfig from "@/Config/ExperimentalConfig";
 import type SkinningConfig from "@/Config/SkinningConfig";
 import { inject } from "@/Context";
 import { darken, lighten } from "@/utils";
-import { sharedUpdate } from "../Shared/Slider";
 import { Color } from "pixi.js";
 import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
 
 const blur = new URLSearchParams(window.location.search).get("blur");
-
-export const refreshSprite = (drawable: DrawableSlider) => {
-	refreshColor(drawable);
-	drawable.timelineObject?.refreshSprite();
-
-	const path = calculateSliderProgress(drawable.object.path, 0, 1);
-	if (!path.length) return;
-
-	const { positions, indices } = createGeometry(
-		path,
-		drawable.object.radius * (236 / 256),
-		new Float32Array(drawable._baseGeometry.attributes.aPosition.buffer.data.buffer),
-		new Uint32Array(drawable._baseGeometry.indexBuffer.data.buffer)
-	);
-	drawable._baseGeometry.attributes.aPosition.buffer.data = positions;
-	drawable._baseGeometry.indexBuffer.data = indices;
-};
 
 export const refreshColor = (drawable: DrawableSlider) => {
 	const skin = drawable.skinManager?.getCurrentSkin();
@@ -97,9 +76,4 @@ export const refreshColor = (drawable: DrawableSlider) => {
 		1.0,
 	];
 	drawable._selectShader.resources.customUniforms.uniforms.borderWidth = 0.128;
-};
-
-export const update = (drawable: DrawableSlider, time: number) => {
-	const { start, end } = sharedUpdate(drawable, time);
-	drawable.updateGeometry(start, end);
 };

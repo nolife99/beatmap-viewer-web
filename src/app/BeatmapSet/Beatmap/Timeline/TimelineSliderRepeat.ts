@@ -1,14 +1,15 @@
 import type { SliderRepeat } from "osu-standard-stable";
-import { Graphics, Sprite } from "pixi.js";
+import { Graphics, GraphicsContext, Sprite } from "pixi.js";
 import type Skin from "@/Skinning/Skin";
-import type DrawableSlider from "../HitObjects/DrawableSlider";
 import TimelineSliderTail from "./TimelineSliderTail";
+
+const ctx = new GraphicsContext().circle(0, 0, 15).fill([0, 0, 0, 0.3]);
 
 export default class TimelineSliderRepeat extends TimelineSliderTail {
 	sprite = new Sprite({
 		anchor: 0.5,
 	});
-	graphics = new Graphics().circle(0, 0, 15).fill(0xb6b6b6);
+	graphics = new Graphics({ context: ctx });
 
 	constructor(object: SliderRepeat) {
 		super(object);
@@ -36,11 +37,6 @@ export default class TimelineSliderRepeat extends TimelineSliderTail {
 			if (!this.graphics) return;
 
 			this.container.addChild(this.graphics);
-			const baseColor = this.context.consume<DrawableSlider>("object")?.color;
-			const color = baseColor?.includes("rgb")
-				? (baseColor ?? "rgb(0, 0, 0)")
-				: `rgb(${baseColor ?? "0,0,0"})`;
-			this.graphics.tint = color;
 		} else {
 			if (this.graphics) this.container.removeChild(this.graphics);
 			this.container.addChild(this.sprite);

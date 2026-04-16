@@ -40,7 +40,7 @@ import SpectrogramWorker from './spectrogram-worker.ts?worker'
  * Spectrogram plugin for wavesurfer.
  */
 
-export type SpectrogramPluginOptions = {
+type SpectrogramPluginOptions = {
     /** Selector of element or element in which to render */
     container?: string | HTMLElement
     /** Number of samples to fetch to FFT. Must be a power of 2. */
@@ -112,7 +112,7 @@ export type SpectrogramPluginOptions = {
     useWebWorker?: boolean
 }
 
-export type SpectrogramPluginEvents = BasePluginEvents & {
+type SpectrogramPluginEvents = BasePluginEvents & {
     ready: []
     click: [relativeX: number]
 }

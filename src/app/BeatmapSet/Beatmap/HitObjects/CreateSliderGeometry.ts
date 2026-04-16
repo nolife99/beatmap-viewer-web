@@ -1,63 +1,57 @@
-import type { Vector2 } from "osu-classes";
 import type { SliderProgressResult } from "@/BeatmapSet/Beatmap/HitObjects/CalculateSliderProgress.ts";
+import type { TypedArray } from "pixi.js";
 
-const RADIUS = 20;
-const DIVIDES = 64;
+const DIVIDES = 48;
 const VECS = 3;
 
 export default function updateGeometry(
 	path: SliderProgressResult,
 	radius: number,
-	oldPositions: Float32Array | null,
-	oldIndices: Uint32Array | null
+	oldPositions: TypedArray,
+	oldIndices: TypedArray
 ) {
-	const pointsCount = path.length;
+	const { points: pathPts, length: pointsCount } = path;
 
 	const requiredVerts = (pointsCount * 5 + pointsCount * DIVIDES) * VECS;
 	const requiredIndices = (pointsCount * 12 + pointsCount * DIVIDES) * 3;
 
 	let positions = (oldPositions && oldPositions.length >= requiredVerts)
-		? oldPositions : new Float32Array(requiredVerts);
+		? new Float32Array(oldPositions.buffer) : new Float32Array(requiredVerts);
 	let indices = (oldIndices && oldIndices.length >= requiredIndices)
-		? oldIndices : new Uint32Array(requiredIndices);
+		? new Uint32Array(oldIndices.buffer) : new Uint32Array(requiredIndices);
 
 	let vIdx = 0;
 	let iIdx = 0;
 
 	const writeV = (x: number, y: number, t: number) => {
-		positions[vIdx++] = x || 0; // Guard against NaN
-		positions[vIdx++] = y || 0;
+		positions[vIdx++] = x;
+		positions[vIdx++] = y;
 		positions[vIdx++] = t;
 	};
 
-	// 1. Initial Point (Index 0)
-	const pathPts = path.points;
 	writeV(pathPts[0].x, pathPts[0].y, 0);
-
 	for (let i = 1; i < pointsCount; i++) {
 		const curr = pathPts[i];
 		const prev = pathPts[i - 1];
 		const dx = curr.x - prev.x;
 		const dy = curr.y - prev.y;
-		const len = Math.hypot(dx, dy);
+		const len = Math.sqrt(dx * dx + dy * dy);
 
-		// If points are stacked, skip math to avoid NaN
 		const ox = len === 0 ? 0 : (radius * -dy) / len;
 		const oy = len === 0 ? 0 : (radius * dx) / len;
 
-		// Vertices for this segment
-		writeV(prev.x + ox, prev.y + oy, 1); // Index: 5*i - 4
-		writeV(prev.x - ox, prev.y - oy, 1); // Index: 5*i - 3
-		writeV(curr.x + ox, curr.y + oy, 1); // Index: 5*i - 2
-		writeV(curr.x - ox, curr.y - oy, 1); // Index: 5*i - 1
-		writeV(curr.x, curr.y, 0);           // Index: 5*i
+		writeV(prev.x + ox, prev.y + oy, 1); // Index 5*i - 4
+		writeV(prev.x - ox, prev.y - oy, 1); // Index 5*i - 3
+		writeV(curr.x + ox, curr.y + oy, 1); // Index 5*i - 2
+		writeV(curr.x - ox, curr.y - oy, 1); // Index 5*i - 1
+		writeV(curr.x, curr.y, 0);           // Index 5*i
 
-		// Correct Indexing (n is the center of the current point)
 		const n = 5 * i;
 
 		// Quad 1
 		indices[iIdx++] = n - 5; indices[iIdx++] = n - 4; indices[iIdx++] = n;
 		indices[iIdx++] = n - 4; indices[iIdx++] = n;     indices[iIdx++] = n - 2;
+
 		// Quad 2
 		indices[iIdx++] = n - 5; indices[iIdx++] = n - 3; indices[iIdx++] = n;
 		indices[iIdx++] = n - 3; indices[iIdx++] = n;     indices[iIdx++] = n - 1;
@@ -88,12 +82,12 @@ export default function updateGeometry(
 		indices[iIdx++] = p2Idx;
 	};
 
-	// Joins and Caps
 	for (let i = 1; i < pointsCount - 1; ++i) {
-		const d1 = { x: pathPts[i].x - pathPts[i-1].x, y: pathPts[i].y - pathPts[i-1].y };
-		const d2 = { x: pathPts[i+1].x - pathPts[i].x, y: pathPts[i+1].y - pathPts[i].y };
-		if (d1.x * d2.y - d1.y * d2.x > 0) addArc(5 * i, 5 * i - 1, 5 * i + 2);
-		else addArc(5 * i, 5 * i + 1, 5 * i - 2);
+		if ((pathPts[i].x - pathPts[i-1].x) * (pathPts[i+1].y - pathPts[i].y) -
+			(pathPts[i].y - pathPts[i-1].y) * (pathPts[i+1].x - pathPts[i].x) > 0)
+			addArc(5 * i, 5 * i - 1, 5 * i + 2);
+		else
+			addArc(5 * i, 5 * i + 1, 5 * i - 2);
 	}
 
 	addArc(0, 1, 2);
@@ -101,8 +95,6 @@ export default function updateGeometry(
 	addArc(lastBase, lastBase - 1, lastBase - 2);
 
 	return {
-		// We return subarrays so Pixi knows exactly how many elements to draw,
-		// but the underlying ArrayBuffer is reused.
 		positions: positions.subarray(0, vIdx),
 		indices: indices.subarray(0, iIdx)
 	};

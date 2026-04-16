@@ -1,3 +1,4 @@
+import type Config from ".";
 import ConfigSection from "./ConfigSection";
 
 export type BackgroundProps = {
@@ -9,8 +10,8 @@ export type BackgroundProps = {
 };
 
 export default class BackgroundConfig extends ConfigSection {
-	constructor(defaultOptions?: BackgroundProps) {
-		super();
+	constructor(config: Config, defaultOptions?: BackgroundProps) {
+		super(config);
 		this.loadEventListeners();
 
 		if (!defaultOptions) return;

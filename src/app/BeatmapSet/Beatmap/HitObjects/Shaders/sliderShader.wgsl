@@ -12,7 +12,6 @@ struct LocalUniforms {
 }
 
 struct CustomUniforms {
-    // Fragment Uniforms
     borderColor: vec4<f32>,
     innerColor: vec4<f32>,
     outerColor: vec4<f32>,
@@ -34,51 +33,27 @@ fn vsMain(
     @location(0) aPosition: vec4<f32>,
 ) -> VertexOutput {
     var mvp: mat3x3<f32> = globalUniforms.projectionMatrix * globalUniforms.worldTransformMatrix * localUniforms.uTransformMatrix;
-    var x: f32 = aPosition.x;
-    var y: f32 = aPosition.y;
-    var z: f32 = aPosition.z;
 
-    return VertexOutput(
-        vec4<f32>(
-            (mvp * vec3<f32>(x, y, 1.0)).xy,
-            z,
-            1.0
-        ),
-        z
-    );
+    let transformed = mvp * vec3<f32>(aPosition.xy, 1.0);
+    return VertexOutput(vec4<f32>(transformed.xy, aPosition.z, 1.0), aPosition.z);
 }
 
 @fragment
-fn fsMain(
-    input: VertexOutput
-) -> @location(0) vec4<f32> {
-    var position = input.dist;
+fn fsMain(input: VertexOutput) -> @location(0) vec4<f32> {
+    let position = input.dist;
+    let blurRate = 0.02;
+    let innerWidth = 1.0 - customUniforms.borderWidth;
 
-    var a = 1.0;
-    var innerWidth = 1.0 - customUniforms.borderWidth;
-    var blurRate = 0.02;
+    let t = (position - innerWidth) / blurRate;
+    let factor = clamp(t, 0.0, 1.0);
 
-    var color: vec4<f32> = mix(customUniforms.innerColor, customUniforms.outerColor, position);
+    let innerBody = mix(customUniforms.innerColor, customUniforms.outerColor, position);
+    let color = mix(innerBody, customUniforms.borderColor, factor);
 
-    if (position >= innerWidth + blurRate) {
-        color = customUniforms.borderColor;
-    }
+    let innerAlpha = mix(customUniforms.bodyAlpha, 1.0, factor);
+    let outerFade = clamp((1.0 - position) / blurRate, 0.0, 1.0);
+    let isOuter = step(1.0 - blurRate, position);
+    let alpha = mix(innerAlpha, outerFade, isOuter);
 
-    if (position < innerWidth) {
-        a = customUniforms.bodyAlpha;
-    }
-
-    if (1.0 - position < blurRate) {
-        a = (1.0 - position) / blurRate; 
-    }
-
-    if (position >= innerWidth && position < innerWidth + blurRate) {
-        var mu: f32 = (position - innerWidth) / blurRate;
-        color = customUniforms.borderColor * mu + (1.0 - mu) * color;
-
-        a = 1.0 * mu + (1.0 - mu) * customUniforms.bodyAlpha;
-    }
-
-    color.a = 1.0;    
-    return vec4<f32>(color.xyz, 1.0) * a;
+    return vec4<f32>(color.rgb * alpha, alpha);
 }

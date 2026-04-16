@@ -1,65 +1,65 @@
 import {LayoutContainer} from "@pixi/layout/components";
-import {Assets, Color, Sprite} from "pixi.js";
+import {Color, Sprite, Texture} from "pixi.js";
 import type BeatmapSet from "@/BeatmapSet";
 import type ColorConfig from "@/Config/ColorConfig";
 import {inject} from "@/Context";
 
 export default class Play {
-	container = new LayoutContainer({
-		label: "play",
-		layout: {
-			aspectRatio: 1,
-			backgroundColor: new Color(inject<ColorConfig>("config/color")?.color.crust).setAlpha(0.7),
-			height: "100%",
-			flexShrink: 0,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-	});
+        container = new LayoutContainer({
+                label: "play",
+                layout: {
+                        aspectRatio: 1,
+                        backgroundColor: new Color(inject<ColorConfig>("config/color")?.color.crust).setAlpha(0.7),
+                        height: "100%",
+                        flexShrink: 0,
+                        alignItems: "center",
+                        justifyContent: "center",
+                },
+        });
 
-	sprite = new Sprite();
+        sprite = new Sprite();
 
-	constructor() {
-		(async () => {
-			this.sprite.texture = await Assets.load("./assets/play.png");
-			this.sprite.width = 20;
-			this.sprite.height = 20;
-			this.sprite.layout = {
-				width: 20,
-				height: 20,
-			};
-			this.sprite.tint =
-				inject<ColorConfig>("config/color")?.color.text ?? 0xffffff;
+        constructor() {
+                (async () => {
+                        this.sprite.texture = Texture.from("play.png");
+                        this.sprite.width = 20;
+                        this.sprite.height = 20;
+                        this.sprite.layout = {
+                                width: 20,
+                                height: 20,
+                        };
+                        this.sprite.tint =
+                                inject<ColorConfig>("config/color")?.color.text ?? 0xffffff;
 
-			this.container.addChild(this.sprite);
-		})();
+                        this.container.addChild(this.sprite);
+                })();
 
-		inject<ColorConfig>("config/color")?.onChange(
-			"color",
-			({ crust, text }) => {
-				this.container.layout = { backgroundColor: new Color(crust).setAlpha(0.7) };
-				this.sprite.tint = text;
-			},
-		);
+                inject<ColorConfig>("config/color")?.onChange(
+                        "color",
+                        ({ crust, text }) => {
+                                this.container.layout = { backgroundColor: new Color(crust).setAlpha(0.7) };
+                                this.sprite.tint = text;
+                        },
+                );
 
-		this.container.cursor = "pointer";
+                this.container.cursor = "pointer";
 
-		this.container.addEventListener("pointertap", () =>
-			inject<BeatmapSet>("beatmapset")?.toggle(),
-		);
+                this.container.addEventListener("pointertap", () =>
+                        inject<BeatmapSet>("beatmapset")?.toggle(),
+                );
 
-		this.container.addEventListener("pointerenter", () => {
-			this.container.layout = {
-				backgroundColor:
-					new Color(inject<ColorConfig>("config/color")?.color.surface2 ?? 0xffffff).setAlpha(0.7),
-			};
-		});
+                this.container.addEventListener("pointerenter", () => {
+                        this.container.layout = {
+                                backgroundColor:
+                                        new Color(inject<ColorConfig>("config/color")?.color.surface2 ?? 0xffffff).setAlpha(0.7),
+                        };
+                });
 
-		this.container.addEventListener("pointerleave", () => {
-			this.container.layout = {
-				backgroundColor:
-					new Color(inject<ColorConfig>("config/color")?.color.crust ?? 0xffffff).setAlpha(0.7),
-			};
-		});
-	}
+                this.container.addEventListener("pointerleave", () => {
+                        this.container.layout = {
+                                backgroundColor:
+                                        new Color(inject<ColorConfig>("config/color")?.color.crust ?? 0xffffff).setAlpha(0.7),
+                        };
+                });
+        }
 }

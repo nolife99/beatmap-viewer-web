@@ -5,7 +5,7 @@ export const tweenGroup = new Group();
 
 export const defaultEasing = bezier(0, 0.4, 0, 1.0);
 
-export type AnimationOptions = {
+type AnimationOptions = {
 	easing?: (t: number) => number;
 	duration: number;
 };

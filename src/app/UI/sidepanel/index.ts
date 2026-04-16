@@ -1,5 +1,5 @@
 import { LayoutContainer } from "@pixi/layout/components";
-import { Assets, Sprite, Text } from "pixi.js";
+import { BitmapText, Sprite, Texture } from "pixi.js";
 import type ColorConfig from "@/Config/ColorConfig";
 import { inject, provide } from "@/Context";
 import type { Game } from "@/Game";
@@ -79,7 +79,7 @@ export default class SidePanel {
 				},
 				cursor: "pointer",
 			});
-			const text = new Text({
+			const text = new BitmapText({
 				text: title,
 				style: {
 					fontFamily: "Rubik",
@@ -130,10 +130,7 @@ export default class SidePanel {
 		});
 
 		(async () => {
-			closeButton.texture = await Assets.load({
-				src: "./assets/x.png",
-				parser: "texture",
-			});
+			closeButton.texture = Texture.from("x.png");
 
 			closeButton.tint =
 				inject<ColorConfig>("config/color")?.color.text ?? 0xffffff;

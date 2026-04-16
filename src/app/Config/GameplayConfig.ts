@@ -1,3 +1,4 @@
+import type Config from ".";
 import ConfigSection from "./ConfigSection";
 
 export type GameplayProps = {
@@ -9,8 +10,8 @@ export type GameplayProps = {
 };
 
 export default class GameplayConfig extends ConfigSection {
-	constructor(defaultOptions?: GameplayProps) {
-		super();
+	constructor(config: Config, defaultOptions?: GameplayProps) {
+		super(config);
 
 		this.loadEventListeners();
 

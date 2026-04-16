@@ -1,5 +1,4 @@
 import "@pixi/layout";
-import { Assets } from "pixi.js";
 import type Audio from "./Audio";
 import type BeatmapSet from "./BeatmapSet";
 import { inject, provide } from "./Context";
@@ -130,16 +129,6 @@ document.body.addEventListener("click", (e) => {
 	} catch {
 		// the wake lock request fails - usually system related, such being low on battery
 	}
-
-	await Promise.all([
-		Assets.load({ src: "./assets/metadata.png", parser: "texture" }),
-		Assets.load({ src: "./assets/back.png", parser: "texture" }),
-		Assets.load({ src: "./assets/play.png", parser: "texture" }),
-		Assets.load({ src: "./assets/pause.png", parser: "texture" }),
-		Assets.load({ src: "./assets/next.png", parser: "texture" }),
-		Assets.load({ src: "./assets/maximize.png", parser: "texture" }),
-		Assets.load({ src: "./assets/x.png", parser: "texture" }),
-	]);
 
 	const game = provide("game", new Game());
 	await game.init();

@@ -3,13 +3,15 @@ import { LayoutContainer } from "@pixi/layout/components";
 import { Tween } from "@tweenjs/tween.js";
 import { Vector2 } from "osu-classes";
 import {
+    Color,
 	// Application,
-	Assets,
 	Container,
 	Graphics,
 	Rectangle,
 	Sprite,
 	Text,
+	Texture,
+	type StrokeStyle,
 	type TextStyleOptions,
 } from "pixi.js";
 import type Audio from "@/Audio";
@@ -65,7 +67,6 @@ export default class Gameplay extends ScopedClass {
 		super();
 
 		this.container = new Container({
-			label: "gameplay",
 			layout: {
 				position: "absolute",
 				width: 0,
@@ -75,7 +76,6 @@ export default class Gameplay extends ScopedClass {
 			interactive: true,
 		});
 		this.wrapper = new Container({
-			label: "wrapper",
 			layout: {
 				width: "100%",
 				height: "100%",
@@ -83,7 +83,6 @@ export default class Gameplay extends ScopedClass {
 			interactive: true,
 		});
 		this.background = new LayoutContainer({
-			label: "dim",
 			layout: {
 				width: "100%",
 				height: "100%",
@@ -102,21 +101,19 @@ export default class Gameplay extends ScopedClass {
 		});
 		this.selector = new Graphics()
 			.rect(0, 0, 1, 1)
-			.fill({ color: 0xffffff, alpha: 0.3 })
-			.stroke({ width: 1, color: 0xffffff, pixelLine: true });
+			.fill({ color: 0xffffff, alpha: 0.3 });
+		this.selector.cacheAsTexture(true);
 
 		this.objectsContainer = new Container({
-			label: "objectsContainer",
 			boundsArea: new Rectangle(0, 0, 512, 384),
+			isRenderGroup: true
 		});
 
 		this.cursorLayer = new Container({
-			label: "cursorContainer",
 			boundsArea: new Rectangle(0, 0, 512, 384),
 		});
 
 		this.selectContainer = new Container({
-			label: "selectContainer",
 			boundsArea: new Rectangle(0, 0, 512, 384),
 		});
 
@@ -126,10 +123,8 @@ export default class Gameplay extends ScopedClass {
 		this.grid = new Graphics({
 			interactive: false,
 			eventMode: "none",
-			visible: inject<GameplayConfig>("config/gameplay")?.showGrid ?? true,
-			alpha: 0.5
+			visible: inject<GameplayConfig>("config/gameplay")?.showGrid ?? true
 		});
-		this.drawGrid(512);
 
 		this.createStats();
 		this.createCloseButton();
@@ -199,6 +194,8 @@ export default class Gameplay extends ScopedClass {
 				this.grid.visible = val;
 			},
 		);
+
+		this.reLayout();
 	}
 
 	reLayout() {
@@ -250,113 +247,49 @@ export default class Gameplay extends ScopedClass {
 		const unit = 32 * scale;
 		const halfUnit = unit / 2;
 		const cornerRadius = 8 * scale;
-
-		this.grid.clear().roundRect(0, 0, width, height, cornerRadius).stroke({
-			color: 0xffffff,
-			alpha: 0.8,
-			width: 2,
-			alignment: 0.5,
-		});
+		const color = new Color([1, 1, 1, 0.5]);
+		
+		this.grid.clear();
+		this.grid.roundRect(0, 0, width, height, cornerRadius)
+			.stroke({ color, width: 2, alignment: 0.5 });
 
 		for (let i = unit; i < width - 1; i += unit) {
-			this.grid.moveTo(i, 0).lineTo(i, height).stroke({
-				color: 0xffffff,
-				alpha: 0.4,
-				pixelLine: true,
-			});
+			this.grid.rect(i - 0.5, 0, 1, height).fill(color);
 		}
 
 		for (let i = unit; i < height - 1; i += unit) {
-			this.grid.moveTo(0, i).lineTo(width, i).stroke({
-				color: 0xffffff,
-				alpha: 0.4,
-				pixelLine: true,
-			});
+			this.grid.rect(0, i - 0.5, width, 1).fill(color);
 		}
 
+		this.grid.rect(width / 2 - 0.5, 0, 1, height).fill(color);
+		this.grid.rect(0, height / 2 - 0.5, width, 1).fill(color);
+
+		const cornerStroke: StrokeStyle = {
+			color,
+			width: 4,
+			alignment: 0.5,
+			cap: "round",
+			join: "round",
+		};
+
 		this.grid
-			.moveTo(0, halfUnit)
-			.lineTo(0, cornerRadius)
+			.moveTo(0, halfUnit).lineTo(0, cornerRadius)
 			.arc(cornerRadius, cornerRadius, cornerRadius, Math.PI, -Math.PI / 2)
-			.lineTo(halfUnit, 0)
-			.stroke({
-				color: 0xffffff,
-				alpha: 1,
-				width: 4,
-				alignment: 0.5,
-				cap: "round",
-				join: "round",
-			})
-			.moveTo(width - halfUnit, 0)
-			.lineTo(width - cornerRadius, 0)
+			.lineTo(halfUnit, 0).stroke(cornerStroke)
+
+			.moveTo(width - halfUnit, 0).lineTo(width - cornerRadius, 0)
 			.arc(width - cornerRadius, cornerRadius, cornerRadius, -Math.PI / 2, 0)
-			.lineTo(width, halfUnit)
-			.stroke({
-				color: 0xffffff,
-				alpha: 1,
-				width: 4,
-				alignment: 0.5,
-				cap: "round",
-				join: "round",
-			})
-			.moveTo(width, height - halfUnit)
-			.lineTo(width, height - cornerRadius)
-			.arc(
-				width - cornerRadius,
-				height - cornerRadius,
-				cornerRadius,
-				0,
-				Math.PI / 2,
-			)
-			.lineTo(width - halfUnit, height)
-			.stroke({
-				color: 0xffffff,
-				alpha: 1,
-				width: 4,
-				alignment: 0.5,
-				cap: "round",
-				join: "round",
-			})
-			.moveTo(halfUnit, height)
-			.lineTo(cornerRadius, height)
-			.arc(
-				cornerRadius,
-				height - cornerRadius,
-				cornerRadius,
-				Math.PI / 2,
-				Math.PI,
-			)
-			.lineTo(0, height - halfUnit)
-			.stroke({
-				color: 0xffffff,
-				alpha: 1,
-				width: 4,
-				alignment: 0.5,
-				cap: "round",
-				join: "round",
-			});
+			.lineTo(width, halfUnit).stroke(cornerStroke)
 
-		this.grid
-			.moveTo(width / 2, 0)
-			.lineTo(width / 2, height)
-			.stroke({
-				color: 0xffffff,
-				alpha: 1,
-				width: 1,
-				alignment: 0.5,
-				pixelLine: false,
-			});
+			.moveTo(width, height - halfUnit).lineTo(width, height - cornerRadius)
+			.arc(width - cornerRadius, height - cornerRadius, cornerRadius, 0, Math.PI / 2)
+			.lineTo(width - halfUnit, height).stroke(cornerStroke)
 
-		this.grid
-			.moveTo(0, height / 2)
-			.lineTo(width, height / 2)
-			.stroke({
-				color: 0xffffff,
-				alpha: 1,
-				width: 1,
-				alignment: 0.5,
-				pixelLine: false,
-			});
+			.moveTo(halfUnit, height).lineTo(cornerRadius, height)
+			.arc(cornerRadius, height - cornerRadius, cornerRadius, Math.PI / 2, Math.PI)
+			.lineTo(0, height - halfUnit).stroke(cornerStroke)
+			
+			.cacheAsTexture(true);
 	}
 
 	dragWindow: [Vector2, Vector2] = [new Vector2(0, 0), new Vector2(0, 0)];
@@ -433,12 +366,6 @@ export default class Gameplay extends ScopedClass {
 					if (collided) selected.push(idx);
 				}
 			}
-
-			selected.sort(
-				(a, b) =>
-					beatmap.objects[a].object.startTime -
-					beatmap.objects[b].object.startTime,
-			);
 
 			if (!event.ctrlKey || selected.length === 0) {
 				for (const select of this.selected) {
@@ -534,10 +461,7 @@ export default class Gameplay extends ScopedClass {
 		});
 
 		(async () => {
-			closeButton.texture = await Assets.load({
-				src: "./assets/x.png",
-				parser: "texture",
-			});
+			closeButton.texture = Texture.from("x.png");
 		})();
 
 		closeButtonContainer.cursor = "pointer";

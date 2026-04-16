@@ -1,193 +1,191 @@
-import * as Tone from "tone";
 import type BeatmapSet from "@/BeatmapSet";
 import type AudioConfig from "@/Config/AudioConfig";
 import { inject, ScopedClass } from "../Context";
 import SpectrogramProcessor from "./SpectrogramProcessor";
 
+import { SoundTouchNode } from "@soundtouchjs/audio-worklet";
+
+const audioContext = new AudioContext;
+await SoundTouchNode.register(audioContext, '/soundtouch-processor.js');
+
+export function getAudioContext() {
+    return audioContext;
+}
+
 export default class Audio extends ScopedClass {
-	private localGainNode: GainNode;
-	private previousTimestamp = 0;
-	private _currentTime = 0;
-	private startTime = 0;
+    private localGainNode: GainNode;
+    private previousTimestamp = 0;
+    private _currentTime = 0;
+    private startTime = 0;
 
-	player?: Tone.Player | Tone.GrainPlayer;
-	normalPlayer?: Tone.Player;
-	grainPlayer?: Tone.GrainPlayer;
+    private audioBuffer?: AudioBuffer;
+    private sourceNode?: AudioBufferSourceNode;
+    private soundTouchNode?: SoundTouchNode;
 
-	state: "PLAYING" | "STOPPED" = "STOPPED";
+    state: "PLAYING" | "STOPPED" = "STOPPED";
+    init = false;
 
-	init = false;
+    constructor(private masterNode: AudioNode) {
+        super();
 
-	constructor(private audioContext: Tone.BaseContext) {
-		super();
-		this.localGainNode = audioContext.createGain();
-		this.localGainNode.gain.value =
-			inject<AudioConfig>("config/audio")?.musicVolume ?? 0.8;
-		inject<AudioConfig>("config/audio")?.onChange("musicVolume", (val) => {
-			this.localGainNode.gain.value = val;
-		});
+        this.localGainNode = masterNode.context.createGain();
+        this.localGainNode.gain.value =
+            inject<AudioConfig>("config/audio")?.musicVolume ?? 0.8;
 
-		Tone.setContext(audioContext);
-		this.lookahead = 0.1;
-	}
+        inject<AudioConfig>("config/audio")?.onChange("musicVolume", (val) => {
+            this.localGainNode.gain.value = val;
+        });
+    }
 
-	get playbackRate() {
-		return this.context.consume<BeatmapSet>("beatmapset")?.playbackRate ?? 1;
-	}
+    get playbackRate() {
+        return this.context.consume<BeatmapSet>("beatmapset")?.playbackRate ?? 1;
+    }
 
-	get currentTime() {
-		if (this.state === "STOPPED") return this._currentTime;
+    private desyncedFrames = 0;
 
-		const offset =
-			performance.now() -
-			this.previousTimestamp -
-			(this.audioContext.currentTime * 1000 - this.startTime);
+    get currentTime() {
+        if (this.state === "STOPPED") return this._currentTime;
 
-		if (offset > 20) {
-			this.currentTime = this._currentTime;
-			console.warn(`Audio desynced: ${offset.toFixed(2)}ms`);
-		}
+        const now =
+            this._currentTime +
+            (performance.now() - this.previousTimestamp) * this.playbackRate;
 
-		if (
-			this._currentTime +
-				(performance.now() - this.previousTimestamp) * this.playbackRate >
-			this.duration
-		) {
-			if (this.state === "PLAYING") {
-				this.context.consume<BeatmapSet>("beatmapset")?.toggle();
-				this.context.consume<BeatmapSet>("beatmapset")?.seek(0);
-			}
-			return this.duration;
-		}
+        const offset =
+            (performance.now() -
+                this.previousTimestamp -
+                (this.masterNode.context.currentTime * 1000 - this.startTime)) *
+            this.playbackRate;
 
-		return (
-			this._currentTime +
-			(performance.now() - this.previousTimestamp) * this.playbackRate
-		);
-	}
+        if (Math.abs(offset) > 10) this.desyncedFrames++;
+        else this.desyncedFrames = 0;
 
-	set currentTime(val: number) {
-		if (!this.player) throw new Error("You haven't initiated audio yet!");
-		const previousState = this.state;
+        if (this.desyncedFrames > 30) {
+            this.context.consume<BeatmapSet>("beatmapset")?.seek(now);
+            this.desyncedFrames = 0;
+            console.warn(`Audio desynced: ${offset.toFixed()}ms`);
+        }
 
-		if (previousState === "PLAYING") {
-			this.pause();
-		}
+        if (now > this.duration) {
+            if (this.state === "PLAYING") {
+                this.context.consume<BeatmapSet>("beatmapset")?.toggle();
+                this.context.consume<BeatmapSet>("beatmapset")?.seek(0);
+            }
+            return this.duration;
+        }
 
-		this._currentTime =
-			val > this.player.buffer.duration * 1000 || val < 0 ? 0 : val;
+        return now;
+    }
 
-		Tone.getTransport().seconds =
-			this._currentTime / 1000 / this.playbackRate + this.lookahead;
+    set currentTime(val: number) {
+        const previousState = this.state;
 
-		if (previousState === "PLAYING") {
-			this.play();
-		}
-	}
+        if (previousState === "PLAYING") this.pause();
 
-	async createBufferNode(blob: Blob) {
-		const data = await Tone.getContext().decodeAudioData(await blob.arrayBuffer());
-		new SpectrogramProcessor(data);
+        this._currentTime =
+            val > (this.audioBuffer?.duration ?? 0) * 1000 || val < 0
+                ? 0
+                : val;
 
-		this.grainPlayer = new Tone.GrainPlayer(data);
-		this.normalPlayer = new Tone.Player(data);
+        if (previousState === "PLAYING") this.play();
+    }
 
-		this.player = this.normalPlayer;
-		this.player.sync().start(0);
+    async createBufferNode(blob: Blob) {
+        const ctx = this.masterNode.context;
 
-		const sizeMb = data.length * data.numberOfChannels * 4 / (1024 * 1024);
-		const sizePerChannel = data.length * 4 / (1024 * 1024);
+        const data = await ctx.decodeAudioData(await blob.arrayBuffer());
+        this.audioBuffer = data;
 
-		console.log(`Audio buffer size: ${sizeMb.toFixed()}MB (~${sizePerChannel.toFixed()}MB per channel)`);
+        new SpectrogramProcessor(data);
 
-		Tone.getTransport().seconds = this.lookahead;
+        const sizePerChannel = data.length * 4 / (1024 * 1024);
+        const sizeMb = sizePerChannel * data.numberOfChannels;
 
-		this.init = true;
-	}
+        console.log(`Audio buffer size: ${sizeMb.toFixed()}MB (${sizePerChannel.toFixed()}MB per channel)`);
 
-	private _lookahead = 0.1;
-	get lookahead() {
-		return this._lookahead;
-	}
+        this.init = true;
+    }
 
-	set lookahead(val: number) {
-		this._lookahead = val;
-		Tone.getContext().lookAhead = val;
-	}
+    toggle() {
+        if (this.state === "PLAYING") {
+            this.pause();
+            return;
+        }
+        this.play();
+    }
 
-	toggle() {
-		if (this.state === "PLAYING") {
-			this.pause();
-			return;
-		}
+    play() {
+        if (this.state === "PLAYING")
+            throw new Error("Already playing");
 
-		const playbackRate =
-			this.context.consume<BeatmapSet>("beatmapset")?.playbackRate ?? 1;
+        if (!this.audioBuffer)
+            throw new Error("Audio not initialized");
 
-		this.player = playbackRate !== 1 ? this.grainPlayer : this.normalPlayer;
+        this.state = "PLAYING";
 
-		if (this.grainPlayer) {
-			const baseWindow =
-				60000 /
-				(this.context.consume<BeatmapSet>("beatmapset")?.master?.data.bpm ??
-					120) /
-				2 /
-				1000;
+        const ctx = this.masterNode.context;
 
-			this.grainPlayer.playbackRate = playbackRate;
-			this.grainPlayer.grainSize = baseWindow;
-			this.grainPlayer.overlap = baseWindow / 16;
-		}
+        this.sourceNode = ctx.createBufferSource();
+        this.sourceNode.buffer = this.audioBuffer;
+        this.sourceNode.loop = false;
 
-		if (this.state === "STOPPED") {
-			this.play();
-			return;
-		}
-	}
+        let offsetSec = this._currentTime / 1000;
+        
+        if (this.playbackRate !== 1) {
+            this.soundTouchNode = new SoundTouchNode(ctx);
+            this.sourceNode.playbackRate.value = this.playbackRate;
+            this.soundTouchNode.playbackRate.value = this.playbackRate;
+            this.soundTouchNode.pitch.value = 1;
+    
+            this.sourceNode.connect(this.soundTouchNode);
+            this.soundTouchNode.connect(this.localGainNode);
+        }
+        else {
+            this.sourceNode.connect(this.localGainNode);
+        }
+        
+        this.localGainNode.connect(this.masterNode);
+        this.sourceNode.start(0, offsetSec);
 
-	play() {
-		if (this.state === "PLAYING")
-			throw new Error("You cannot start an already started audio!");
-		if (!this.player) throw new Error("You haven't initiated audio yet!");
-		this.state = "PLAYING";
+        this.startTime = ctx.currentTime * 1000;
+        this.previousTimestamp = performance.now();
 
-		Tone.getTransport().seconds =
-			this._currentTime / 1000 / this.playbackRate + this.lookahead;
+        this.sourceNode.onended = () => {
+            if (this.state === "PLAYING") {
+                this.pause();
+                this._currentTime = 0;
+            }
+        };
+    }
 
-		this.startTime = this.audioContext.currentTime * 1000;
+    pause() {
+        if (this.state === "STOPPED")
+            throw new Error("Already stopped");
 
-		this.player?.unsync();
-		this.player?.sync().start(0);
-		Tone.getTransport().start(undefined);
-		Tone.connect(this.player, this.localGainNode);
-		this.localGainNode.connect(
-			// biome-ignore lint/style/noNonNullAssertion: Ensured
-			this.context.consume<GainNode>("masterGainNode")!,
-		);
+        this.state = "STOPPED";
 
-		this.previousTimestamp = performance.now();
-	}
+        this._currentTime +=
+            (performance.now() - this.previousTimestamp) * this.playbackRate;
 
-	pause() {
-		if (this.state === "STOPPED")
-			throw new Error("You cannot stop an already stopped audio!");
-		if (!this.player) throw new Error("You haven't initiated audio yet!");
-		this.state = "STOPPED";
+        if (this.sourceNode) {
+            this.sourceNode.onended = null;
+            this.sourceNode.stop();
+            this.sourceNode.disconnect();
+            this.sourceNode = undefined;
+        }
+        if (this.soundTouchNode) {
+            this.soundTouchNode.disconnect();
+            this.soundTouchNode = undefined;
+        }
+        this.localGainNode.disconnect();
+    }
 
-		Tone.getTransport().pause();
-		this._currentTime +=
-			(performance.now() - this.previousTimestamp) * this.playbackRate;
+    get duration() {
+        return (this.audioBuffer?.duration ?? 0) * 1000;
+    }
 
-		Tone.disconnect(this.player);
-		this.localGainNode.disconnect();
-	}
-
-	get duration() {
-		return (this.player?.buffer.duration ?? 0) * 1000;
-	}
-
-	destroy() {
-		this.grainPlayer?.dispose();
-		this.normalPlayer?.dispose();
-	}
+    destroy() {
+        if (this.state === "PLAYING") this.pause();
+        this.audioBuffer = undefined;
+        this.init = false;
+    }
 }

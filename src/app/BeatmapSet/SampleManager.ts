@@ -1,6 +1,5 @@
 // @ts-ignore
 import { getFileAudioBuffer } from "@soundcut/decode-audio-data-fast";
-import {BaseContext, type Context} from "tone";
 import { inject } from "../Context";
 import type SkinManager from "../Skinning/SkinManager";
 import type { Resource } from "../ZipHandler";
@@ -12,7 +11,7 @@ export default class SampleManager {
 	private map = new Map<string, AudioBuffer>();
 
 	constructor(
-		private audioContext: BaseContext,
+		private audioContext: BaseAudioContext,
 		private files: Map<string, Resource>,
 	) {}
 

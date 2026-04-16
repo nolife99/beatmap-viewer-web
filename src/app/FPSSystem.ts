@@ -1,12 +1,12 @@
 import { type BitmapText, ExtensionType, extensions, type Renderer } from "pixi.js";
 import { inject } from "./Context";
 
-export const frameData = {
+const frameData = {
 	fps: 0,
 	deltaMS: 0,
 };
 
-export class FPSSystem {
+class FPSSystem {
 	static extension = {
 		type: [ExtensionType.WebGLSystem, ExtensionType.WebGPUSystem],
 		name: "fps",
@@ -38,7 +38,7 @@ export class FPSSystem {
 		const fps = 1000 / (this._renderStart - this._lastFrame);
 		this._fpsQueue.push(fps);
 
-		while (this._fpsQueue.length > 100) {
+		while (this._fpsQueue.length >= 16) {
 			this._fpsQueue.shift();
 		}
 
@@ -55,7 +55,7 @@ export class FPSSystem {
 		const deltaMS = performance.now() - this._renderStart;
 		this._msQueue.push(deltaMS);
 
-		while (this._msQueue.length > 100) {
+		while (this._msQueue.length >= 16) {
 			this._msQueue.shift();
 		}
 

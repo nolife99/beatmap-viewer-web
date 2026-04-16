@@ -20,7 +20,6 @@ export default class Controls {
 			flexGrow: 0,
 			backgroundColor: new Color(inject<ColorConfig>("config/color")?.color.crust).setAlpha(0.7),
 			flexDirection: "row",
-			overflow: "hidden",
 		},
 		zIndex: 9999,
 	});

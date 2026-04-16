@@ -20,7 +20,6 @@ export default class Viewer {
 			flexDirection: "column",
 			backgroundColor: [0, 0, 0, 0.2],
 			borderRadius: 20,
-			overflow: "hidden",
 		},
 		interactive: true,
 	});

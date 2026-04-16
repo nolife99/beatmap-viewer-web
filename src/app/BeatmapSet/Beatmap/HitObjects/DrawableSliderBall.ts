@@ -6,7 +6,6 @@ import { type Context, inject } from "@/Context";
 import { update as argonUpdate } from "@/Skinning/Argon/ArgonSliderBall";
 import { update as legacyUpdate } from "@/Skinning/Legacy/LegacySliderBall";
 import type Skin from "@/Skinning/Skin";
-import Gameplay from "@/UI/main/viewer/Gameplay";
 import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
 import type Beatmap from "..";
 import AnimatedSkinnableElement from "./AnimatedSkinnableElement";
@@ -205,7 +204,7 @@ export default class DrawableSliderBall extends AnimatedSkinnableElement {
 			this.texturesList.length;
 		this.sliderb.texture = this.texturesList[frameIndex];
 
-		if (diff.flength() < 0.01) return;
+		if (diff.length() < 0.01) return;
 
 		const angle = -90 + (-Math.atan2(diff.x, diff.y) * 180) / Math.PI;
 		this.container.angle = angle;

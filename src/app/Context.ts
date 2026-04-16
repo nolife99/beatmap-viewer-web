@@ -8,7 +8,10 @@ export const provide = <T>(key: string, value: T): T => {
 
 // biome-ignore lint/suspicious/noExplicitAny: Literally any
 export const inject = <T = any>(key: string): T | undefined => {
-	return _map.get(key);
+	const result = _map.get(key);
+	if (result === undefined) console.warn(`Cannot find key ${key}`);
+	
+	return result;
 };
 
 export class Context {
@@ -37,7 +40,7 @@ export class Context {
 	}
 }
 
-export const createContext = () => {
+const createContext = () => {
 	// biome-ignore lint/suspicious/noExplicitAny: Literally any
 	const _map: Map<string, any> = new Map();
 

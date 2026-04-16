@@ -1,6 +1,6 @@
 import { LayoutContainer } from "@pixi/layout/components";
 import type { DifficultyPoint, SamplePoint, TimingPoint } from "osu-classes";
-import { Container, type FederatedPointerEvent, Rectangle } from "pixi.js";
+import { Container, type FederatedPointerEvent, Rectangle, Ticker, type TickerCallback } from "pixi.js";
 import type ColorConfig from "@/Config/ColorConfig";
 import type ExperimentalConfig from "@/Config/ExperimentalConfig";
 import { inject } from "@/Context";
@@ -9,9 +9,6 @@ import type State from "@/State";
 import AnimationController from "@/UI/animation/AnimationController";
 import Easings from "@/UI/Easings";
 import Point from "./Point";
-
-const DECAY_RATE = 0.99;
-const LN0_9 = Math.log(DECAY_RATE);
 
 export default class Timing {
 	container: LayoutContainer;
@@ -120,13 +117,13 @@ export default class Timing {
 		points: (TimingPoint | DifficultyPoint | SamplePoint)[],
 	) {
 		return await Promise.all(
-			points.map((point, i) => {
+			Iterator.from(points).map((point, i) => {
 				return new Promise<Point>((resolve) => {
 					setTimeout(() => {
 						const x = new Point(point);
 						x.container.y = i * 45;
 						resolve(x);
-					}, 10);
+					});
 				});
 			}),
 		);
@@ -260,7 +257,7 @@ export default class Timing {
 		);
 	}
 
-	private _currentLoop?: number;
+	private _currentLoop?: TickerCallback<any>;
 	private _isDown = false;
 	private _startPosition = 0;
 	private _cacheOffset = 0;
@@ -272,7 +269,7 @@ export default class Timing {
 	handleDragStart(event: FederatedPointerEvent) {
 		this._isDown = true;
 		if (this._currentLoop) {
-			cancelAnimationFrame(this._currentLoop);
+			Ticker.shared.remove(this._currentLoop);
 		}
 		this._cacheOffset = this._scrollOffset;
 		this._currentVelocity = 0;
@@ -314,7 +311,7 @@ export default class Timing {
 		}
 
 		this._last = performance.now();
-		this._currentLoop = requestAnimationFrame(() => this.handleVelocity());
+		Ticker.shared.add(this._currentLoop = () => this.handleVelocity());
 	}
 
 	private bounceBack(leway = 200) {
@@ -350,6 +347,5 @@ export default class Timing {
 		}
 
 		this._currentVelocity *= 0.85;
-		this._currentLoop = requestAnimationFrame(() => this.handleVelocity());
 	}
 }

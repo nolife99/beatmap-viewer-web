@@ -14,22 +14,6 @@ export const update = (drawable: DrawableSliderFollowCircle, time: number) => {
 		currentTrackingFrame?.[1].startTime ?? drawable.object.endTime;
 
 	const duration = endTime - startTime;
-
-	const completionProgress = Math.min(
-		1,
-		Math.max(0, (time - drawable.object.startTime) / drawable.object.duration),
-	);
-
-	const position = drawable.object.path.curvePositionAt(
-		completionProgress,
-		drawable.object.spans,
-	);
-
-	drawable.container.x =
-		drawable.object.startX + position.x + drawable.object.stackedOffset.x;
-	drawable.container.y =
-		drawable.object.startY + position.y + drawable.object.stackedOffset.y;
-
 	const scaleInDuration = Math.min(180, duration);
 	const fadeInDuration = Math.min(60, duration);
 	const outDuration = 200;

@@ -1,14 +1,14 @@
-import axios from "axios";
 import { Elysia, t } from "elysia";
 
 const download = new Elysia().post(
 	"/api/download",
 	async ({ body: { url } }) => {
-		const response = await axios.get(url, {
-			responseType: "stream",
-		});
-		
-        return new Response(response.data)
+		const response = await fetch(url);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+		}
+
+		return new Response(response.body);
 	},
 	{
 		body: t.Object({

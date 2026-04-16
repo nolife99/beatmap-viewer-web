@@ -1,7 +1,7 @@
 import type { LayoutOptions } from "@pixi/layout";
 import { LayoutContainer } from "@pixi/layout/components";
 import type { BeatmapMetadataSection } from "osu-classes";
-import { Text, type TextStyle, type TextStyleOptions } from "pixi.js";
+import { BitmapText, type TextStyle, type TextStyleOptions } from "pixi.js";
 import type ColorConfig from "@/Config/ColorConfig";
 import { inject } from "@/Context";
 import type ResponsiveHandler from "@/ResponsiveHandler";
@@ -22,7 +22,7 @@ const defaultLayout: Omit<LayoutOptions, "target"> | null | undefined = {
 export default class Metadata {
 	container: LayoutContainer;
 
-	artist = new Text({
+	artist = new BitmapText({
 		text: "",
 		style: {
 			...defaultStyle,
@@ -32,7 +32,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout,
 	});
-	artistUnicode = new Text({
+	artistUnicode = new BitmapText({
 		text: "",
 		style: {
 			...defaultStyle,
@@ -42,7 +42,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout,
 	});
-	title = new Text({
+	title = new BitmapText({
 		text: "",
 		style: {
 			...defaultStyle,
@@ -52,7 +52,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout,
 	});
-	titleUnicode = new Text({
+	titleUnicode = new BitmapText({
 		text: "",
 		style: {
 			...defaultStyle,
@@ -62,7 +62,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout,
 	});
-	version = new Text({
+	version = new BitmapText({
 		text: "",
 		style: {
 			...defaultStyle,
@@ -72,7 +72,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout,
 	});
-	source = new Text({
+	source = new BitmapText({
 		text: "",
 		style: {
 			...defaultStyle,
@@ -82,7 +82,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout,
 	});
-	tags = new Text({
+	tags = new BitmapText({
 		text: "",
 		style: {
 			...defaultStyle,
@@ -165,8 +165,8 @@ export default class Metadata {
 		);
 	}
 
-	private createContainer(title: string, content: Text) {
-		const titleObject = new Text({
+	private createContainer(title: string, content: BitmapText) {
+		const titleObject = new BitmapText({
 			text: title,
 			style: {
 				...defaultStyle,

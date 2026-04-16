@@ -40,7 +40,7 @@ export default class Config {
 
 		this.renderer = provide(
 			"config/renderer",
-			new RendererConfig(
+			new RendererConfig(this,
 				savedSettings?.renderer ?? {
 					antialiasing: true,
 					renderer: "webgl",
@@ -49,15 +49,15 @@ export default class Config {
 		);
 		this.mirror = provide(
 			"config/mirror",
-			new MirrorConfig(savedSettings?.mirror),
+			new MirrorConfig(this, savedSettings?.mirror),
 		);
 		this.timeline = provide(
 			"config/timeline",
-			new TimelineConfig(savedSettings?.timeline),
+			new TimelineConfig(this, savedSettings?.timeline),
 		);
 		this.background = provide(
 			"config/background",
-			new BackgroundConfig(
+			new BackgroundConfig(this,
 				savedSettings?.background ?? {
 					backgroundDim: 60,
 					backgroundBlur: 0,
@@ -69,7 +69,7 @@ export default class Config {
 		);
 		this.audio = provide(
 			"config/audio",
-			new AudioConfig(
+			new AudioConfig(this,
 				savedSettings?.audio ?? {
 					masterVolume: 0.8,
 					musicVolume: 0.5,
@@ -80,7 +80,7 @@ export default class Config {
 		);
 		this.skinning = provide(
 			"config/skinning",
-			new SkinningConfig(
+			new SkinningConfig(this,
 				savedSettings?.skinning ?? {
 					skinningIdx: 0,
 					disableBeatmapSkin: false,
@@ -88,10 +88,10 @@ export default class Config {
 				},
 			),
 		);
-		this.color = provide("config/color", new ColorConfig());
+		this.color = provide("config/color", new ColorConfig(this));
 		this.experimental = provide(
 			"config/experimental",
-			new ExperimentalConfig(
+			new ExperimentalConfig(this,
 				savedSettings?.experimental ?? {
 					asyncLoading: true,
 					overlapGameplays: false,
@@ -100,13 +100,13 @@ export default class Config {
 		);
 		this.fullscreen = provide(
 			"config/fullscreen",
-			new FullscreenConfig({
+			new FullscreenConfig(this, {
 				fullscreen: false,
 			}),
 		);
 		this.gameplay = provide(
 			"config/gameplay",
-			new GameplayConfig(
+			new GameplayConfig(this,
 				savedSettings?.gameplay ?? {
 					showGrid: true,
 					hitAnimation: true,
@@ -119,22 +119,19 @@ export default class Config {
 
 		const overlay = document.querySelector<HTMLDivElement>("#overlay");
 		const settings = document.querySelector<HTMLDivElement>("#settings");
-		if (overlay) {
-			overlay.addEventListener("click", () => {
-				overlay?.classList.add("overlayHidden");
-				overlay?.classList.remove("overlay");
-				settings?.classList.remove("show");
-			});
-		}
+		
+		overlay?.addEventListener("click", () => {
+			overlay?.classList.add("overlayHidden");
+			overlay?.classList.remove("overlay");
+			settings?.classList.remove("show");
+		});
 
 		const button = document.querySelector<HTMLButtonElement>("#settingsButton");
-		if (button) {
-			button.addEventListener("click", () => {
-				settings?.classList.add("show");
-				overlay?.classList.add("overlay");
-				overlay?.classList.remove("overlayHidden");
-			});
-		}
+		button?.addEventListener("click", () => {
+			settings?.classList.add("show");
+			overlay?.classList.add("overlay");
+			overlay?.classList.remove("overlayHidden");
+		});
 
 		document.addEventListener("keydown", (event) => {
 			if (event.key && event.key.toLowerCase() !== "o" || !event.ctrlKey) return;
@@ -154,14 +151,14 @@ export default class Config {
 		localStorage.setItem(
 			"josuSettings",
 			JSON.stringify({
-				audio: this.audio.jsonify(),
-				background: this.background.jsonify(),
-				mirror: this.mirror.jsonify(),
-				renderer: this.renderer.jsonify(),
-				skinning: this.skinning.jsonify(),
-				timeline: this.timeline.jsonify(),
-				experimental: this.experimental.jsonify(),
-				gameplay: this.gameplay.jsonify(),
+				audio: this.audio?.jsonify(),
+				background: this.background?.jsonify(),
+				mirror: this.mirror?.jsonify(),
+				renderer: this.renderer?.jsonify(),
+				skinning: this.skinning?.jsonify(),
+				timeline: this.timeline?.jsonify(),
+				experimental: this.experimental?.jsonify(),
+				gameplay: this.gameplay?.jsonify(),
 			}),
 		);
 	}
