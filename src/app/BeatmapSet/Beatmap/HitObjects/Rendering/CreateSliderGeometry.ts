@@ -1,4 +1,4 @@
-import type { SliderProgressResult } from "@/BeatmapSet/Beatmap/HitObjects/CalculateSliderProgress.ts";
+import type { SliderProgressResult } from "./CalculateSliderProgress";
 import type { TypedArray } from "pixi.js";
 
 const DIVIDES = 48;

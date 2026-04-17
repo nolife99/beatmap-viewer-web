@@ -57,23 +57,21 @@ export const refreshColor = (drawable: DrawableSlider) => {
 		skin.config.Colours.SliderBorder.split(",").map((value) => +value / 255);
 	drawable.borderColor = borderColor;
 
-	drawable._shader.resources.customUniforms.uniforms.borderColor = borderColor;
-	drawable._shader.resources.customUniforms.uniforms.innerColor = lighten(
-		blur ? [0.5, 0.5, 0.5] : [color[0], color[1], color[2]],
-		blur ? 0.1 : 0.5,
-	);
-	drawable._shader.resources.customUniforms.uniforms.outerColor = darken(
-		blur ? [0.5, 0.5, 0.5] : [color[0], color[1], color[2]],
-		0.1,
-	);
-	drawable._shader.resources.customUniforms.uniforms.borderWidth = 0.128;
-	drawable._shader.resources.customUniforms.uniforms.bodyAlpha = 0.7;
-
-	drawable._selectShader.resources.customUniforms.uniforms.borderColor = [
-		49 / 255,
-		151 / 255,
-		255 / 255,
-		1.0,
-	];
-	drawable._selectShader.resources.customUniforms.uniforms.borderWidth = 0.128;
+	drawable.updateBodyUniforms({
+		borderColor,
+		innerColor: lighten(
+			blur ? [0.5, 0.5, 0.5] : [color[0], color[1], color[2]],
+			blur ? 0.1 : 0.5,
+		),
+		outerColor: darken(
+			blur ? [0.5, 0.5, 0.5] : [color[0], color[1], color[2]],
+			0.1,
+		),
+		borderWidth: 0.128,
+		bodyAlpha: 0.7
+	});
+	drawable.updateSelectionUniforms({
+		borderColor: [49 / 255, 151 / 255, 255 / 255],
+		borderWidth: 0.128
+	})
 };

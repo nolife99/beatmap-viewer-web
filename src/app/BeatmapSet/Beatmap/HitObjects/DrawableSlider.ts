@@ -13,21 +13,13 @@ import {
 	StandardHitObject,
 } from "osu-standard-stable";
 import {
-	AlphaFilter,
-	Buffer,
-	BufferUsage,
 	Container,
-	Geometry,
-	GpuProgram,
 	Graphics,
-	Mesh,
-	RenderLayer,
-	Shader,
+	RenderLayer
 } from "pixi.js";
 import type BeatmapSet from "@/BeatmapSet";
 import type ExperimentalConfig from "@/Config/ExperimentalConfig";
 import type GameplayConfig from "@/Config/GameplayConfig";
-import type RendererConfig from "@/Config/RendererConfig";
 import type SkinningConfig from "@/Config/SkinningConfig";
 import { type Context, inject } from "@/Context";
 import {
@@ -41,136 +33,37 @@ import type SkinManager from "@/Skinning/SkinManager";
 import type ProgressBar from "@/UI/main/controls/ProgressBar";
 import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
 import HitSample from "../../../Audio/HitSample";
-import { Clamp, darken, lighten } from "@/utils.ts";
+import { Clamp } from "@/utils.ts";
 import type Beatmap from "..";
 import type { SliderEvaluation } from "../Replay";
 import TimelineSlider from "../Timeline/TimelineSlider";
-import calculateSliderProgress, {type SliderProgressResult} from "./CalculateSliderProgress";
-import createGeometry from "./CreateSliderGeometry";
+import calculateSliderProgress, { type SliderProgressResult } from "./Rendering/CalculateSliderProgress";
 import type DrawableHitCircle from "./DrawableHitCircle";
 import DrawableHitObject, {
 	type IHasApproachCircle,
 } from "./DrawableHitObject";
 import DrawableJudgement from "./DrawableJudgement";
 import DrawableSliderBall from "./DrawableSliderBall";
+import SliderBodyRenderer, { type SliderUniformPatch } from "./Rendering/SliderBodyRenderer";
 import DrawableSliderFollowCircle from "./DrawableSliderFollowCircle";
 import DrawableSliderHead from "./DrawableSliderHead";
 import DrawableSliderRepeat from "./DrawableSliderRepeat";
 import DrawableSliderTail, { TAIL_LENIENCY } from "./DrawableSliderTail";
 import DrawableSliderTick from "./DrawableSliderTick";
-import fragment from "./Shaders/sliderShader.frag?raw";
-import vertex from "./Shaders/sliderShader.vert?raw";
-import gpuSrc from "./Shaders/sliderShader.wgsl?raw";
-import {sharedUpdate} from "@/Skinning/Shared/Slider.ts";
-
-const GL = { vertex, fragment };
-const GPU = GpuProgram.from({
-	vertex: {
-		source: gpuSrc,
-		entryPoint: "vsMain",
-	},
-	fragment: {
-		source: gpuSrc,
-		entryPoint: "fsMain",
-	},
-});
-
-const COLOR: [number, number, number, number] = [
-	69 / 255,
-	71 / 255,
-	90 / 255,
-	0,
-];
+import { sharedUpdate } from "@/Skinning/Shared/Slider.ts";
 
 export default class DrawableSlider
 	extends DrawableHitObject
 	implements IHasApproachCircle
 {
-	private _geometry: Geometry = new Geometry({
-		attributes: {
-			aPosition: {
-				buffer: new Buffer({
-					data: new Float32Array([]),
-					usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
-				}),
-				format: "float32x3",
-				stride: 4 * 3,
-			},
-		},
-		indexBuffer: []
-	});
-	public _shader = Shader.from({
-		gl: GL,
-		gpu: GPU,
-		resources: {
-			customUniforms: {
-				borderColor: {
-					value: [205 / 255, 214 / 255, 244 / 255, 1.0],
-					type: "vec4<f32>",
-				},
-				innerColor: { value: lighten(COLOR, 0.5), type: "vec4<f32>" },
-				outerColor: { value: darken(COLOR, 0.1), type: "vec4<f32>" },
-				borderWidth: { value: 0.128, type: "f32" },
-				bodyAlpha: { value: 0.7, type: "f32" },
-			},
-		},
-	});
-	public _selectShader = Shader.from({
-		gl: GL,
-		gpu: GPU,
-		resources: {
-			customUniforms: {
-				borderColor: {
-					value: [205 / 255, 214 / 255, 244 / 255, 1.0],
-					type: "vec4<f32>",
-				},
-				innerColor: { value: lighten(COLOR, 0.5), type: "vec4<f32>" },
-				outerColor: { value: darken(COLOR, 0.1), type: "vec4<f32>" },
-				borderWidth: { value: 0.128, type: "f32" },
-				bodyAlpha: { value: 0.0, type: "f32" },
-			},
-		},
-	});
-	_alphaFilter = new AlphaFilter();
+	private readonly renderer = new SliderBodyRenderer();
 
 	public drawableCircles: DrawableHitObject[] = [];
-	public body: Mesh<Geometry, Shader> = new Mesh({
-		geometry: this._geometry,
-		shader: this._shader,
-		filters: [this._alphaFilter],
-		blendMode:
-			inject<RendererConfig>("config/renderer")?.renderer === "webgl"
-				? "none"
-				: "max"
-	});
-
 	public select = new Container();
 
-	public _baseGeometry: Geometry = new Geometry({
-		attributes: {
-			aPosition: {
-				buffer: new Buffer({
-					data: new Float32Array([]),
-					usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
-				}),
-				format: "float32x3",
-				stride: 4 * 3,
-			},
-		},
-		indexBuffer: []
-	});
-	public selectBody: Mesh<Geometry, Shader> = new Mesh({
-		geometry: this._baseGeometry,
-		shader: this._selectShader,
-		filters: [new AlphaFilter({ alpha: 1 })],
-		blendMode:
-			inject<RendererConfig>("config/renderer")?.renderer === "webgl"
-				? "none"
-				: "max"
-	});
-
 	path: SliderProgressResult = {
-		points: [], length: 0
+		points: [],
+		length: 0,
 	};
 
 	ball: DrawableSliderBall;
@@ -192,6 +85,14 @@ export default class DrawableSlider
 
 	judgement: DrawableJudgement;
 
+	public get bodyAlpha() {
+		return this.renderer.alphaFilter.alpha;
+	}
+
+	public set bodyAlpha(val: number) {
+		this.renderer.alphaFilter.alpha = val;
+	}
+
 	constructor(object: Slider) {
 		super(object);
 		this.object = object;
@@ -202,7 +103,7 @@ export default class DrawableSlider
 			...object.nestedHitObjects
 				.filter((object) => object instanceof StandardHitObject)
 				.map((object) => {
-					if (object instanceof SliderTick)
+					if (object instanceof SliderTick) {
 						return new DrawableSliderTick(
 							object,
 							this.object,
@@ -210,37 +111,38 @@ export default class DrawableSlider
 								(sample) => sample.hitSound === "Normal",
 							)!,
 						).hook(this.context);
+					}
 
 					idx++;
 
-					if (object instanceof SliderRepeat)
+					if (object instanceof SliderRepeat) {
 						return new DrawableSliderRepeat(
 							object,
 							this.object,
 							this.object.nodeSamples[idx],
 						).hook(this.context);
+					}
 
-					if (object instanceof SliderTail)
+					if (object instanceof SliderTail) {
 						return new DrawableSliderTail(
 							object,
 							this.object,
 							this.object.nodeSamples[idx],
 						).hook(this.context);
+					}
 
-					if (object instanceof SliderHead)
+					if (object instanceof SliderHead) {
 						return new DrawableSliderHead(
 							object,
 							this.object,
 							this.object.nodeSamples[idx],
 						).hook(this.context);
+					}
 
 					return null;
 				})
 				.filter((object) => object !== null),
 		);
-
-		this.body.state.depthTest = true;
-		this.selectBody.state.depthTest = true;
 
 		this.context.provide("slider", this);
 
@@ -248,7 +150,7 @@ export default class DrawableSlider
 		this.followCircle = new DrawableSliderFollowCircle(this.object).hook(this.context);
 
 		this.wrapper.addChild(
-			this.body,
+			this.renderer.body,
 			...this.drawableCircles
 				.slice(1)
 				.toReversed()
@@ -262,7 +164,8 @@ export default class DrawableSlider
 
 		const judgementLayer = new RenderLayer();
 		this.container.addChild(judgementLayer, this.wrapper);
-		this.select.addChild(this.selectBody);
+
+		this.select.addChild(this.renderer.selectionBody);
 
 		for (const drawable of this.drawableCircles.toReversed()) {
 			const d = drawable as DrawableHitCircle;
@@ -282,9 +185,7 @@ export default class DrawableSlider
 
 		const whistleSample = new Sample();
 		whistleSample.hitSound = "sliderwhistle";
-		this.sliderWhistleSample = new HitSample([whistleSample]).hook(
-			this.context,
-		);
+		this.sliderWhistleSample = new HitSample([whistleSample]).hook(this.context);
 
 		const slideSample = new Sample();
 		slideSample.hitSound = "sliderslide";
@@ -302,8 +203,9 @@ export default class DrawableSlider
 			() => this.refreshColor(),
 		);
 
-		this._shader.resources.customUniforms.uniforms.scale =
-			(object.radius / 54.4) * (236 / 256);
+		this.updateRenderUniforms({
+			scale: (object.radius / 54.4) * (236 / 256),
+		});
 
 		this.timelineObject = new TimelineSlider(object).hook(this.context);
 
@@ -317,6 +219,18 @@ export default class DrawableSlider
 			object.stackedOffset,
 		).y;
 		this.judgement.container.scale.set(object.scale);
+	}
+
+	updateRenderUniforms(patch: SliderUniformPatch, includeSelection = true) {
+		this.renderer.setUniforms(patch, includeSelection);
+	}
+
+	updateBodyUniforms(patch: SliderUniformPatch) {
+		this.renderer.setBodyUniforms(patch);
+	}
+
+	updateSelectionUniforms(patch: SliderUniformPatch) {
+		this.renderer.setSelectionUniforms(patch);
 	}
 
 	private _isHover = false;
@@ -341,8 +255,9 @@ export default class DrawableSlider
 				circle instanceof DrawableSliderHead ||
 				circle instanceof DrawableSliderTail ||
 				circle instanceof DrawableSliderRepeat
-			)
+			) {
 				circle.select.visible = val;
+			}
 		}
 	}
 
@@ -354,13 +269,13 @@ export default class DrawableSlider
 	set object(val: Slider) {
 		this._object = val;
 
-		this.body.x = val.startPosition.x + val.stackedOffset.x;
-		this.body.y = val.startPosition.y + val.stackedOffset.y;
-		this.selectBody.x = val.startPosition.x + val.stackedOffset.x;
-		this.selectBody.y = val.startPosition.y + val.stackedOffset.y;
+		const x = val.startPosition.x + val.stackedOffset.x;
+		const y = val.startPosition.y + val.stackedOffset.y;
 
-		this.nodes.x = val.startPosition.x + val.stackedOffset.x;
-		this.nodes.y = val.startPosition.y + val.stackedOffset.y;
+		this.renderer.setPosition(x, y);
+
+		this.nodes.x = x;
+		this.nodes.y = y;
 
 		const nodes = val.nestedHitObjects.filter(
 			(object) => object instanceof StandardHitObject,
@@ -375,7 +290,6 @@ export default class DrawableSlider
 				circle.updateObjects(
 					nodes[i] as SliderTick,
 					val,
-					// biome-ignore lint/style/noNonNullAssertion: Always Available
 					val.samples.find((sample) => sample.hitSound === "Normal")!,
 				);
 				continue;
@@ -386,6 +300,7 @@ export default class DrawableSlider
 				circle.updateObjects?.(nodes[i], val, val.nodeSamples[idx]);
 			}
 		}
+
 		if (this.ball) this.ball.object = val;
 		if (this.followCircle) this.followCircle.object = val;
 		if (this.timelineObject) this.timelineObject.object = val;
@@ -432,43 +347,12 @@ export default class DrawableSlider
 		}
 		this.nodes.fill(0xff0000);
 
-		/* for (let i = 0; i < path.length; i++) {
-			const point = path.points[i];
-			if (i === 0) {
-				this.nodes.moveTo(point.x, point.y);
-			} else {
-				this.nodes.lineTo(point.x, point.y);
-			}
-		}
-		this.nodes.stroke({ width: 1, alignment: 0.5, color: 0xefefef });
+		const selectionScale = this.getSkinBodyScale();
+		const selectionRadius = val.radius * (236 / 256) * selectionScale;
 
-		for (let i = 0; i < path.length; i++) {
-			const p = path.points[i];
-			const prog = 1 - i / path.length;
-			this.nodes.circle(p.x, p.y, 2).fill([prog, prog, prog, 1]);
-		} */
+		this.renderer.updateSelectionGeometry(path, selectionRadius);
 
-		const { positions, indices } = createGeometry(
-			path,
-			val.radius *
-				(236 / 256) *
-				(inject<SkinManager>("skinManager")?.getCurrentSkin()?.config.General
-					.Argon
-					? 0.95
-					: 1),
-			this._baseGeometry.attributes.aPosition.buffer.data,
-			this._baseGeometry.indexBuffer.data
-		);
-		this._baseGeometry.attributes.aPosition.buffer.data = positions;
-		this._baseGeometry.indexBuffer.data = indices;
-
-		if (this.object.path.curveType === 'B')
-			console.log(`Slider at ${val.startTime} has ${indices.length} points`);
-
-		if (this._geometry.attributes.aPosition.buffer.data.length !== positions.length)
-			this._geometry.attributes.aPosition.buffer.data = new Float32Array(positions.length);
-		if (this._geometry.indexBuffer.data.length !== indices.length)
-			this._geometry.indexBuffer.data = new Uint32Array(indices.length);
+		this.lastGeometryState = { head: Infinity, tail: -Infinity, scale: -Infinity };
 	}
 
 	checkCollide(x: number, y: number, time: number) {
@@ -482,9 +366,7 @@ export default class DrawableSlider
 		const objY = obj.startY + obj.stackedOffset.y;
 
 		const pathPts = this.path.points;
-		const len = pathPts.length;
-
-		for (let i = 0; i < len - 1; i++) {
+		for (let i = 0; i < this.path.length - 1; i++) {
 			const p1 = pathPts[i];
 			const p2 = pathPts[i + 1];
 
@@ -536,6 +418,12 @@ export default class DrawableSlider
 	borderColor: number[] = [0, 0, 0];
 	color = "0,0,0";
 
+	private getSkinBodyScale() {
+		return inject<SkinManager>("skinManager")?.getCurrentSkin()?.config.General.Argon
+			? 0.95
+			: 1;
+	}
+
 	refreshSprite() {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
@@ -551,18 +439,14 @@ export default class DrawableSlider
 		const path = calculateSliderProgress(this.object.path, 0, 1, this.path.points);
 		if (path.length === 0) return;
 
-		const { positions, indices } = createGeometry(
-			path,
+		this.path = path;
+
+		const selectionRadius =
 			this.object.radius *
 			(236 / 256) *
-			(skin.config.General.Argon
-				? 0.95
-				: 1),
-			this._baseGeometry.attributes.aPosition.buffer.data,
-			this._baseGeometry.indexBuffer.data
-		);
-		this._baseGeometry.attributes.aPosition.buffer.data = positions;
-		this._baseGeometry.indexBuffer.data = indices;
+			(skin.config.General.Argon ? 0.95 : 1);
+
+		this.renderer.updateSelectionGeometry(path, selectionRadius);
 	}
 
 	refreshColor() {
@@ -589,10 +473,7 @@ export default class DrawableSlider
 		}
 
 		const comboIndex = this.object.comboIndexWithOffsets % skin.colorsLength;
-		// biome-ignore lint/suspicious/noExplicitAny: It is complicated
-		const color = (skin.config.Colours as any)[
-			`Combo${comboIndex + 1}`
-		] as string;
+		const color = (skin.config.Colours as any)[`Combo${comboIndex + 1}`] as string;
 		return `rgb(${color})`;
 	}
 
@@ -600,7 +481,7 @@ export default class DrawableSlider
 		return (this.drawableCircles[0] as DrawableHitCircle).approachCircle;
 	}
 
-	getTimeRange(): { start: number; end: number } {
+	getTimeRange() {
 		return {
 			start: this.object.startTime - this.object.timePreempt,
 			end: this.object.endTime + 800,
@@ -630,17 +511,21 @@ export default class DrawableSlider
 		if (this.object.hitSound !== 0) {
 			this.sliderWhistleSample.playLoop(
 				currentSamplePoint,
-				time, this.object.startTime, this.object.endTime
+				time,
+				this.object.startTime,
+				this.object.endTime,
 			);
 		}
 
 		this.sliderSlideSample.playLoop(
 			currentSamplePoint,
-			time, this.object.startTime, this.object.endTime
+			time,
+			this.object.startTime,
+			this.object.endTime,
 		);
 	}
 
-	lastGeometryState = { head: Infinity, tail: -Infinity, scale: -Infinity };
+	lastGeometryState = { head: Infinity, tail: -Infinity, scale: -Infinity }
 	updateGeometry(progressHead = 0, progressTail = 0, scale = 1) {
 		const snakeIn = inject<GameplayConfig>("config/gameplay")?.snakeInSlider;
 		const snakeOut = inject<GameplayConfig>("config/gameplay")?.snakeOutSlider;
@@ -658,9 +543,13 @@ export default class DrawableSlider
 		head = (isReversing ? snakeIn : snakeOut) ? head : 0;
 		tail = (isReversing ? snakeOut : snakeIn) ? Math.abs(tail) : 1;
 
-		if (head === this.lastGeometryState.head &&
+		if (
+			head === this.lastGeometryState.head &&
 			tail === this.lastGeometryState.tail &&
-			scale === this.lastGeometryState.scale) return;
+			scale === this.lastGeometryState.scale
+		) {
+			return;
+		}
 
 		this.lastGeometryState.head = head;
 		this.lastGeometryState.tail = tail;
@@ -670,15 +559,7 @@ export default class DrawableSlider
 		if (path.length === 0) return;
 
 		this.path = path;
-
-		const { positions, indices } = createGeometry(
-			path,
-			this.object.radius * (236 / 256) * scale,
-			this._geometry.attributes.aPosition.buffer.data,
-			this._geometry.indexBuffer.data
-		);
-		this._geometry.attributes.aPosition.buffer.data = positions;
-		this._geometry.indexBuffer.data = indices;
+		this.renderer.updateMainGeometry(path, this.object.radius * (236 / 256) * scale);
 	}
 
 	spanAt(progress: number) {
@@ -706,10 +587,7 @@ export default class DrawableSlider
 		}
 
 		const { start, end } = sharedUpdate(this, time);
-		this.updateGeometry(start, end, inject<SkinManager>("skinManager")?.getCurrentSkin()?.config.General
-			.Argon
-			? 0.95
-			: 1);
+		this.updateGeometry(start, end, this.getSkinBodyScale());
 
 		this.judgement.frame(time);
 
@@ -750,8 +628,9 @@ export default class DrawableSlider
 			if (
 				frame.startTime < this.object.startTime ||
 				frame.startTime > this.object.endTime
-			)
+			) {
 				return false;
+			}
 
 			const completionProgress = Clamp(
 				(frame.startTime - this.object.startTime) / this.object.duration,
@@ -798,16 +677,13 @@ export default class DrawableSlider
 		)
 			? HitResult.Miss
 			: circlesEvals.every((e) =>
-						[HitResult.LargeTickHit, HitResult.SmallTickHit].includes(e.value),
-					)
+				[HitResult.LargeTickHit, HitResult.SmallTickHit].includes(e.value),
+			)
 				? HitResult.Great
 				: circlesEvals.filter((e) =>
-							[HitResult.LargeTickHit, HitResult.SmallTickHit].includes(
-								e.value,
-							),
-						).length *
-							2 >=
-						this.drawableCircles.length
+					[HitResult.LargeTickHit, HitResult.SmallTickHit].includes(e.value),
+				).length * 2 >=
+				this.drawableCircles.length
 					? HitResult.Ok
 					: HitResult.Meh;
 
@@ -827,25 +703,20 @@ export default class DrawableSlider
 		this.ball.destroy();
 		this.followCircle.destroy();
 
-		this._geometry.destroy(true);
-		this._baseGeometry.destroy(true);
-
-		this._shader.destroy();
-		this._selectShader.destroy();
-
-		this.body.destroy(true);
-		this.selectBody.destroy(true);
+		this.renderer.destroy();
 
 		this.container.destroy({ children: true });
 		this.select.destroy({ children: true });
 
-		if (this.skinEventCallback)
+		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
+		}
 
-		if (this.gameplaysEventCallback)
+		if (this.gameplaysEventCallback) {
 			inject<Gameplays>("ui/main/viewer/gameplays")?.remove(
 				"change",
 				this.gameplaysEventCallback,
 			);
+		}
 	}
 }

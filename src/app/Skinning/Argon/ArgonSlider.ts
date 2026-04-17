@@ -37,24 +37,15 @@ export const refreshColor = (drawable: DrawableSlider) => {
 
 	drawable.borderColor = color;
 
-	drawable._shader.resources.customUniforms.uniforms.borderColor = color;
-	drawable._shader.resources.customUniforms.uniforms.innerColor = darken(
-		[color[0], color[1], color[2]],
-		4.0,
-	);
-	drawable._shader.resources.customUniforms.uniforms.outerColor = darken(
-		[color[0], color[1], color[2]],
-		4.0,
-	);
-	drawable._shader.resources.customUniforms.uniforms.borderWidth = 0.128 * 1.65;
-	drawable._shader.resources.customUniforms.uniforms.bodyAlpha = 0.92;
-
-	drawable._selectShader.resources.customUniforms.uniforms.borderColor = [
-		255 / 255,
-		192 / 255,
-		43 / 255,
-		1.0,
-	];
-	drawable._selectShader.resources.customUniforms.uniforms.borderWidth =
-		0.128 * 1.65;
+	drawable.updateBodyUniforms({
+		borderColor: color,
+		innerColor: darken([color[0], color[1], color[2]], 4.0),
+		outerColor: darken([color[0], color[1], color[2]], 4.0),
+		borderWidth: 0.128 * 1.65,
+		bodyAlpha: 0.92
+	});
+	drawable.updateSelectionUniforms({
+		borderColor: [255 / 255, 192 / 255, 43 / 255],
+		borderWidth: 0.128 * 1.65
+	});
 };

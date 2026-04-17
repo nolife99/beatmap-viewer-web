@@ -18,7 +18,7 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 		: fadeOutDuration;
 
 	if (time < startFadeInTime || time > drawable.object.endTime + 800) {
-		drawable._alphaFilter.alpha = 0;
+		drawable.bodyAlpha = 0;
 		drawable.wrapper.visible = false;
 
 		return { start: 0, end: 0 };
@@ -63,7 +63,7 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 			1,
 			Math.max(0, (time - startFadeInTime) / drawable.object.timeFadeIn),
 		);
-		drawable._alphaFilter.alpha = opacity;
+		drawable.bodyAlpha = opacity;
 
 		if (isHD && opacity >= 1) {
 			const fadeOutTime = startFadeInTime + drawable.object.timeFadeIn;
@@ -71,7 +71,7 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 				(time - fadeOutTime) / (drawable.object.endTime - fadeOutTime),
 			);
 
-			drawable._alphaFilter.alpha = 1 - opacity;
+			drawable.bodyAlpha = 1 - opacity;
 			return { start, end };
 		}
 
@@ -84,19 +84,19 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 			(time - fadeOutTime) / (drawable.object.endTime - fadeOutTime),
 		);
 
-		drawable._alphaFilter.alpha = 1 - opacity;
+		drawable.bodyAlpha = 1 - opacity;
 		return { start, end };
 	}
 
 	if (time >= drawable.object.startTime && time < drawable.object.endTime) {
-		drawable._alphaFilter.alpha = 1;
+		drawable.bodyAlpha = 1;
 		return { start, end };
 	}
 
 	if (time >= drawable.object.endTime) {
 		const opacity =
 			1 - Clamp((time - drawable.object.endTime) / bodyFadeOutDuration);
-		drawable._alphaFilter.alpha = opacity;
+		drawable.bodyAlpha = opacity;
 		return { start, end };
 	}
 
