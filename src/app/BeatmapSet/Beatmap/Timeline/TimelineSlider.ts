@@ -8,7 +8,7 @@ import {
 	SpinnerTick,
 	type StandardHitObject,
 } from "osu-standard-stable";
-import { Color, FillGradient, Graphics, BitmapText } from "pixi.js";
+import { FillGradient, Graphics, BitmapText } from "pixi.js";
 import type TimelineConfig from "@/Config/TimelineConfig";
 import { type Context, inject } from "@/Context";
 import { DEFAULT_SCALE } from "@/UI/main/viewer/Timeline";

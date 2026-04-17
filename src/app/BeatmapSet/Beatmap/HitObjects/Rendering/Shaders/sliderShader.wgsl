@@ -88,19 +88,16 @@ fn fsMain(input: VertexOutput) -> FragmentOutput {
         discard;
     }
 
-    let blurRate = 0.02;
+    let blurRate = fwidth(dist);
     let innerWidth = 1.0 - customUniforms.borderWidth;
 
-    let t = (dist - innerWidth) / blurRate;
-    let factor = clamp(t, 0.0, 1.0);
+    let factor = smoothstep(innerWidth, innerWidth + blurRate, dist);
 
     let innerBody = mix(customUniforms.innerColor, customUniforms.outerColor, dist);
     let color = mix(innerBody, customUniforms.borderColor, factor);
 
-    let innerAlpha = mix(customUniforms.bodyAlpha, 1.0, factor);
-    let outerFade = clamp((1.0 - dist) / blurRate, 0.0, 1.0);
-    let isOuter = step(1.0 - blurRate, dist);
-    let alpha = mix(innerAlpha, outerFade, isOuter);
+    let alphaFade = 1.0 - smoothstep(1.0 - blurRate, 1.0, dist);
+    let alpha = mix(customUniforms.bodyAlpha, 1.0, factor) * alphaFade;
 
     var out: FragmentOutput;
     out.color = vec4<f32>(color.rgb * alpha, alpha);

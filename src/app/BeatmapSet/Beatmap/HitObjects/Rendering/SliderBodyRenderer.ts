@@ -18,10 +18,7 @@ import type { SliderProgressResult } from "./CalculateSliderProgress";
 import fragment from "./Shaders/sliderShader.frag?raw";
 import vertex from "./Shaders/sliderShader.vert?raw";
 import gpuSrc from "./Shaders/sliderShader.wgsl?raw";
-import {
-    acquireSegmentStagingBuffer,
-    scheduleSegmentStagingRelease,
-} from "./SliderSegmentStagingPool";
+import typedarraypool from "@stdlib/array-pool";
 
 const GL = new GlProgram({ vertex, fragment });
 const GPU = GpuProgram.from({
@@ -73,7 +70,7 @@ function createUniformGroup(bodyAlpha: number) {
         borderWidth: { value: 0.128, type: "f32" },
         bodyAlpha: { value: bodyAlpha, type: "f32" },
         scale: { value: 1, type: "f32" },
-        uRadius: { value: 1.0, type: "f32" },
+        uRadius: { value: 1, type: "f32" },
     });
 }
 
@@ -87,15 +84,16 @@ function createShader(uniforms: UniformGroup) {
     });
 }
 
-export default class SliderBodyRenderer {
-    public readonly geometry = createBodyGeometry();
-    public readonly selectionGeometry = createBodyGeometry();
+function acquireSegmentStagingBuffer(requiredFloats: number, buffer: Buffer) {
+    const arr = typedarraypool.malloc(requiredFloats, "float32") as Float32Array;
+    buffer.once('update', () => typedarraypool.free(arr));
 
+    return arr;
+}
+
+export default class SliderBodyRenderer {
     public readonly uniforms = createUniformGroup(0.7);
     public readonly selectionUniforms = createUniformGroup(0.0);
-
-    public readonly shader: Shader;
-    public readonly selectionShader: Shader;
 
     public readonly body: Mesh<Geometry, Shader>;
     public readonly selectionBody: Mesh<Geometry, Shader>;
@@ -103,19 +101,16 @@ export default class SliderBodyRenderer {
     public readonly alphaFilter = new AlphaFilter();
 
     constructor() {
-        this.shader = createShader(this.uniforms);
-        this.selectionShader = createShader(this.selectionUniforms);
-
         const blendMode = inject<RendererConfig>("config/renderer")?.renderer === "webgl" ? "none" : "max";
         this.body = new Mesh({
-            geometry: this.geometry,
-            shader: this.shader,
+            geometry: createBodyGeometry(),
+            shader: createShader(this.uniforms),
             filters: [this.alphaFilter],
             blendMode,
         });
         this.selectionBody = new Mesh({
-            geometry: this.selectionGeometry,
-            shader: this.selectionShader,
+            geometry: createBodyGeometry(),
+            shader: createShader(this.selectionUniforms),
             filters: [new AlphaFilter({ alpha: 1 })],
             blendMode,
         });
@@ -145,13 +140,13 @@ export default class SliderBodyRenderer {
     }
 
     updateMainGeometry(path: SliderProgressResult, radius: number) {
-        const bounds = this.populateInstanceBuffer(path, this.geometry);
+        const bounds = this.populateInstanceBuffer(path, this.body.geometry);
         this.uniforms.uniforms.uRadius = radius;
         this.body.filterArea = this.computePaddedBounds(bounds, radius);
     }
 
     updateSelectionGeometry(path: SliderProgressResult, radius: number) {
-        const bounds = this.populateInstanceBuffer(path, this.selectionGeometry);
+        const bounds = this.populateInstanceBuffer(path, this.selectionBody.geometry);
         this.selectionUniforms.uniforms.uRadius = radius;
         this.selectionBody.filterArea = this.computePaddedBounds(bounds, radius);
     }
@@ -160,18 +155,13 @@ export default class SliderBodyRenderer {
         path: SliderProgressResult,
         targetGeometry: Geometry
     ): Rectangle {
-
         const { points, length: pointsCount } = path;
-
-        if (pointsCount <= 0) {
-            targetGeometry.instanceCount = 0;
-            return new Rectangle(0, 0, 0, 0);
-        }
 
         const segmentsCount = Math.max(1, pointsCount - 1);
         const requiredFloats = segmentsCount * 4;
 
-        const staging = acquireSegmentStagingBuffer(requiredFloats);
+        const bufferInfo = targetGeometry.attributes.aSegment.buffer;
+        const staging = acquireSegmentStagingBuffer(requiredFloats, bufferInfo);
 
         let minX = points[0].x;
         let minY = points[0].y;
@@ -194,16 +184,8 @@ export default class SliderBodyRenderer {
             if (B.y > maxY) maxY = B.y;
         }
 
-        const bufferInfo = targetGeometry.attributes.aSegment.buffer;
-
-        bufferInfo.setDataWithSize(
-            staging,
-            requiredFloats,
-            false
-        );
-
+        bufferInfo.setDataWithSize(staging, requiredFloats, false);
         targetGeometry.instanceCount = segmentsCount;
-        scheduleSegmentStagingRelease();
 
         return new Rectangle(
             minX,
@@ -214,8 +196,6 @@ export default class SliderBodyRenderer {
     }
 
     private computePaddedBounds(baseRect: Rectangle, radius: number, paddingScale = 1, extraPixels = 0): Rectangle {
-        if (baseRect.width === 0 && baseRect.height === 0) return baseRect;
-
         const pad = radius * paddingScale + extraPixels;
         return new Rectangle(
             baseRect.x - pad,
@@ -234,10 +214,10 @@ export default class SliderBodyRenderer {
     }
 
     destroy() {
-        this.geometry.destroy(true);
-        this.selectionGeometry.destroy(true);
-        this.shader.destroy();
-        this.selectionShader.destroy();
+        this.body.geometry.destroy(true);
+        this.selectionBody.geometry.destroy(true);
+        this.body.shader?.destroy();
+        this.selectionBody.shader?.destroy();
         this.body.destroy(true);
         this.selectionBody.destroy(true);
     }

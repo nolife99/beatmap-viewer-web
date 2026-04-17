@@ -23,23 +23,19 @@ void main() {
         discard;
     }
 
-    // Write to the depth buffer for correct overlap unioning
+    // Properly union overlaps
     gl_FragDepth = dist;
-
-    float position = dist;
-    float blurRate = 0.02;
+    
+    float blurRate = fwidth(dist);
     float innerWidth = 1.0 - borderWidth;
 
-    float t = (position - innerWidth) / blurRate;
-    float factor = clamp(t, 0.0, 1.0);
+    float factor = smoothstep(innerWidth, innerWidth + blurRate, dist);
 
-    vec4 innerBody = mix(innerColor, outerColor, position);
+    vec4 innerBody = mix(innerColor, outerColor, dist);
     vec4 color = mix(innerBody, borderColor, factor);
 
-    float innerAlpha = mix(bodyAlpha, 1.0, factor);
-    float outerFade = clamp((1.0 - position) / blurRate, 0.0, 1.0);
-    float isOuter = step(1.0 - blurRate, position);
-    float alpha = mix(innerAlpha, outerFade, isOuter);
+    float alphaFade = 1.0 - smoothstep(1.0 - blurRate, 1.0, dist);
+    float alpha = mix(bodyAlpha, 1.0, factor) * alphaFade;
 
     finalColor = vec4(color.rgb * alpha, alpha);
 }
