@@ -232,8 +232,8 @@ export default function calculateSliderProgress(
 			chunkLen,
 			out,
 			finalLen,
-			0.11,     // fitEpsilonSq
-			0.0006,  // collinearEpsilonSq
+			0.1,     // fitEpsilonSq
+			0.0005,  // collinearEpsilonSq
 			0.72     // sharpTurnCos
 		);
 

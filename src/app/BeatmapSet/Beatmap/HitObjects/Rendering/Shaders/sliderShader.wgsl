@@ -12,16 +12,23 @@ struct LocalUniforms {
 }
 
 struct CustomUniforms {
-    borderColor: vec4<f32>,
-    innerColor: vec4<f32>,
-    outerColor: vec4<f32>,
-    borderWidth: f32,
-    bodyAlpha: f32,
+    borderColor : vec4<f32>,
+    innerColor : vec4<f32>,
+    outerColor : vec4<f32>,
+    borderWidth : f32,
+    bodyAlpha : f32,
+    scale : f32,
+    uRadius : f32,
 }
 
 struct VertexOutput {
     @builtin(position) position : vec4<f32>,
-    @location(0) dist : f32,
+    @location(0) data : vec3<f32>,
+}
+
+struct FragmentOutput {
+    @location(0) color : vec4<f32>,
+    @builtin(frag_depth) depth : f32,
 }
 
 @group(0) @binding(0) var<uniform> globalUniforms : GlobalUniforms;
@@ -30,30 +37,73 @@ struct VertexOutput {
 
 @vertex
 fn vsMain(
-    @location(0) aPosition: vec4<f32>,
+    @location(0) aQuad: vec2<f32>,
+    @location(1) aSegment: vec4<f32>,
 ) -> VertexOutput {
-    var mvp: mat3x3<f32> = globalUniforms.projectionMatrix * globalUniforms.worldTransformMatrix * localUniforms.uTransformMatrix;
+    let A = aSegment.xy;
+    let B = aSegment.zw;
 
-    let transformed = mvp * vec3<f32>(aPosition.xy, 1.0);
-    return VertexOutput(vec4<f32>(transformed.xy, aPosition.z, 1.0), aPosition.z);
+    let dir = B - A;
+    let len = length(dir);
+
+    let ndir = select(vec2<f32>(1.0, 0.0), dir / len, len > 0.0);
+    let norm = vec2<f32>(-ndir.y, ndir.x);
+
+    let uOffset = select(1.0, -1.0, aQuad.x == 0.0);
+
+    let radius = customUniforms.uRadius;
+
+    let localPos =
+        mix(A, B, aQuad.x) +
+        ndir * uOffset * radius +
+        norm * aQuad.y * radius;
+
+    let lenNorm = len / radius;
+    let u = mix(0.0, lenNorm, aQuad.x) + uOffset;
+    let v = aQuad.y;
+
+    let mvp =
+        globalUniforms.projectionMatrix *
+        globalUniforms.worldTransformMatrix *
+        localUniforms.uTransformMatrix;
+
+    let transformed = mvp * vec3<f32>(localPos, 1.0);
+
+    var out: VertexOutput;
+    out.position = vec4<f32>(transformed.xy, 0.0, 1.0);
+    out.data = vec3<f32>(u, v, lenNorm);
+    return out;
 }
 
 @fragment
-fn fsMain(input: VertexOutput) -> @location(0) vec4<f32> {
-    let position = input.dist;
+fn fsMain(input: VertexOutput) -> FragmentOutput {
+    let u = input.data.x;
+    let v = input.data.y;
+    let len = input.data.z;
+
+    let dx = clamp(u, 0.0, len);
+    let dist = length(vec2<f32>(u - dx, v));
+
+    if (dist > 1.0) {
+        discard;
+    }
+
     let blurRate = 0.02;
     let innerWidth = 1.0 - customUniforms.borderWidth;
 
-    let t = (position - innerWidth) / blurRate;
+    let t = (dist - innerWidth) / blurRate;
     let factor = clamp(t, 0.0, 1.0);
 
-    let innerBody = mix(customUniforms.innerColor, customUniforms.outerColor, position);
+    let innerBody = mix(customUniforms.innerColor, customUniforms.outerColor, dist);
     let color = mix(innerBody, customUniforms.borderColor, factor);
 
     let innerAlpha = mix(customUniforms.bodyAlpha, 1.0, factor);
-    let outerFade = clamp((1.0 - position) / blurRate, 0.0, 1.0);
-    let isOuter = step(1.0 - blurRate, position);
+    let outerFade = clamp((1.0 - dist) / blurRate, 0.0, 1.0);
+    let isOuter = step(1.0 - blurRate, dist);
     let alpha = mix(innerAlpha, outerFade, isOuter);
 
-    return vec4<f32>(color.rgb * alpha, alpha);
+    var out: FragmentOutput;
+    out.color = vec4<f32>(color.rgb * alpha, alpha);
+    out.depth = dist;
+    return out;
 }
