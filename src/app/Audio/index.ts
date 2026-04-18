@@ -151,8 +151,8 @@ export default class Audio extends ScopedClass {
 
         this.sourceNode.onended = () => {
             if (this.state === "PLAYING") {
-                this.pause();
-                this._currentTime = 0;
+                this.context.consume<BeatmapSet>("beatmapset")?.toggle();
+                this.context.consume<BeatmapSet>("beatmapset")?.seek(0);
             }
         };
     }

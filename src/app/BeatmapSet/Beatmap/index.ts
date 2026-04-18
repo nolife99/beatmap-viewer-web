@@ -523,14 +523,15 @@ export default class Beatmap extends ScopedClass {
 		);
 
 		for (const idx of objs) {
-			containers.push(this.objects[idx].container);
-			if ((this.objects[idx] as unknown as IHasApproachCircle).approachCircle)
-				approachCircleContainers.push(
-					(this.objects[idx] as unknown as IHasApproachCircle).approachCircle
-						.container,
-				);
+			const obj = this.objects[idx];
+			if (!obj.container.visible) continue;
 
-			this.objects[idx].update(time);
+			containers.push(obj.container);
+
+			const approachCircle = (obj as unknown as IHasApproachCircle).approachCircle;
+			if (approachCircle) {
+				approachCircleContainers.push(approachCircle.container);
+			}
 		}
 
 		for (const idx of this.previousConnectors) {
@@ -538,12 +539,22 @@ export default class Beatmap extends ScopedClass {
 			this.connectors[idx].update(time);
 		}
 
-		if (containers.length > 0)
+		const totalChildren =
+			connectorContainers.length +
+			containers.length +
+			approachCircleContainers.length;
+
+		if (totalChildren > 0) {
 			this.container.objectsContainer?.addChild(
 				...connectorContainers,
 				...containers,
 				...approachCircleContainers,
 			);
+		}
+
+		for (const idx of objs) {
+			this.objects[idx].update(time);
+		}
 
 		const dragWindowVector = this.container.dragWindow[1].subtract(
 			this.container.dragWindow[0],

@@ -18,10 +18,8 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 		: fadeOutDuration;
 
 	if (time < startFadeInTime || time > drawable.object.endTime + 800) {
-		drawable.bodyAlpha = 0;
 		drawable.wrapper.visible = false;
-
-		return { start: 0, end: 0 };
+		return null;
 	}
 
 	drawable.wrapper.visible = true;

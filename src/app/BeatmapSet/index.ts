@@ -1,6 +1,6 @@
 import { Tween } from "@tweenjs/tween.js";
 import type { DifficultyPoint, SamplePoint, TimingPoint } from "osu-classes";
-import {Assets, Texture, Ticker, type FederatedWheelEvent, Application} from "pixi.js";
+import {Assets, Texture, Ticker, type FederatedWheelEvent, Application, UPDATE_PRIORITY} from "pixi.js";
 import Audio, { getAudioContext } from "@/Audio";
 import type AudioConfig from "@/Config/AudioConfig";
 import type BackgroundConfig from "@/Config/BackgroundConfig";
@@ -47,7 +47,7 @@ export default class BeatmapSet extends ScopedClass {
         this.context.provide("beatmapset", this);
 
         provide("beatmapset", this);
-        inject<Application>("ui/app")?.ticker.add(() => this.frame());
+        inject<Application>("ui/app")?.ticker.add(() => this.frame(), this);
 
         inject<ExperimentalConfig>("config/experimental")?.onChange(
             "mods",
@@ -400,6 +400,8 @@ export default class BeatmapSet extends ScopedClass {
 
         await this.loadBeatmap(beatmap);
         this.slaves.add(beatmap);
+
+        beatmap.container.spinner.spin = false;
 
         this.setIds();
     }

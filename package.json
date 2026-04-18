@@ -5,8 +5,6 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch src/server/index.tsx",
-    "pack": "node scripts/pack-assets.mjs",
-    "build": "node scripts/pack-assets.mjs && vite build && NODE_ENV=production bun build --compile src/server/index.tsx --external=lightningcss --target bun --outfile ./out/server",
     "preview": "./out/server"
   },
   "devDependencies": {

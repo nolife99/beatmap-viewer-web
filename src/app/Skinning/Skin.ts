@@ -1,11 +1,10 @@
 import { parse } from "js-ini";
-import { Assets, Spritesheet, Texture } from "pixi.js";
+import { Rectangle, Texture } from "pixi.js";
 import type SkinningConfig from "@/Config/SkinningConfig";
 import { inject } from "@/Context";
-import type { Resource } from "../ZipHandler";
+import type { Resource } from "@/ZipHandler";
 import type SkinManager from "./SkinManager";
 import type { SkinMetadata } from "./SkinManager";
-import { getAudioContext } from "@/Audio";
 
 const sanitizeINI = (str: string) =>
 	str
@@ -14,7 +13,7 @@ const sanitizeINI = (str: string) =>
 		.join("\n")
 		.replaceAll(/((\/\/)|(;)|(==)).*/g, "");
 
-type SkinConfig = {
+export type SkinConfig = {
 	General: {
 		Name: string;
 		Author?: string;
@@ -45,15 +44,248 @@ type SkinConfig = {
 
 export const BLANK_TEXTURE = new Texture();
 
-const ANIMATED_FILENAMES = [
-	"followpoint",
-	"hit300",
-	"hit100",
-	"hit50",
-	"hit0",
-	"sliderb",
-	"sliderfollowcircle",
-] as const;
+type AtlasItem = {
+	key: string;
+	image: ImageBitmap | HTMLImageElement;
+	width: number;
+	height: number;
+	scale: 1 | 2;
+	order?: number;
+	x?: number;
+	y?: number;
+};
+
+type PackedAtlas = {
+	texture: Texture;
+	frames: Map<string, Texture>;
+};
+
+const ATLAS_PADDING = 0;
+const ATLAS_MAX_SIZE = 4096;
+
+function nextPow2(v: number): number {
+	let n = 1;
+	while (n < v) n <<= 1;
+	return n;
+}
+
+function clampAtlasSize(v: number): number {
+	return Math.min(ATLAS_MAX_SIZE, nextPow2(Math.max(1, v)));
+}
+
+function createAtlasCanvas(width: number, height: number) {
+	if (typeof OffscreenCanvas !== "undefined") {
+		return new OffscreenCanvas(width, height);
+	}
+
+	const canvas = document.createElement("canvas");
+	canvas.width = width;
+	canvas.height = height;
+	return canvas;
+}
+
+function getContext2D(
+	canvas: OffscreenCanvas | HTMLCanvasElement,
+): OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D {
+	const ctx = canvas.getContext("2d", { alpha: true });
+	if (!ctx) throw new Error("Unable to create 2D canvas context.");
+	return ctx as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+}
+
+async function decodeImage(resource: Resource): Promise<ImageBitmap | HTMLImageElement> {
+	const blob = resource instanceof Blob ? resource : new Blob([await resource!.arrayBuffer()]);
+
+	if (typeof createImageBitmap !== "undefined") {
+		return await createImageBitmap(blob);
+	}
+
+	const url = URL.createObjectURL(blob);
+	try {
+		const img = new Image();
+		img.decoding = "async";
+		img.src = url;
+		await img.decode();
+		return img;
+	} finally {
+		URL.revokeObjectURL(url);
+	}
+}
+
+function sortAtlasItems(items: AtlasItem[]): AtlasItem[] {
+	return items.toSorted((a, b) => {
+		if (b.height !== a.height) return b.height - a.height;
+		if (b.width !== a.width) return b.width - a.width;
+		return a.key.localeCompare(b.key);
+	});
+}
+
+function tryPackShelf(
+	items: AtlasItem[],
+	atlasWidth: number,
+	padding: number,
+): { width: number; height: number; items: AtlasItem[] } | null {
+	let x = 0;
+	let y = 0;
+	let rowHeight = 0;
+	let usedWidth = 0;
+
+	for (const item of items) {
+		const packedW = item.width + padding * 2;
+		const packedH = item.height + padding * 2;
+
+		if (packedW > atlasWidth) return null;
+
+		if (x + packedW > atlasWidth) {
+			x = 0;
+			y += rowHeight;
+			rowHeight = 0;
+		}
+
+		item.x = x + padding;
+		item.y = y + padding;
+
+		x += packedW;
+		if (packedH > rowHeight) rowHeight = packedH;
+		if (x > usedWidth) usedWidth = x;
+	}
+
+	const usedHeight = y + rowHeight;
+	if (usedHeight > ATLAS_MAX_SIZE) return null;
+
+	return {
+		width: usedWidth,
+		height: usedHeight,
+		items,
+	};
+}
+
+function packAtlas(items: AtlasItem[], padding: number): { width: number; height: number; items: AtlasItem[] } {
+	if (items.length === 0) {
+		return { width: 1, height: 1, items };
+	}
+
+	const sorted = sortAtlasItems(items);
+	const totalArea = sorted.reduce(
+		(acc, item) => acc + (item.width + padding * 2) * (item.height + padding * 2),
+		0,
+	);
+
+	const maxItemWidth = Math.max(...sorted.map((item) => item.width + padding * 2));
+	let trialWidth = clampAtlasSize(Math.max(maxItemWidth, Math.ceil(Math.sqrt(totalArea))));
+
+	while (trialWidth <= ATLAS_MAX_SIZE) {
+		const cloned = sorted.map((item) => ({ ...item }));
+		const packed = tryPackShelf(cloned, trialWidth, padding);
+
+		if (packed) {
+			return packed;
+		}
+
+		trialWidth <<= 1;
+	}
+
+	throw new Error("Unable to pack skin atlas within maximum size.");
+}
+
+function extrudeAndDraw(
+	ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D,
+	image: ImageBitmap | HTMLImageElement,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	padding: number,
+) {
+	ctx.drawImage(image, x, y, w, h);
+
+	if (padding <= 0) return;
+
+	// Left / right
+	ctx.drawImage(image, 0, 0, 1, h, x - padding, y, padding, h);
+	ctx.drawImage(image, w - 1, 0, 1, h, x + w, y, padding, h);
+
+	// Top / bottom
+	ctx.drawImage(image, 0, 0, w, 1, x, y - padding, w, padding);
+	ctx.drawImage(image, 0, h - 1, w, 1, x, y + h, w, padding);
+
+	// Corners
+	ctx.drawImage(image, 0, 0, 1, 1, x - padding, y - padding, padding, padding);
+	ctx.drawImage(image, w - 1, 0, 1, 1, x + w, y - padding, padding, padding);
+	ctx.drawImage(image, 0, h - 1, 1, 1, x - padding, y + h, padding, padding);
+	ctx.drawImage(image, w - 1, h - 1, 1, 1, x + w, y + h, padding, padding);
+}
+
+function createAtlasTexture(
+	canvas: OffscreenCanvas | HTMLCanvasElement,
+	resolution: 1 | 2,
+): Texture {
+	const texture = Texture.from(canvas);
+	texture.source.resolution = resolution;
+	texture.source.update();
+	return texture;
+}
+
+function createFrameTexture(
+	atlasTexture: Texture,
+	x: number,
+	y: number,
+	pixelWidth: number,
+	pixelHeight: number,
+	resolution: 1 | 2,
+): Texture {
+	const fx = x / resolution;
+	const fy = y / resolution;
+	const fw = pixelWidth / resolution;
+	const fh = pixelHeight / resolution;
+
+	return new Texture({
+		source: atlasTexture.source,
+		frame: new Rectangle(fx, fy, fw, fh),
+		orig: new Rectangle(0, 0, fw, fh),
+	});
+}
+
+async function buildAtlas(items: AtlasItem[], resolution: 1 | 2): Promise<PackedAtlas | null> {
+	if (items.length === 0) return null;
+
+	const packed = packAtlas(items, ATLAS_PADDING);
+	const canvas = createAtlasCanvas(packed.width, packed.height);
+	const ctx = getContext2D(canvas);
+
+	for (const item of packed.items) {
+		extrudeAndDraw(
+			ctx,
+			item.image,
+			item.x!,
+			item.y!,
+			item.width,
+			item.height,
+			ATLAS_PADDING,
+		);
+	}
+
+	const atlasTexture = createAtlasTexture(canvas, resolution);
+	const frames = new Map<string, Texture>();
+
+	for (const item of packed.items) {
+		frames.set(
+			item.key,
+			createFrameTexture(
+				atlasTexture,
+				item.x!,
+				item.y!,
+				item.width,
+				item.height,
+				resolution,
+			),
+		);
+	}
+
+	return {
+		texture: atlasTexture,
+		frames,
+	};
+}
 
 export default class Skin {
 	config: SkinConfig = {
@@ -81,24 +313,46 @@ export default class Skin {
 	hitsounds = new Map<string, AudioBuffer>();
 	colorsLength = 4;
 
+	private atlasTextures: Texture[] = [];
+
 	constructor(
 		private resources?: Map<string, Resource>,
 		public metadata?: SkinMetadata,
 	) {}
 
-	async init(atlasUrls?: string[]) {
+	async init() {
 		await this.loadConfig();
-		await Promise.all([
-			atlasUrls ? this.loadTexturesFromAtlases(atlasUrls) : this.loadTextures(),
-			this.loadHitsounds(),
-		]);
+		await Promise.all([this.loadTextures(), this.loadHitsounds()]);
+	}
+
+	destroy() {
+		for (const texture of this.textures.values()) {
+			if (texture !== BLANK_TEXTURE) texture.destroy();
+		}
+
+		for (const frames of this.animatedTextures.values()) {
+			for (const texture of frames) {
+				if (texture !== BLANK_TEXTURE) texture.destroy();
+			}
+		}
+
+		for (const atlas of this.atlasTextures) {
+			atlas.destroy(true);
+		}
+
+		this.textures.clear();
+		this.animatedTextures.clear();
+		this.hitsounds.clear();
+		this.atlasTextures.length = 0;
 	}
 
 	private async loadConfig() {
-		const configFile = await this.resources?.get("skin.ini")?.text();
+		if (!this.resources?.get) return;
+
+		const configFile = this.resources?.get("skin.ini")?.text();
 		if (!configFile) return;
 
-		const config = parse(sanitizeINI(configFile), {
+		const config = parse(sanitizeINI(await configFile), {
 			comment: ["//", "--", ";", "=="],
 			delimiter: ":",
 		});
@@ -123,72 +377,11 @@ export default class Skin {
 		).length;
 	}
 
-	private async loadTexturesFromAtlases(atlasUrls: string[]) {
-		const allFrames = new Map<string, Texture>();
-
-		for (const url of atlasUrls) {
-			const loaded = Assets.cache.has(url);
-			const sheet = loaded ? Assets.get<Spritesheet>(url) : await Assets.load<Spritesheet>(url);
-
-			for (const [frameName, texture] of Object.entries<Texture>(sheet.textures)) {
-				if (!loaded && frameName.includes("@2x")) {
-					texture.orig.width /= 2;
-					texture.orig.height /= 2;
-
-					texture.trim?.x && (texture.trim.x /= 2);
-					texture.trim?.y && (texture.trim.y /= 2);
-					texture.trim?.width && (texture.trim.width /= 2);
-					texture.trim?.height && (texture.trim.height /= 2);
-
-					texture.updateUvs();
-				}
-
-				const baseName = frameName.replace("@2x.png", ".png").replace(".png", "");
-				const extracted = baseName.split("/").at(-1) as string;
-				const isDefault = /default-[0-9]+/.test(extracted);
-				const storeKey = isDefault ? extracted : baseName;
-
-				allFrames.set(frameName, texture);
-
-				if (!this.textures.has(storeKey)) {
-					this.textures.set(storeKey, texture);
-				}
-			}
-		}
-
-		for (const filenameBase of ANIMATED_FILENAMES) {
-			const regex =
-				filenameBase === "sliderb"
-					? /^sliderb\d+(@2x)?\.png$/
-					: new RegExp(`^${filenameBase}-\\d+(@2x)?\\.png$`);
-
-			const entries = [...allFrames.entries()]
-				.filter(([name]) => regex.test(name))
-				.sort(([a], [b]) => {
-					const stripSuffix = (s: string) =>
-						s.replace("@2x.png", "").replace(".png", "");
-					const aNum =
-						filenameBase === "sliderb"
-							? +(stripSuffix(a).replace("sliderb", "") ?? 0)
-							: +(stripSuffix(a).split("-").at(-1) ?? 0);
-					const bNum =
-						filenameBase === "sliderb"
-							? +(stripSuffix(b).replace("sliderb", "") ?? 0)
-							: +(stripSuffix(b).split("-").at(-1) ?? 0);
-					return aNum - bNum;
-				})
-				.map(([, tex]) => tex);
-
-			if (entries.length > 0) {
-				this.animatedTextures.set(filenameBase, entries);
-			}
-		}
-	}
-
 	private async loadTextures() {
 		const defaults = [...Array(10)].map(
-			(_, idx) => `${this.config.Fonts.HitCirclePrefix}-${idx}`,
+			(_, idx) => `${this.config.Fonts.HitCirclePrefix}-${idx}`.toLowerCase(),
 		);
+
 		const filenames = [
 			"approachcircle",
 			...defaults,
@@ -219,6 +412,7 @@ export default class Skin {
 			"reversearrow",
 			"repeat-edge-piece",
 		];
+
 		const animatedFilenames = [
 			"followpoint",
 			"hit300",
@@ -229,92 +423,148 @@ export default class Skin {
 			"sliderfollowcircle",
 		];
 
-		await Promise.all([
-			...filenames.map(async (filename) => {
-				const blob =
-					this.resources?.get(`${filename}@2x.png`) ??
-					this.resources?.get(`${filename}.png`);
-				const isHD = this.resources?.has(`${filename}@2x.png`);
+		const staticItems1x: AtlasItem[] = [];
+		const staticItems2x: AtlasItem[] = [];
+		const animatedGroups = new Map<string, AtlasItem[]>();
 
-				if (!blob) return;
+		const addAtlasItem = async (mapKey: string, fileBase: string, order?: number) => {
+			const has2x = this.resources?.has(`${fileBase}@2x.png`) ?? false;
+			const resource =
+				this.resources?.get(`${fileBase}@2x.png`) ??
+				this.resources?.get(`${fileBase}.png`);
 
-				try {
-					const texture = await Assets.load<Texture>({
-						src: `${URL.createObjectURL(blob)}`,
-						parser: "texture",
+			if (!resource) return;
+
+			const image = await decodeImage(resource);
+			const width = "width" in image ? image.width : 0;
+			const height = "height" in image ? image.height : 0;
+			const scale: 1 | 2 = has2x ? 2 : 1;
+
+			const item: AtlasItem = {
+				key: mapKey,
+				image,
+				width,
+				height,
+				scale,
+				order,
+			};
+
+			if (animatedGroups.has(mapKey)) {
+				animatedGroups.get(mapKey)!.push(item);
+				return;
+			}
+
+			if (scale === 2) staticItems2x.push(item);
+			else staticItems1x.push(item);
+		};
+
+		await Promise.all(
+			filenames.map(async (filename) => {
+				const extracted = filename.split("/").at(-1);
+				const isDefault = extracted ? /default-[0-9]+/g.test(extracted) : false;
+				const mapKey = isDefault ? (extracted as string) : filename;
+
+				await addAtlasItem(mapKey, filename);
+			}),
+		);
+
+		for (const filenameBase of animatedFilenames) {
+			const regex =
+				filenameBase === "sliderb"
+					? new RegExp(`^${filenameBase}[0-9]+(?:@2x)?\\.png$`)
+					: new RegExp(`^${filenameBase}-[0-9]+(?:@2x)?\\.png$`);
+
+			const entries = new Set(
+				this.resources
+					?.keys()
+					.filter((filename) => regex.test(filename))
+					.map((filename) =>
+						filename.replaceAll("@2x", "").replaceAll(".png", ""),
+					),
+			);
+
+			if (entries.size === 0) continue;
+
+			animatedGroups.set(filenameBase, []);
+
+			await Promise.all(
+				[...entries].map(async (entry) => {
+					let order: number;
+					if (filenameBase === "sliderb") {
+						order = +(entry.replaceAll("sliderb", "") ?? 0);
+					} else {
+						order = +(entry.split("-").at(-1) ?? 0);
+					}
+
+					const has2x = this.resources?.has(`${entry}@2x.png`) ?? false;
+					const resource =
+						this.resources?.get(`${entry}@2x.png`) ??
+						this.resources?.get(`${entry}.png`);
+
+					if (!resource) return;
+
+					const image = await decodeImage(resource);
+					const width = "width" in image ? image.width : 0;
+					const height = "height" in image ? image.height : 0;
+					const scale: 1 | 2 = has2x ? 2 : 1;
+
+					animatedGroups.get(filenameBase)!.push({
+						key: `${filenameBase}::${order}`,
+						image,
+						width,
+						height,
+						scale,
+						order,
 					});
-					texture.source.resolution = isHD ? 2 : 1;
-					texture.update();
+				}),
+			);
+		}
 
-					const extracted = filename.split("/").at(-1);
-					const isDefault = extracted
-						? /default-[0-9]+/g.test(extracted)
-						: false;
-					this.textures.set(
-						isDefault ? (extracted as string) : filename,
-						texture,
-					);
-				} catch {
-					return;
-				}
-			}),
-			...animatedFilenames.map(async (filenameBase) => {
-				const regex =
-					filenameBase === "sliderb"
-						? new RegExp(`^${filenameBase}[0-9]+`)
-						: new RegExp(`^${filenameBase}-[0-9]+`);
+		const animatedItems1x: AtlasItem[] = [];
+		const animatedItems2x: AtlasItem[] = [];
 
-				const entries = new Set(
-					this.resources
-						?.keys()
-						.filter((filename) => regex.test(filename))
-						.map((filename) =>
-							filename.replaceAll("@2x", "").replaceAll(".png", ""),
-						),
-				);
+		for (const items of animatedGroups.values()) {
+			for (const item of items) {
+				if (item.scale === 2) animatedItems2x.push(item);
+				else animatedItems1x.push(item);
+			}
+		}
 
-				const blobs: [string, Texture][] = (
-					await Promise.all(
-						[...entries].map(async (filename) => {
-							const blob =
-								this.resources?.get(`${filename}@2x.png`) ??
-								this.resources?.get(`${filename}.png`);
-							const isHD =
-								this.resources?.has(`${filename}@2x.png`) ?? false;
+		const atlas1x = await buildAtlas([...staticItems1x, ...animatedItems1x], 1);
+		const atlas2x = await buildAtlas([...staticItems2x, ...animatedItems2x], 2);
 
-							if (!blob) return null;
+		if (atlas1x) this.atlasTextures.push(atlas1x.texture);
+		if (atlas2x) this.atlasTextures.push(atlas2x.texture);
 
-							const texture = await Assets.load<Texture>({
-								src: `${URL.createObjectURL(blob)}`,
-								parser: "texture",
-							});
-							texture.source.resolution = isHD ? 2 : 1;
-							texture.update();
+		const resolveFrame = (key: string, scale: 1 | 2): Texture | undefined => {
+			if (scale === 2) return atlas2x?.frames.get(key);
+			return atlas1x?.frames.get(key);
+		};
 
-							return [filename, texture] as [string, Texture];
-						}),
-					)
-				).filter((t) => t !== null);
+		for (const item of staticItems1x) {
+			const texture = resolveFrame(item.key, 1);
+			if (texture) this.textures.set(item.key, texture);
+		}
 
-				if (blobs.length === 0) return;
+		for (const item of staticItems2x) {
+			const texture = resolveFrame(item.key, 2);
+			if (texture) this.textures.set(item.key, texture);
+		}
 
-				const sorted = blobs.toSorted((a, b) =>
-					filenameBase === "sliderb"
-						? +(a[0].replaceAll("sliderb", "") ?? 0) -
-							+(b[0].replaceAll("sliderb", "") ?? 0)
-						: +(a[0].split("-").at(-1) ?? 0) -
-							+(b[0].split("-").at(-1) ?? 0),
-				);
-				this.animatedTextures.set(
-					filenameBase,
-					sorted.map(([_, texture]) => texture),
-				);
-			}),
-		]);
+		for (const [filenameBase, items] of animatedGroups) {
+			const sorted = items.toSorted((a, b) => (a.order ?? 0) - (b.order ?? 0));
+			const textures = sorted
+				.map((item) => resolveFrame(item.key, item.scale))
+				.filter((texture): texture is Texture => texture !== undefined);
+
+			if (textures.length > 0) {
+				this.animatedTextures.set(filenameBase, textures);
+			}
+		}
 	}
 
 	private async loadHitsounds() {
-		const audioContext = getAudioContext();
+		const audioContext = new AudioContext();
 		const hitSounds = ["drum", "normal", "soft"]
 			.map((hitSample) =>
 				[
@@ -327,7 +577,7 @@ export default class Skin {
 					"sliderwhistle",
 				].map((hitSound) => `${hitSample}-${hitSound}`),
 			)
-			.reduce((accm, curr) => {
+			.reduce<string[]>((accm, curr) => {
 				accm.push(...curr);
 				return accm;
 			}, []);
@@ -385,7 +635,7 @@ export default class Skin {
 
 		const skinTexture = this.textures.get(filename);
 		const skinTextures =
-			this?.animatedTextures.get(filename) ??
+			this.animatedTextures.get(filename) ??
 			(skinTexture ? [skinTexture] : undefined);
 
 		const defaultTexture =
@@ -399,9 +649,7 @@ export default class Skin {
 			return skinTextures ?? defaultTextures ?? [BLANK_TEXTURE];
 		}
 
-		return (
-			beatmapTextures ?? skinTextures ?? defaultTextures ?? [BLANK_TEXTURE]
-		);
+		return beatmapTextures ?? skinTextures ?? defaultTextures ?? [BLANK_TEXTURE];
 	}
 
 	getHitsound(filename: string) {

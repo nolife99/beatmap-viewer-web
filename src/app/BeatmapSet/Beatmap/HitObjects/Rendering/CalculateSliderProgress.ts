@@ -1,4 +1,5 @@
 import { Vector2, type SliderPath } from "osu-classes";
+import pool from "@stdlib/array-pool";
 
 export type SliderProgressResult = {
 	points: Vector2[];
@@ -25,26 +26,25 @@ export default function calculateSliderProgress(
 	const pStart: Vector2 = (path as any)._interpolateVertices(startIdx, d0);
 	const pEnd: Vector2 = (path as any)._interpolateVertices(endIdx, d1);
 
-	// const numPoints = endIdx - startIdx + 2;
-	// if ((path as any).curveType === "P" || numPoints <= 3) {
+	const numPoints = endIdx - startIdx + 2;
 	let finalLen = 0;
-	out[finalLen++] = pStart;
 
-	for (let j = startIdx; j < endIdx; j++) {
-		const pt = calcPath[j];
-		if (!out[finalLen - 1].equals(pt)) {
-			out[finalLen++] = pt;
+	if ((path as any).curveType === "P" || numPoints <= 3) {
+		out[finalLen++] = pStart;
+
+		for (let j = startIdx; j < endIdx; j++) {
+			const pt = calcPath[j];
+			if (!out[finalLen - 1].equals(pt)) {
+				out[finalLen++] = pt;
+			}
 		}
+
+		if (!out[finalLen - 1].equals(pEnd)) {
+			out[finalLen++] = pEnd;
+		}
+
+		return { points: out, length: finalLen };
 	}
-
-	if (!out[finalLen - 1].equals(pEnd)) {
-		out[finalLen++] = pEnd;
-	}
-
-	return { points: out, length: finalLen };
-
-	/* }
-	ensureCapacity(numPoints * 2);
 
 	spatialGrid.clear();
 	addedEdges.clear();
@@ -92,6 +92,7 @@ export default function calculateSliderProgress(
 	let mergedLen = 0;
 	let prevMergedId = -1;
 
+	const mergedSequence = pool(numPoints, 'uint32') as Uint32Array
 	for (let i = 0; i < numPoints; i++) {
 		const node = getOrCreateNode(
 			getVirtualPoint(path, startIdx, numPoints, pStart, pEnd, i)
@@ -106,6 +107,8 @@ export default function calculateSliderProgress(
 	if (mergedLen === 0) {
 		out[0] = pStart;
 		if (!pStart.equals(pEnd)) out[1] = pEnd;
+
+		pool.free(mergedSequence);
 		return { points: out, length: pStart.equals(pEnd) ? 1 : 2 };
 	}
 
@@ -124,6 +127,8 @@ export default function calculateSliderProgress(
 	}
 
 	let reducedLen = 0;
+	const reducedSeq = pool(mergedLen, 'uint32') as Uint32Array;
+
 	for (let i = 0; i < mergedLen; i++) {
 		const nodeId = mergedSequence[i];
 
@@ -149,6 +154,10 @@ export default function calculateSliderProgress(
 	if (reducedLen === 0) {
 		out[0] = pStart;
 		if (!pStart.equals(pEnd)) out[1] = pEnd;
+
+		pool.free(mergedSequence);
+		pool.free(reducedSeq);
+
 		return { points: out, length: pStart.equals(pEnd) ? 1 : 2 };
 	}
 
@@ -176,7 +185,6 @@ export default function calculateSliderProgress(
 		b.orderedEdges[b.edgeCount++] = aId;
 	}
 
-	// let finalLen = 0;
 	out[finalLen++] = pStart;
 
 	let chunkLen = 0;
@@ -209,6 +217,9 @@ export default function calculateSliderProgress(
 		out[finalLen++] = pEnd;
 	}
 
+	pool.free(mergedSequence);
+	pool.free(reducedSeq);
+
 	return { points: out, length: finalLen };
 }
 
@@ -225,8 +236,6 @@ class GraphNode {
 	}
 }
 
-let currentBufferSize = 4096;
-
 const globalNodes: GraphNode[] = [];
 const spatialGrid = new Map<number, number[]>();
 const gridArrayPool: number[][] = [];
@@ -235,19 +244,7 @@ let gridArrayPoolIdx = 0;
 const addedEdges = new Set<number>();
 const edgeVisitCount = new Map<number, number>();
 
-let mergedSequence = new Uint32Array(currentBufferSize);
-let reducedSeq = new Uint32Array(currentBufferSize);
-let chunkPoints: Vector2[] = new Array(currentBufferSize);
-
-function ensureCapacity(size: number) {
-	if (size <= currentBufferSize) return;
-
-	currentBufferSize = Math.ceil(size * 1.61803399);
-
-	mergedSequence = new Uint32Array(currentBufferSize);
-	reducedSeq = new Uint32Array(currentBufferSize);
-	chunkPoints.length = currentBufferSize;
-}
+let chunkPoints: Vector2[] = [];
 
 function simplifyChunkAveraged(
 	chunkPoints: Vector2[],
@@ -461,7 +458,7 @@ function getVirtualPoint(
 ): Vector2 {
 	if (idx === 0) return pStart;
 	if (idx === numPoints - 1) return pEnd;
-	return path.calculatedPath[startIdx + idx - 1]; */
+	return path.calculatedPath[startIdx + idx - 1];
 }
 
 function lowerBound(
@@ -508,4 +505,77 @@ function upperBound(
 	}
 
 	return result;
+}
+
+export function debugPoolMemory() {
+	let bytes = 0;
+
+	// --- chunkPoints reference array ---
+	// JS array slots are 8 bytes per reference on 64-bit V8
+	bytes += chunkPoints.length * 8;
+
+	// --- globalNodes ---
+	// approximate object footprint:
+	// id: number (8)
+	// p reference: 8
+	// orderedEdges reference: 8
+	// edgeCount number: 8
+	// object overhead estimate: ~32
+	const GRAPH_NODE_SIZE = 64;
+
+	bytes += globalNodes.length * GRAPH_NODE_SIZE;
+
+	// orderedEdges arrays
+	for (let i = 0; i < globalNodes.length; i++) {
+		bytes += globalNodes[i].orderedEdges.length * 8;
+	}
+
+	// --- spatial grid ---
+	// Map entry overhead estimate ~56 bytes per entry
+	const MAP_ENTRY_OVERHEAD = 56;
+
+	bytes += spatialGrid.size * MAP_ENTRY_OVERHEAD;
+
+	for (const arr of spatialGrid.values()) {
+		bytes += arr.length * 8;
+	}
+
+	// pooled arrays inside gridArrayPool
+	for (let i = 0; i < gridArrayPool.length; i++) {
+		bytes += gridArrayPool[i].length * 8;
+	}
+
+	// --- sets and maps ---
+	// pairUnsigned keys are numbers → assume ~16 bytes per entry
+	bytes += addedEdges.size * 16;
+	bytes += edgeVisitCount.size * 24;
+
+	return {
+		bytes,
+		kb: bytes / 1024,
+		mb: bytes / (1024 * 1024),
+
+		breakdown: {
+			chunkPoints: chunkPoints.length * 8,
+
+			graphNodes: globalNodes.length * GRAPH_NODE_SIZE,
+			graphEdges: globalNodes.reduce(
+				(sum, n) => sum + n.orderedEdges.length * 8,
+				0
+			),
+
+			spatialGrid:
+				spatialGrid.size * MAP_ENTRY_OVERHEAD +
+				Array.from(spatialGrid.values()).reduce(
+					(sum, arr) => sum + arr.length * 8,
+					0
+				),
+
+			gridArrayPool:
+				gridArrayPool.reduce((sum, arr) => sum + arr.length * 8, 0),
+
+			addedEdges: addedEdges.size * 16,
+			edgeVisitCount: edgeVisitCount.size * 24,
+		},
+	};
 }

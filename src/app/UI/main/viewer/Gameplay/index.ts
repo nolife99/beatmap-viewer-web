@@ -383,17 +383,17 @@ export default class Gameplay extends ScopedClass {
 	addSelected(idx: number) {
 		this.selected.add(idx);
 		const obj = this.beatmap.objects[idx] as DrawableHitCircle | DrawableSlider;
-		obj.isSelected = true;
 		if (obj.timelineObject) obj.timelineObject.isSelected = true;
 		this.selectContainer.addChild(obj.select);
+		obj.isSelected = true;
 	}
 
 	removeSelected(idx: number) {
 		this.selected.delete(idx);
 		const obj = this.beatmap.objects[idx] as DrawableHitCircle | DrawableSlider;
-		obj.isSelected = false;
 		if (obj.timelineObject) obj.timelineObject.isSelected = false;
 		this.selectContainer.removeChild(obj.select);
+		obj.isSelected = false;
 	}
 
 	checkInBound(point: Vector2) {

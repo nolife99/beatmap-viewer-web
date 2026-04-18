@@ -2,6 +2,7 @@ import { LayoutContainer } from "@pixi/layout/components";
 import { inject } from "@/Context";
 import { Application, BitmapText, type Renderer } from "pixi.js";
 import pool from "@stdlib/array-pool";
+import {debugPoolMemory} from "@/BeatmapSet/Beatmap/HitObjects/Rendering/CalculateSliderProgress.ts";
 
 export default class FPS {
 	public container = new LayoutContainer({
@@ -19,9 +20,9 @@ export default class FPS {
 		},
 	});
 
-	private fpsText: BitmapText;
-	private frameTimeText: BitmapText;
-	private poolMemoryText: BitmapText;
+	private readonly fpsText: BitmapText;
+	private readonly frameTimeText: BitmapText;
+	private readonly poolMemoryText: BitmapText;
 
 	private renderer: Renderer;
 	private renderStart = 0;
@@ -74,8 +75,7 @@ export default class FPS {
 			layout: {
 				objectFit: "none",
 				objectPosition: "center right",
-			},
-			visible: false
+			}
 		});
 
 		this.container.addChild(this.fpsText, this.frameTimeText, this.poolMemoryText);
@@ -118,7 +118,7 @@ export default class FPS {
 
 		this.fpsText.text = `${this.frameData.fps.toFixed()} fps`;
 		this.frameTimeText.text = `${this.frameData.deltaMS.toFixed(2)} ms`;
-		this.poolMemoryText.text = `${(pool.nbytes / (1024 * 1024)).toFixed(2)} MB`;
+		this.poolMemoryText.text = `${((pool.nbytes + debugPoolMemory().bytes) / (1024 * 1024)).toFixed(2)} MB`;
 	}
 
 	destroy(): void {

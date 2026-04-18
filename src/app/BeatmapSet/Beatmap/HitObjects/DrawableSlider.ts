@@ -248,9 +248,10 @@ export default class DrawableSlider
 	}
 	set isSelected(val: boolean) {
 		this._isSelected = val;
-		if (val) this.updateSelectionVisualsIfNeeded();
 		this.select.visible = val;
 		this.nodes.visible = val;
+		if (val) this.updateSelectionVisualsIfNeeded();
+
 		for (const circle of this.drawableCircles) {
 			if (
 				circle instanceof DrawableSliderHead ||
@@ -325,7 +326,7 @@ export default class DrawableSlider
 	}
 
 	checkCollide(x: number, y: number, time: number) {
-		const obj = this.object;
+		const obj = this._object;
 		if (time < obj.startTime - obj.timePreempt || time > obj.endTime + 240) {
 			return false;
 		}
@@ -517,14 +518,10 @@ export default class DrawableSlider
 		this.lastGeometryState.tail = tail;
 		this.lastGeometryState.scale = scale;
 
-		const useCached = head === 0 && tail === 1;
-		const path: SliderProgressResult = useCached ?
-			{ points: this._object.path.calculatedPath, length: this._object.path.calculatedPath.length } :
-			calculateSliderProgress(this.object.path, head, tail, this.path.points);
-
+		const path = calculateSliderProgress(this.object.path, head, tail, this.path.points);
 		if (path.length === 0) return;
 
-		if (!useCached) this.path = path;
+		this.path = path;
 		this.renderer.updateMainGeometry(path, this.object.radius * (236 / 256) * scale);
 	}
 
@@ -552,8 +549,8 @@ export default class DrawableSlider
 			circle.update(time - offset);
 		}
 
-		const { start, end } = sharedUpdate(this, time);
-		this.updateGeometry(start, end, this.getSkinBodyScale());
+		const updated = sharedUpdate(this, time);
+		if (updated) this.updateGeometry(updated.start, updated.end, this.getSkinBodyScale());
 
 		this.judgement.frame(time);
 
@@ -598,12 +595,15 @@ export default class DrawableSlider
 			this.nodes.fill(0xff0000);
 		}
 
-		const path = val.path.calculatedPath;
+		const path = this.lastGeometryState.head === 0 && this.lastGeometryState.tail === 1 ?
+			this.path :
+			calculateSliderProgress(val.path, 0, 1, this.path.points);
+
 		if (!path.length) return;
 
 		const selectionScale = this.getSkinBodyScale();
 		const selectionRadius = val.radius * (236 / 256) * selectionScale;
-		this.renderer.updateSelectionGeometry({ points: path, length: path.length }, selectionRadius);
+		this.renderer.updateSelectionGeometry(path, selectionRadius);
 
 		this._selectionVisualsDirty = false;
 	}

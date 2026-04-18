@@ -2,7 +2,7 @@
     AlphaFilter, Application,
     Buffer,
     BufferUsage,
-    type ColorSource,
+    type ColorSource, type Container,
     Geometry,
     GlProgram,
     GpuProgram,
@@ -137,20 +137,30 @@ export default class SliderBodyRenderer {
     }
 
     updateMainGeometry(path: SliderProgressResult, radius: number) {
-        const bounds = this.populateInstanceBuffer(path, this.body.geometry);
+        const bounds = this.populateInstanceBuffer(
+            path,
+            this.body.geometry,
+            SliderBodyRenderer.assertAttachedToAppStage(this.body, "updateMainGeometry")
+        );
+
         this.uniforms.uniforms.uRadius = radius;
         this.body.filterArea = this.computePaddedBounds(bounds, radius);
     }
 
     updateSelectionGeometry(path: SliderProgressResult, radius: number) {
-        const bounds = this.populateInstanceBuffer(path, this.selectionBody.geometry);
+        const bounds = this.populateInstanceBuffer(
+            path,
+            this.selectionBody.geometry,
+            SliderBodyRenderer.assertAttachedToAppStage(this.selectionBody, "updateSelectionGeometry")
+        );
         this.selectionUniforms.uniforms.uRadius = radius;
         this.selectionBody.filterArea = this.computePaddedBounds(bounds, radius);
     }
 
     private populateInstanceBuffer(
         path: SliderProgressResult,
-        targetGeometry: Geometry
+        targetGeometry: Geometry,
+        app: Application
     ): Rectangle {
         const { points, length: pointsCount } = path;
 
@@ -190,9 +200,7 @@ export default class SliderBodyRenderer {
         targetGeometry.attributes.aSegment.buffer.setDataWithSize(staging, requiredFloats, false);
         targetGeometry.instanceCount = segmentsCount;
 
-        // TODO: free only when the geometry has been rendered to avoid UAFs
-        // Right now we ensure that the geometry is visible
-        inject<Application>("ui/app")?.ticker.addOnce(
+        app.ticker.addOnce(
             () => pool.free(staging),
             undefined,
             UPDATE_PRIORITY.LOW
@@ -204,6 +212,50 @@ export default class SliderBodyRenderer {
             maxX - minX,
             maxY - minY
         );
+    }
+
+    private static assertAttachedToAppStage(
+        node: Container,
+        reason?: string
+    ) {
+        const app = inject<Application>("ui/app");
+        const prefix = `Can't update staging buffer safely because node ${node.uid} is not in the scene graph: `;
+
+        if (!app?.stage) {
+            throw new Error(prefix + `Application.stage is unavailable. ${reason ?? ""}`);
+        }
+
+        let cur: Container | null = node;
+        let foundStage = false;
+
+        while (cur) {
+            if (cur === app.stage) {
+                foundStage = true;
+                break;
+            }
+
+            if (!cur.visible) {
+                throw new Error(
+                    prefix + `ancestor ${cur.uid} is invisible. ${reason ?? ""}`
+                );
+            }
+
+            if (!cur.renderable) {
+                throw new Error(
+                    prefix + `ancestor ${cur.uid} is non-renderable. ${reason ?? ""}`
+                );
+            }
+
+            cur = cur.parent;
+        }
+
+        if (!foundStage) {
+            throw new Error(
+                prefix + `node is detached from Application.stage. ${reason ?? ""}`
+            );
+        }
+
+        return app;
     }
 
     private computePaddedBounds(
@@ -238,9 +290,6 @@ export default class SliderBodyRenderer {
 
         this.body.shader?.destroy();
         this.selectionBody.shader?.destroy();
-
-        this.body.onRender?.(null as any);
-        this.selectionBody.onRender?.(null as any);
 
         this.body.destroy(true);
         this.selectionBody.destroy(true);

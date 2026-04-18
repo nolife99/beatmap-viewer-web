@@ -11,7 +11,6 @@ export type SkinMetadata = {
     type: "DEFAULT" | "CUSTOM" | "ARGON";
     name: string;
     resources: Map<string, Resource>;
-    atlasUrls?: string[];
 };
 
 export default class SkinManager {
@@ -24,19 +23,21 @@ export default class SkinManager {
 
     constructor() {
         document.querySelector<HTMLButtonElement>("#reloadDefaultSkins")?.addEventListener("click", async () => {
-            this.skins = this.skins.filter((s) => s.type === "CUSTOM");
-            await this.loadDefaultSkins();
+            await this.indexed.remove("default");
+            await this.indexed.remove("yugen");
+            await this.indexed.remove("argon");
 
+            await this.loadDefaultSkins();
             await this.refreshSkinList();
 
             const currentSkin = this.getCurrentSkin();
             if (currentSkin?.metadata?.type === "CUSTOM") return;
 
-            const idx = this.skins.findIndex((skin) => skin.name === currentSkin?.metadata?.name);
+            const idx = this.skins.findIndex(skin => skin.name === currentSkin?.metadata?.name);
             if (idx === -1 || this.skins[idx].type === "CUSTOM") return;
 
             await this.loadSkin(idx);
-        });
+        })
     }
 
     addSkinChangeListener(callback: SkinEventCallback) {
@@ -59,8 +60,7 @@ export default class SkinManager {
         await this.loadDefaultSkins();
 
         const skins = await this.indexed.getAll();
-        const customSkins = (skins as SkinMetadata[]).filter((s) => s.type === "CUSTOM");
-        this.skins.push(...customSkins);
+        this.skins.push(...(skins as SkinMetadata[]));
 
         await this.loadDefaultSkin();
 
@@ -88,11 +88,11 @@ export default class SkinManager {
     }
 
     async loadDefaultSkin() {
-        const defaultSkinMeta = this.skins.find(
+        const defaultSkin = this.skins.find(
             (skin) => skin.type === "DEFAULT" && skin.name === "Default",
         );
-        this.defaultSkin = new Skin(defaultSkinMeta?.resources);
-        await this.defaultSkin.init(defaultSkinMeta?.atlasUrls);
+        this.defaultSkin = new Skin(defaultSkin?.resources);
+        await this.defaultSkin.init();
     }
 
     async loadSkin(idx: number) {
@@ -107,7 +107,7 @@ export default class SkinManager {
             this.currentSkin = this.defaultSkin;
         } else {
             this.currentSkin = new Skin(selectedSkin?.resources, selectedSkin);
-            await this.currentSkin.init(selectedSkin.atlasUrls);
+            await this.currentSkin.init();
         }
 
         const el = document.querySelector<HTMLSpanElement>("#currentSkin");
@@ -120,7 +120,7 @@ export default class SkinManager {
         const skin = new Skin(resources);
         await skin.init();
 
-        const metadata: SkinMetadata = { type: "CUSTOM", name: skin.config.General.Name, resources };
+        const metadata: SkinMetadata = { type: "CUSTOM", name: skin.config.General.Name, resources }
 
         await this.indexed.add(
             metadata,
@@ -150,9 +150,9 @@ export default class SkinManager {
             this.indexed.getAllKeys(),
         ]);
 
-        const customSkins = (skins as SkinMetadata[]).filter((s) => s.type === "CUSTOM");
-        const builtinSkins = this.skins.filter((s) => s.type !== "CUSTOM");
-        this.skins = [...builtinSkins, ...customSkins];
+        this.skins = [...(skins as SkinMetadata[])];
+
+        // console.log(this.skins);
 
         const el = document.querySelector<HTMLDivElement>("#skinsContainer");
         if (el) el.innerHTML = "";
@@ -182,12 +182,8 @@ export default class SkinManager {
             button2.className =
                 "h-full hover:bg-white/10 p-2.5 flex items-center justify-center rounded-[10px] cursor-pointer transition-colors text-white";
             button2.style.aspectRatio = "1 / 1";
-
-            const customKeys = (key as string[]).filter((_, i2) => (skins as SkinMetadata[])[i2]?.type === "CUSTOM");
-            const customIdx = customSkins.indexOf(skin);
-
             button2.addEventListener("click", () => {
-                if (customIdx >= 0) this.removeSkin(customKeys[customIdx]);
+                this.removeSkin((key as string[])[i]);
                 document
                     .querySelector<HTMLDivElement>("#skinsContainer")
                     ?.classList.add("showOut");
@@ -203,31 +199,35 @@ export default class SkinManager {
     }
 
     async loadDefaultSkins() {
-        const [legacy, yugen, argon] = await Promise.all([
-            getDefaultLegacy(),
-            getYugen(),
-            getArgon(),
-        ]);
+        const allKeys = await this.indexed.getAllKeys();
 
-        this.skins.unshift(
-            {
-                type: "DEFAULT",
-                name: "Default",
-                resources: legacy.resources,
-                atlasUrls: legacy.atlasUrls,
-            },
-            {
-                type: "DEFAULT",
-                name: "YUGEN",
-                resources: yugen.resources,
-                atlasUrls: yugen.atlasUrls,
-            },
-            {
-                type: "ARGON",
-                name: "Argon",
-                resources: argon.resources,
-                atlasUrls: argon.atlasUrls,
-            },
-        );
+        if (!(allKeys as unknown[]).includes("default")) {
+            await this.indexed.add(
+                {
+                    type: "DEFAULT",
+                    name: "Default",
+                    resources: await getDefaultLegacy(),
+                },
+                "default",
+            );
+        }
+
+        if (!(allKeys as unknown[]).includes("yugen")) {
+            await this.indexed.add(
+                { type: "DEFAULT", name: "YUGEN", resources: await getYugen() },
+                "yugen",
+            );
+        }
+
+        if (!(allKeys as unknown[]).includes("argon")) {
+            await this.indexed.add(
+                {
+                    type: "ARGON",
+                    name: "Argon",
+                    resources: await getArgon(),
+                },
+                "argon",
+            );
+        }
     }
 }

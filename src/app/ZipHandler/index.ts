@@ -15,7 +15,7 @@ async function extract(zipFile: Blob) {
         resources.set(file.filename.toLowerCase(), blob);
     }
     
-    zipReader.close();
+    await zipReader.close();
 
     return resources;
 }
