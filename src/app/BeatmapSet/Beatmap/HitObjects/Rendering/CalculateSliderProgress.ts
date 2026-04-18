@@ -5,43 +5,6 @@ export type SliderProgressResult = {
 	length: number;
 };
 
-class GraphNode {
-	id: number = 0;
-	p: Vector2 | null = null;
-	orderedEdges: number[] = [];
-	edgeCount: number = 0;
-
-	reset(id: number, p: Vector2) {
-		this.id = id;
-		this.p = p;
-		this.edgeCount = 0;
-	}
-}
-
-let currentBufferSize = 4096;
-
-const globalNodes: GraphNode[] = [];
-const spatialGrid = new Map<number, number[]>();
-const gridArrayPool: number[][] = [];
-let gridArrayPoolIdx = 0;
-
-const addedEdges = new Set<number>();
-const edgeVisitCount = new Map<number, number>();
-
-let mergedSequence = new Uint32Array(currentBufferSize);
-let reducedSeq = new Uint32Array(currentBufferSize);
-let chunkPoints: Vector2[] = new Array(currentBufferSize);
-
-function ensureCapacity(size: number) {
-	if (size <= currentBufferSize) return;
-
-	currentBufferSize = Math.ceil(size * 1.61803399);
-
-	mergedSequence = new Uint32Array(currentBufferSize);
-	reducedSeq = new Uint32Array(currentBufferSize);
-	chunkPoints.length = currentBufferSize;
-}
-
 export default function calculateSliderProgress(
 	path: SliderPath,
 	p0: number,
@@ -62,26 +25,25 @@ export default function calculateSliderProgress(
 	const pStart: Vector2 = (path as any)._interpolateVertices(startIdx, d0);
 	const pEnd: Vector2 = (path as any)._interpolateVertices(endIdx, d1);
 
-	const numPoints = endIdx - startIdx + 2;
+	// const numPoints = endIdx - startIdx + 2;
+	// if ((path as any).curveType === "P" || numPoints <= 3) {
+	let finalLen = 0;
+	out[finalLen++] = pStart;
 
-	if ((path as any).curveType === "P" || numPoints <= 3) {
-		let finalLen = 0;
-		out[finalLen++] = pStart;
-
-		for (let j = startIdx + 1; j < endIdx - 1; j++) {
-			const pt = calcPath[j];
-			if (!out[finalLen - 1].equals(pt)) {
-				out[finalLen++] = pt;
-			}
+	for (let j = startIdx; j < endIdx; j++) {
+		const pt = calcPath[j];
+		if (!out[finalLen - 1].equals(pt)) {
+			out[finalLen++] = pt;
 		}
-
-		if (!out[finalLen - 1].equals(pEnd)) {
-			out[finalLen++] = pEnd;
-		}
-
-		return { points: out, length: finalLen };
 	}
 
+	if (!out[finalLen - 1].equals(pEnd)) {
+		out[finalLen++] = pEnd;
+	}
+
+	return { points: out, length: finalLen };
+
+	/* }
 	ensureCapacity(numPoints * 2);
 
 	spatialGrid.clear();
@@ -214,7 +176,7 @@ export default function calculateSliderProgress(
 		b.orderedEdges[b.edgeCount++] = aId;
 	}
 
-	let finalLen = 0;
+	// let finalLen = 0;
 	out[finalLen++] = pStart;
 
 	let chunkLen = 0;
@@ -248,6 +210,43 @@ export default function calculateSliderProgress(
 	}
 
 	return { points: out, length: finalLen };
+}
+
+class GraphNode {
+	id: number = 0;
+	p: Vector2 | null = null;
+	orderedEdges: number[] = [];
+	edgeCount: number = 0;
+
+	reset(id: number, p: Vector2) {
+		this.id = id;
+		this.p = p;
+		this.edgeCount = 0;
+	}
+}
+
+let currentBufferSize = 4096;
+
+const globalNodes: GraphNode[] = [];
+const spatialGrid = new Map<number, number[]>();
+const gridArrayPool: number[][] = [];
+let gridArrayPoolIdx = 0;
+
+const addedEdges = new Set<number>();
+const edgeVisitCount = new Map<number, number>();
+
+let mergedSequence = new Uint32Array(currentBufferSize);
+let reducedSeq = new Uint32Array(currentBufferSize);
+let chunkPoints: Vector2[] = new Array(currentBufferSize);
+
+function ensureCapacity(size: number) {
+	if (size <= currentBufferSize) return;
+
+	currentBufferSize = Math.ceil(size * 1.61803399);
+
+	mergedSequence = new Uint32Array(currentBufferSize);
+	reducedSeq = new Uint32Array(currentBufferSize);
+	chunkPoints.length = currentBufferSize;
 }
 
 function simplifyChunkAveraged(
@@ -462,7 +461,7 @@ function getVirtualPoint(
 ): Vector2 {
 	if (idx === 0) return pStart;
 	if (idx === numPoints - 1) return pEnd;
-	return path.calculatedPath[startIdx + idx - 1];
+	return path.calculatedPath[startIdx + idx - 1]; */
 }
 
 function lowerBound(

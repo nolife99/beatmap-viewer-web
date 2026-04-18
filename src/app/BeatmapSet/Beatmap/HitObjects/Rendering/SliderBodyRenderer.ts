@@ -1,5 +1,5 @@
 ﻿import {
-    AlphaFilter,
+    AlphaFilter, Application,
     Buffer,
     BufferUsage,
     type ColorSource,
@@ -9,7 +9,7 @@
     Mesh,
     Rectangle,
     Shader,
-    UniformGroup
+    UniformGroup, UPDATE_PRIORITY
 } from "pixi.js";
 import type RendererConfig from "@/Config/RendererConfig";
 import { inject } from "@/Context";
@@ -18,7 +18,10 @@ import type { SliderProgressResult } from "./CalculateSliderProgress";
 import fragment from "./Shaders/sliderShader.frag?raw";
 import vertex from "./Shaders/sliderShader.vert?raw";
 import gpuSrc from "./Shaders/sliderShader.wgsl?raw";
-import typedarraypool from "@stdlib/array-pool";
+import pool from "@stdlib/array-pool";
+
+const dynamicGeometryPool = pool.factory();
+const staticGeometryPool = pool.factory();
 
 const GL = new GlProgram({ vertex, fragment });
 const GPU = GpuProgram.from({
@@ -37,24 +40,27 @@ export type SliderUniformPatch = Partial<{
     uRadius: number;
 }>;
 
-const quadPositions = new Float32Array([
-    0,  1,
-    0, -1,
-    1, -1,
+const quadPositions = new Buffer({
+    data: [
+        0,  1,
+        0, -1,
+        1, -1,
 
-    0,  1,
-    1, -1,
-    1,  1,
-]);
+        0,  1,
+        1, -1,
+        1,  1,
+    ],
+    usage: BufferUsage.VERTEX
+});
 function createBodyGeometry() {
     return new Geometry({
         attributes: {
             aQuad: {
-                buffer: new Buffer({ data: quadPositions, usage: BufferUsage.VERTEX }),
+                buffer: quadPositions,
                 format: "float32x2",
             },
             aSegment: {
-                buffer: new Buffer({ data: new Float32Array([]), usage: BufferUsage.VERTEX | BufferUsage.COPY_DST }),
+                buffer: new Buffer({ data: new Float32Array([]), usage: BufferUsage.VERTEX, shrinkToFit: false }),
                 format: "float32x4",
                 instance: true,
             }
@@ -82,13 +88,6 @@ function createShader(uniforms: UniformGroup) {
             customUniforms: uniforms,
         },
     });
-}
-
-function acquireSegmentStagingBuffer(requiredFloats: number, buffer: Buffer) {
-    const arr = typedarraypool.malloc(requiredFloats, "float32") as Float32Array;
-    buffer.once('update', () => typedarraypool.free(arr));
-
-    return arr;
 }
 
 export default class SliderBodyRenderer {
@@ -160,8 +159,12 @@ export default class SliderBodyRenderer {
         const segmentsCount = Math.max(1, pointsCount - 1);
         const requiredFloats = segmentsCount * 4;
 
-        const bufferInfo = targetGeometry.attributes.aSegment.buffer;
-        const staging = acquireSegmentStagingBuffer(requiredFloats, bufferInfo);
+        const rawStaging = pool(requiredFloats, 'float32');
+        if (!rawStaging) {
+            throw new Error("Failed to allocate geometry staging buffer");
+        }
+
+        const staging = new Float32Array(rawStaging.buffer, 0, requiredFloats);
 
         let minX = points[0].x;
         let minY = points[0].y;
@@ -184,7 +187,9 @@ export default class SliderBodyRenderer {
             if (B.y > maxY) maxY = B.y;
         }
 
-        bufferInfo.setDataWithSize(staging, requiredFloats, false);
+        targetGeometry.attributes.aSegment.buffer.setDataWithSize(staging, requiredFloats, false);
+        inject<Application>("ui/app")?.ticker.addOnce(() => pool.free(staging));
+
         targetGeometry.instanceCount = segmentsCount;
 
         return new Rectangle(
@@ -214,10 +219,18 @@ export default class SliderBodyRenderer {
     }
 
     destroy() {
-        this.body.geometry.destroy(true);
-        this.selectionBody.geometry.destroy(true);
+        this.body.geometry.destroy();
+        this.selectionBody.geometry.destroy();
+
+        this.body.geometry.attributes.aSegment.buffer.destroy();
+        this.selectionBody.geometry.attributes.aSegment.buffer.destroy();
+
         this.body.shader?.destroy();
         this.selectionBody.shader?.destroy();
+
+        this.body.onRender?.(null as any);
+        this.selectionBody.onRender?.(null as any);
+
         this.body.destroy(true);
         this.selectionBody.destroy(true);
     }

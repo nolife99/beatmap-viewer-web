@@ -1,4 +1,4 @@
-import { Application, Assets, GpuBlendModesToPixi, RenderTarget, Ticker } from "pixi.js";
+import {Application, Assets, GpuBlendModesToPixi, RenderTarget, Ticker, UPDATE_PRIORITY} from "pixi.js";
 import State from "./State";
 import AnimationController, {
     tweenGroup,
@@ -124,7 +124,7 @@ export class Game {
                         +getComputedStyle(divApp).height.replaceAll("px", ""),
                     );
 
-                    Ticker.shared.addOnce(() => this.resizeFrame(app, width, height));
+                    app.ticker.addOnce(() => this.resizeFrame(app, width, height), UPDATE_PRIORITY.HIGH);
                 }
             });
 

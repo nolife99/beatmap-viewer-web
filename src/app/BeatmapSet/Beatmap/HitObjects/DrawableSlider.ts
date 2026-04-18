@@ -248,6 +248,7 @@ export default class DrawableSlider
 	}
 	set isSelected(val: boolean) {
 		this._isSelected = val;
+		if (val) this.updateSelectionVisualsIfNeeded();
 		this.select.visible = val;
 		this.nodes.visible = val;
 		for (const circle of this.drawableCircles) {
@@ -315,42 +316,10 @@ export default class DrawableSlider
 			this.judgement.container.scale.set(val.scale);
 		}
 
-		const path = calculateSliderProgress(this.object.path, 0, 1, this.path.points);
-		if (!path.length) return;
-
-		this.path = path;
-
-		this.nodes.clear();
-		for (let i = 0; i < val.path.controlPoints.length; i++) {
-			const point = val.path.controlPoints[i];
-			if (i === 0) {
-				this.nodes.moveTo(point.position.x, point.position.y);
-			} else {
-				this.nodes.lineTo(point.position.x, point.position.y);
-			}
+		this._selectionVisualsDirty = true;
+		if (this.isSelected) {
+			this.updateSelectionVisualsIfNeeded();
 		}
-		this.nodes.stroke({ width: 1, alignment: 0.5, color: 0xefefef });
-
-		for (let i = 0; i < val.path.controlPoints.length; i++) {
-			const p = val.path.controlPoints[i];
-			if (i === 0 || p.type === null) {
-				this.nodes.circle(p.position.x, p.position.y, 2);
-			}
-		}
-		this.nodes.fill(0xefefef);
-
-		for (let i = 0; i < val.path.controlPoints.length; i++) {
-			const p = val.path.controlPoints[i];
-			if (i !== 0 && p.type !== null) {
-				this.nodes.circle(p.position.x, p.position.y, 2);
-			}
-		}
-		this.nodes.fill(0xff0000);
-
-		const selectionScale = this.getSkinBodyScale();
-		const selectionRadius = val.radius * (236 / 256) * selectionScale;
-
-		this.renderer.updateSelectionGeometry(path, selectionRadius);
 
 		this.lastGeometryState = { head: Infinity, tail: -Infinity, scale: -Infinity };
 	}
@@ -436,17 +405,10 @@ export default class DrawableSlider
 			this.timelineObject?.refreshSprite();
 		}
 
-		const path = calculateSliderProgress(this.object.path, 0, 1, this.path.points);
-		if (path.length === 0) return;
-
-		this.path = path;
-
-		const selectionRadius =
-			this.object.radius *
-			(236 / 256) *
-			(skin.config.General.Argon ? 0.95 : 1);
-
-		this.renderer.updateSelectionGeometry(path, selectionRadius);
+		this._selectionVisualsDirty = true;
+		if (this.isSelected) {
+			this.updateSelectionVisualsIfNeeded();
+		}
 	}
 
 	refreshColor() {
@@ -555,10 +517,14 @@ export default class DrawableSlider
 		this.lastGeometryState.tail = tail;
 		this.lastGeometryState.scale = scale;
 
-		const path = calculateSliderProgress(this.object.path, head, tail, this.path.points);
+		const useCached = head === 0 && tail === 1;
+		const path: SliderProgressResult = useCached ?
+			{ points: this._object.path.calculatedPath, length: this._object.path.calculatedPath.length } :
+			calculateSliderProgress(this.object.path, head, tail, this.path.points);
+
 		if (path.length === 0) return;
 
-		this.path = path;
+		if (!useCached) this.path = path;
 		this.renderer.updateMainGeometry(path, this.object.radius * (236 / 256) * scale);
 	}
 
@@ -592,6 +558,54 @@ export default class DrawableSlider
 		this.judgement.frame(time);
 
 		if (this.isHover && time > this.object.endTime + 240) this.isHover = false;
+	}
+
+	private _selectionVisualsDirty = true;
+	private _nodesInitialized = false;
+
+	private updateSelectionVisualsIfNeeded() {
+		const val = this._object;
+		if (!this._selectionVisualsDirty || !val) return;
+
+		if (!this._nodesInitialized) {
+			this._nodesInitialized = true;
+
+			this.nodes.clear();
+			for (let i = 0; i < val.path.controlPoints.length; i++) {
+				const point = val.path.controlPoints[i];
+				if (i === 0) {
+					this.nodes.moveTo(point.position.x, point.position.y);
+				} else {
+					this.nodes.lineTo(point.position.x, point.position.y);
+				}
+			}
+			this.nodes.stroke({ width: 1, alignment: 0.5, color: 0xefefef });
+
+			for (let i = 0; i < val.path.controlPoints.length; i++) {
+				const p = val.path.controlPoints[i];
+				if (i === 0 || p.type === null) {
+					this.nodes.circle(p.position.x, p.position.y, 2);
+				}
+			}
+			this.nodes.fill(0xefefef);
+
+			for (let i = 0; i < val.path.controlPoints.length; i++) {
+				const p = val.path.controlPoints[i];
+				if (i !== 0 && p.type !== null) {
+					this.nodes.circle(p.position.x, p.position.y, 2);
+				}
+			}
+			this.nodes.fill(0xff0000);
+		}
+
+		const path = val.path.calculatedPath;
+		if (!path.length) return;
+
+		const selectionScale = this.getSkinBodyScale();
+		const selectionRadius = val.radius * (236 / 256) * selectionScale;
+		this.renderer.updateSelectionGeometry({ points: path, length: path.length }, selectionRadius);
+
+		this._selectionVisualsDirty = false;
 	}
 
 	declare _evaluation?: SliderEvaluation | undefined;
