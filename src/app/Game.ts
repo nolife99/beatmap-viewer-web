@@ -3,7 +3,6 @@ import State from "./State";
 import AnimationController, {
     tweenGroup,
 } from "./UI/animation/AnimationController";
-import "./FPSSystem";
 import BeatmapSet from "./BeatmapSet";
 import Replay from "./BeatmapSet/Beatmap/Replay";
 import {
@@ -138,6 +137,11 @@ export class Game {
         await Assets.load(["./atlas/ui.json", "./atlas/mods.json"]);
 
         const app = provide("ui/app", await this.initApplication());
+        app.ticker.add(() => {
+            this.resize(app);
+            tweenGroup.update();
+        }, undefined, UPDATE_PRIORITY.INTERACTION);
+
         this.config.fullscreen.fullscreen =
             new URLSearchParams(window.location.search).get("fullscreen") === "true";
 
@@ -629,10 +633,7 @@ export class Game {
         inject<Loading>("ui/loading")?.off();
     }
 
-    private resize() {
-        const app = inject<Application>("ui/app");
-        if (!app) return;
-
+    private resize(app: Application) {
         const width = app.screen.width;
         const height = app.screen.height;
 
@@ -647,11 +648,5 @@ export class Game {
             width,
             height,
         };
-    }
-
-    update() {
-        // console.log(frameData.fps)
-        this.resize();
-        tweenGroup.update();
     }
 }

@@ -1,6 +1,6 @@
 import { LayoutContainer } from "@pixi/layout/components";
 import type { DifficultyPoint, SamplePoint, TimingPoint } from "osu-classes";
-import { Container, type FederatedPointerEvent, Rectangle, Ticker, type TickerCallback } from "pixi.js";
+import { Container, type FederatedPointerEvent, Rectangle } from "pixi.js";
 import type ColorConfig from "@/Config/ColorConfig";
 import type ExperimentalConfig from "@/Config/ExperimentalConfig";
 import { inject } from "@/Context";
@@ -257,7 +257,6 @@ export default class Timing {
 		);
 	}
 
-	private _currentLoop?: TickerCallback<any>;
 	private _isDown = false;
 	private _startPosition = 0;
 	private _cacheOffset = 0;
@@ -268,9 +267,7 @@ export default class Timing {
 
 	handleDragStart(event: FederatedPointerEvent) {
 		this._isDown = true;
-		if (this._currentLoop) {
-			Ticker.shared.remove(this._currentLoop);
-		}
+		this.container.onRender = null;
 		this._cacheOffset = this._scrollOffset;
 		this._currentVelocity = 0;
 		this._startPosition = event.y;
@@ -311,7 +308,7 @@ export default class Timing {
 		}
 
 		this._last = performance.now();
-		Ticker.shared.add(this._currentLoop = () => this.handleVelocity());
+		this.container.onRender = () => this.handleVelocity();
 	}
 
 	private bounceBack(leway = 200) {

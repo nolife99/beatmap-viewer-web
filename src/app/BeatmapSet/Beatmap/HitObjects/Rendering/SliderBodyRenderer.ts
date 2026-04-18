@@ -9,7 +9,8 @@
     Mesh,
     Rectangle,
     Shader,
-    UniformGroup, UPDATE_PRIORITY
+    UniformGroup,
+    UPDATE_PRIORITY
 } from "pixi.js";
 import type RendererConfig from "@/Config/RendererConfig";
 import { inject } from "@/Context";
@@ -19,9 +20,6 @@ import fragment from "./Shaders/sliderShader.frag?raw";
 import vertex from "./Shaders/sliderShader.vert?raw";
 import gpuSrc from "./Shaders/sliderShader.wgsl?raw";
 import pool from "@stdlib/array-pool";
-
-const dynamicGeometryPool = pool.factory();
-const staticGeometryPool = pool.factory();
 
 const GL = new GlProgram({ vertex, fragment });
 const GPU = GpuProgram.from({
@@ -159,9 +157,11 @@ export default class SliderBodyRenderer {
         const segmentsCount = Math.max(1, pointsCount - 1);
         const requiredFloats = segmentsCount * 4;
 
-        const rawStaging = pool(requiredFloats, 'float32');
+        const rawStaging = pool.malloc(requiredFloats, 'float32');
         if (!rawStaging) {
-            throw new Error("Failed to allocate geometry staging buffer");
+            throw new Error(
+                `Renting staging buffer (size ${requiredFloats * Float32Array.BYTES_PER_ELEMENT})`
+            );
         }
 
         const staging = new Float32Array(rawStaging.buffer, 0, requiredFloats);
@@ -188,9 +188,15 @@ export default class SliderBodyRenderer {
         }
 
         targetGeometry.attributes.aSegment.buffer.setDataWithSize(staging, requiredFloats, false);
-        inject<Application>("ui/app")?.ticker.addOnce(() => pool.free(staging));
-
         targetGeometry.instanceCount = segmentsCount;
+
+        // TODO: free only when the geometry has been rendered to avoid UAFs
+        // Right now we ensure that the geometry is visible
+        inject<Application>("ui/app")?.ticker.addOnce(
+            () => pool.free(staging),
+            undefined,
+            UPDATE_PRIORITY.LOW
+        );
 
         return new Rectangle(
             minX,
@@ -200,7 +206,12 @@ export default class SliderBodyRenderer {
         );
     }
 
-    private computePaddedBounds(baseRect: Rectangle, radius: number, paddingScale = 1, extraPixels = 0): Rectangle {
+    private computePaddedBounds(
+        baseRect: Rectangle, 
+        radius: number, 
+        paddingScale = 1, 
+        extraPixels = 0
+    ): Rectangle {
         const pad = radius * paddingScale + extraPixels;
         return new Rectangle(
             baseRect.x - pad,
@@ -219,11 +230,11 @@ export default class SliderBodyRenderer {
     }
 
     destroy() {
-        this.body.geometry.destroy();
-        this.selectionBody.geometry.destroy();
-
         this.body.geometry.attributes.aSegment.buffer.destroy();
         this.selectionBody.geometry.attributes.aSegment.buffer.destroy();
+
+        this.body.geometry.destroy();
+        this.selectionBody.geometry.destroy();
 
         this.body.shader?.destroy();
         this.selectionBody.shader?.destroy();
