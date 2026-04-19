@@ -1,5 +1,5 @@
-import type Config from ".";
-import ConfigSection from "./ConfigSection";
+import type Config from '.';
+import ConfigSection from './ConfigSection';
 
 export type ExperimentalProps = {
 	asyncLoading?: boolean;
@@ -10,7 +10,7 @@ export type ExperimentalProps = {
 	easy?: boolean;
 };
 
-type Mods = "hidden" | "hardRock" | "doubleTime" | "easy"
+type Mods = 'hidden' | 'hardRock' | 'doubleTime' | 'easy'
 
 export default class ExperimentalConfig extends ConfigSection {
 	constructor(config: Config, defaultOptions?: ExperimentalProps) {
@@ -24,14 +24,14 @@ export default class ExperimentalConfig extends ConfigSection {
 		this.asyncLoading = asyncLoading ?? true;
 		this.overlapGameplays = overlapGameplays ?? false;
 
-		const searchParams = new URLSearchParams(window.location.search).get("m");
+		const searchParams = new URLSearchParams(window.location.search).get('m');
 		const modMap: [string, Mods][] = [
-			["HD", "hidden"],
-			["HR", "hardRock"],
-			["DT", "doubleTime"],
-			["EZ", "easy"]
-		]
-		
+			['HD', 'hidden'],
+			['HR', 'hardRock'],
+			['DT', 'doubleTime'],
+			['EZ', 'easy']
+		];
+
 		for (const [abbr, mod] of modMap) {
 			if (!searchParams?.includes(abbr)) continue;
 			this[mod] = true;
@@ -42,50 +42,53 @@ export default class ExperimentalConfig extends ConfigSection {
 	get asyncLoading() {
 		return this._asyncLoading;
 	}
+
 	set asyncLoading(val: boolean) {
 		this._asyncLoading = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#asyncLoading");
+		const ele = document.querySelector<HTMLInputElement>('#asyncLoading');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("asyncLoading", val);
+		this.emitChange('asyncLoading', val);
 	}
 
 	private _overlapGameplays = true;
 	get overlapGameplays() {
 		return this._overlapGameplays;
 	}
+
 	set overlapGameplays(val: boolean) {
 		this._overlapGameplays = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#overlapGameplays");
+		const ele = document.querySelector<HTMLInputElement>('#overlapGameplays');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("overlapGameplays", val);
+		this.emitChange('overlapGameplays', val);
 	}
 
 	private _hardRock = false;
 	get hardRock() {
 		return this._hardRock;
 	}
+
 	set hardRock(val: boolean) {
 		this._hardRock = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#modsHR");
+		const ele = document.querySelector<HTMLInputElement>('#modsHR');
 		if (!ele) return;
 		ele.checked = val;
 
-		const EZ = document.querySelector<HTMLInputElement>("#modsEZ");
+		const EZ = document.querySelector<HTMLInputElement>('#modsEZ');
 		if (!EZ) return;
 		EZ.checked = false;
 		this._easy = false;
 
-		this.emitChange("mods", {
+		this.emitChange('mods', {
 			shouldRecalculate: true,
 			shouldPlaybackChange: false,
-			mods: this.getModsString(),
+			mods: this.getModsString()
 		});
 	}
 
@@ -93,17 +96,18 @@ export default class ExperimentalConfig extends ConfigSection {
 	get doubleTime() {
 		return this._doubleTime;
 	}
+
 	set doubleTime(val: boolean) {
 		this._doubleTime = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#modsDT");
+		const ele = document.querySelector<HTMLInputElement>('#modsDT');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("mods", {
+		this.emitChange('mods', {
 			shouldRecalculate: false,
 			shouldPlaybackChange: true,
-			mods: this.getModsString(),
+			mods: this.getModsString()
 		});
 	}
 
@@ -111,17 +115,18 @@ export default class ExperimentalConfig extends ConfigSection {
 	get hidden() {
 		return this._hidden;
 	}
+
 	set hidden(val: boolean) {
 		this._hidden = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#modsHD");
+		const ele = document.querySelector<HTMLInputElement>('#modsHD');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("mods", {
+		this.emitChange('mods', {
 			shouldRecalculate: false,
 			shouldPlaybackChange: false,
-			mods: this.getModsString(),
+			mods: this.getModsString()
 		});
 	}
 
@@ -129,71 +134,72 @@ export default class ExperimentalConfig extends ConfigSection {
 	get easy() {
 		return this._easy;
 	}
+
 	set easy(val: boolean) {
 		this._easy = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#modsEZ");
+		const ele = document.querySelector<HTMLInputElement>('#modsEZ');
 		if (!ele) return;
 		ele.checked = val;
 
-		const HR = document.querySelector<HTMLInputElement>("#modsHR");
+		const HR = document.querySelector<HTMLInputElement>('#modsHR');
 		if (!HR) return;
 		HR.checked = false;
 		this._hardRock = false;
 
-		this.emitChange("mods", {
+		this.emitChange('mods', {
 			shouldRecalculate: true,
 			shouldPlaybackChange: false,
-			mods: this.getModsString(),
+			mods: this.getModsString()
 		});
 	}
 
 	getModsString() {
-		const HD = this.hidden ? "HD" : "";
-		const HR = this.hardRock ? "HR" : "";
-		const DT = this.doubleTime ? "DT" : "";
-		const EZ = this.easy ? "EZ" : "";
+		const HD = this.hidden ? 'HD' : '';
+		const HR = this.hardRock ? 'HR' : '';
+		const DT = this.doubleTime ? 'DT' : '';
+		const EZ = this.easy ? 'EZ' : '';
 
 		return `${HD}${HR}${DT}${EZ}`;
 	}
 
 	loadEventListeners() {
 		document
-			.querySelector<HTMLInputElement>("#overlapGameplays")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.overlapGameplays = value;
-			});
+		.querySelector<HTMLInputElement>('#overlapGameplays')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.overlapGameplays = value;
+		});
 		document
-			.querySelector<HTMLInputElement>("#modsHD")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.hidden = value;
-			});
+		.querySelector<HTMLInputElement>('#modsHD')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.hidden = value;
+		});
 		document
-			.querySelector<HTMLInputElement>("#modsHR")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.hardRock = value;
-			});
+		.querySelector<HTMLInputElement>('#modsHR')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.hardRock = value;
+		});
 		document
-			.querySelector<HTMLInputElement>("#modsDT")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.doubleTime = value;
-			});
+		.querySelector<HTMLInputElement>('#modsDT')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.doubleTime = value;
+		});
 		document
-			.querySelector<HTMLInputElement>("#modsEZ")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.easy = value;
-			});
+		.querySelector<HTMLInputElement>('#modsEZ')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.easy = value;
+		});
 	}
 
 	jsonify(): ExperimentalProps {
 		return {
 			asyncLoading: this.asyncLoading,
-			overlapGameplays: this.overlapGameplays,
+			overlapGameplays: this.overlapGameplays
 		};
 	}
 }

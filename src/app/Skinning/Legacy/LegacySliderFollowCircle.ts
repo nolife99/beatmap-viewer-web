@@ -1,11 +1,11 @@
-import type DrawableSlider from "@/BeatmapSet/Beatmap/HitObjects/DrawableSlider";
-import type DrawableSliderFollowCircle from "@/BeatmapSet/Beatmap/HitObjects/DrawableSliderFollowCircle";
-import Easings from "@/UI/Easings";
+import type DrawableSlider from '@/BeatmapSet/Beatmap/HitObjects/DrawableSlider';
+import type DrawableSliderFollowCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderFollowCircle';
+import Easings from '@/UI/Easings';
 
 export const update = (drawable: DrawableSliderFollowCircle, time: number) => {
-	const slider = drawable.context.consume<DrawableSlider>("drawable");
+	const slider = drawable.context.consume<DrawableSlider>('drawable');
 	const currentTrackingFrame = slider?.evaluation?.trackingStates.findLast(
-		(frame) => frame[0].startTime <= time,
+		(frame) => frame[0].startTime <= time
 	);
 
 	const startTime =
@@ -28,15 +28,15 @@ export const update = (drawable: DrawableSliderFollowCircle, time: number) => {
 	if (time >= startTime && time < startTime + scaleInDuration) {
 		const opacity = Math.min(
 			1,
-			Math.max(0, (time - startTime) / fadeInDuration),
+			Math.max(0, (time - startTime) / fadeInDuration)
 		);
 		const scale = Math.min(
 			1,
-			Math.max(0, (time - startTime) / scaleInDuration),
+			Math.max(0, (time - startTime) / scaleInDuration)
 		);
 
 		drawable.container.scale.set(
-			(0.5 + 0.5 * Easings.Out(scale)) * drawable.object.scale,
+			(0.5 + 0.5 * Easings.Out(scale)) * drawable.object.scale
 		);
 		drawable.container.alpha = opacity;
 
@@ -56,7 +56,7 @@ export const update = (drawable: DrawableSliderFollowCircle, time: number) => {
 		const scale = Math.min(1, Math.max(0, (time - endTime) / outDuration));
 
 		drawable.container.scale.set(
-			(1 - 0.2 * Easings.Out(scale)) * drawable.object.scale,
+			(1 - 0.2 * Easings.Out(scale)) * drawable.object.scale
 		);
 		drawable.container.alpha = Easings.In(opacity);
 

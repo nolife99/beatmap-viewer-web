@@ -1,5 +1,5 @@
-import { HitResult } from "osu-classes";
-import type DrawableSliderTick from "@/BeatmapSet/Beatmap/HitObjects/DrawableSliderTick";
+import { HitResult } from 'osu-classes';
+import type DrawableSliderTick from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderTick';
 
 export const update = (drawable: DrawableSliderTick, time: number) => {
 	const startFadeInTime =
@@ -11,7 +11,7 @@ export const update = (drawable: DrawableSliderTick, time: number) => {
 		![
 			HitResult.Miss,
 			HitResult.LargeTickMiss,
-			HitResult.SmallTickMiss,
+			HitResult.SmallTickMiss
 		].includes(drawable.evaluation.value);
 
 	drawable.container.x =
@@ -24,7 +24,7 @@ export const update = (drawable: DrawableSliderTick, time: number) => {
 	if (time < drawable.object.startTime) {
 		const opacity = Math.min(
 			1,
-			Math.max(0, (time - startFadeInTime) / drawable.object.timeFadeIn),
+			Math.max(0, (time - startFadeInTime) / drawable.object.timeFadeIn)
 		);
 		drawable.container.alpha = opacity;
 
@@ -36,16 +36,16 @@ export const update = (drawable: DrawableSliderTick, time: number) => {
 			1 -
 			Math.min(
 				1,
-				Math.max(0, (time - drawable.object.startTime) / fadeOutDuration),
+				Math.max(0, (time - drawable.object.startTime) / fadeOutDuration)
 			);
 		const scale = Math.min(
 			2,
-			1 + Math.max(0, (time - drawable.object.startTime) / fadeOutDuration),
+			1 + Math.max(0, (time - drawable.object.startTime) / fadeOutDuration)
 		);
 
 		drawable.container.alpha = opacity;
 		drawable.container.scale.set(
-			(shouldHit ? scale : 1) * drawable.object.scale,
+			(shouldHit ? scale : 1) * drawable.object.scale
 		);
 
 		return;

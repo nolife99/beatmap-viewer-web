@@ -8,23 +8,25 @@ import {
 	type RGBColor,
 	type StoryboardLayerType,
 	type StoryboardSprite as StoryboardSpriteData,
-	type Vector2,
-} from "@rian8337/osu-base";
-import { GlProgram, groupD8, Sprite, Texture } from "pixi.js";
-import { ScopedClass } from "@/Context";
-import { EasingsMap } from "@/UI/Easings";
+	type Vector2
+} from '@rian8337/osu-base';
+import { groupD8, Sprite, Texture } from 'pixi.js';
+import { ScopedClass } from '@/Context';
+import { EasingsMap } from '@/UI/Easings';
 
 export default class StoryboardSprite extends ScopedClass {
 	container: Sprite = new Sprite({
-		visible: false,
+		visible: false
 	});
 	order = 0;
 	startTime = 0;
 	endTime = 0;
+	private _flipH = false;
+	private _flipV = false;
 
 	constructor(
 		public data: StoryboardSpriteData,
-		public layerType: StoryboardLayerType,
+		public layerType: StoryboardLayerType
 	) {
 		super();
 		this.container.interactive = false;
@@ -69,7 +71,7 @@ export default class StoryboardSprite extends ScopedClass {
 		}
 
 		this.container.position.set(data.initialPosition.x, data.initialPosition.y);
-		this.container.label = data.path.replaceAll("\\", "/");
+		this.container.label = data.path.replaceAll('\\', '/');
 
 		const { startTime, endTime } = this.timeRange();
 		this.startTime = startTime;
@@ -89,7 +91,7 @@ export default class StoryboardSprite extends ScopedClass {
 			...this.data.timelineGroup.vectorScale.commands,
 			...this.data.timelineGroup.x.commands,
 			...this.data.timelineGroup.y.commands,
-			...this.data.loops,
+			...this.data.loops
 		];
 
 		const startTime =
@@ -98,16 +100,16 @@ export default class StoryboardSprite extends ScopedClass {
 
 		return {
 			startTime,
-			endTime,
+			endTime
 		};
 	}
 
 	loadTexture() {
-		const textures = this.context.consume<Map<string, Texture>>("textures");
+		const textures = this.context.consume<Map<string, Texture>>('textures');
 		if (!textures) return;
 
 		const texture = textures.get(
-			this.data.path.replaceAll("\\", "/").toLowerCase(),
+			this.data.path.replaceAll('\\', '/').toLowerCase()
 		);
 		if (!texture) return;
 
@@ -150,7 +152,7 @@ export default class StoryboardSprite extends ScopedClass {
 		if (groups.vectorScale.hasCommands) {
 			const nearestCommand = this.getNearestCommand(
 				timestamp,
-				groups.vectorScale,
+				groups.vectorScale
 			);
 			if (nearestCommand) this.processVectorScale(timestamp, nearestCommand);
 		}
@@ -178,7 +180,7 @@ export default class StoryboardSprite extends ScopedClass {
 		if (groups.blendingParameters.hasCommands) {
 			const nearestCommand = this.getNearestCommand(
 				timestamp,
-				groups.blendingParameters,
+				groups.blendingParameters
 			);
 			if (nearestCommand) this.processBlending(timestamp, nearestCommand);
 		}
@@ -186,7 +188,7 @@ export default class StoryboardSprite extends ScopedClass {
 		if (groups.flipHorizontal.hasCommands) {
 			const nearestCommand = this.getNearestCommand(
 				timestamp,
-				groups.flipHorizontal,
+				groups.flipHorizontal
 			);
 			if (nearestCommand) this.processFlipHorizontal(timestamp, nearestCommand);
 		}
@@ -194,7 +196,7 @@ export default class StoryboardSprite extends ScopedClass {
 		if (groups.flipVertical.hasCommands) {
 			const nearestCommand = this.getNearestCommand(
 				timestamp,
-				groups.flipVertical,
+				groups.flipVertical
 			);
 			if (nearestCommand) this.processFlipVerticle(timestamp, nearestCommand);
 		}
@@ -213,7 +215,7 @@ export default class StoryboardSprite extends ScopedClass {
 
 		if (startTime <= timestamp && timestamp <= endTime) {
 			const progress = easingFunction(
-				duration !== 0 ? (timestamp - startTime) / duration : 0,
+				duration !== 0 ? (timestamp - startTime) / duration : 0
 			);
 			this.container.alpha = this.lerp(progress, startValue, endValue);
 
@@ -239,7 +241,7 @@ export default class StoryboardSprite extends ScopedClass {
 
 		if (startTime <= timestamp && timestamp <= endTime) {
 			const progress = easingFunction(
-				duration !== 0 ? (timestamp - startTime) / duration : 0,
+				duration !== 0 ? (timestamp - startTime) / duration : 0
 			);
 
 			const { x: _x, y: x } = startValue;
@@ -247,7 +249,7 @@ export default class StoryboardSprite extends ScopedClass {
 
 			this.container.position.set(
 				this.lerp(progress, _x, x),
-				this.lerp(progress, _y, y),
+				this.lerp(progress, _y, y)
 			);
 
 			return;
@@ -272,7 +274,7 @@ export default class StoryboardSprite extends ScopedClass {
 
 		if (startTime <= timestamp && timestamp <= endTime) {
 			const progress = easingFunction(
-				duration !== 0 ? (timestamp - startTime) / duration : 0,
+				duration !== 0 ? (timestamp - startTime) / duration : 0
 			);
 			this.container.scale.set(this.lerp(progress, startValue, endValue));
 
@@ -298,14 +300,14 @@ export default class StoryboardSprite extends ScopedClass {
 
 		if (startTime <= timestamp && timestamp <= endTime) {
 			const progress = easingFunction(
-				duration !== 0 ? (timestamp - startTime) / duration : 0,
+				duration !== 0 ? (timestamp - startTime) / duration : 0
 			);
 			const { x: _x, y: _y } = startValue;
 			const { x, y } = endValue;
 
 			this.container.scale.set(
 				this.lerp(progress, _x, x),
-				this.lerp(progress, _y, y),
+				this.lerp(progress, _y, y)
 			);
 
 			return;
@@ -330,7 +332,7 @@ export default class StoryboardSprite extends ScopedClass {
 
 		if (startTime <= timestamp && timestamp <= endTime) {
 			const progress = easingFunction(
-				duration !== 0 ? (timestamp - startTime) / duration : 0,
+				duration !== 0 ? (timestamp - startTime) / duration : 0
 			);
 			this.container.angle = this.lerp(progress, startValue, endValue);
 
@@ -354,14 +356,14 @@ export default class StoryboardSprite extends ScopedClass {
 			this.container.tint = {
 				r,
 				g,
-				b,
+				b
 			};
 			return;
 		}
 
 		if (startTime <= timestamp && timestamp <= endTime) {
 			const progress = easingFunction(
-				duration !== 0 ? (timestamp - startTime) / duration : 0,
+				duration !== 0 ? (timestamp - startTime) / duration : 0
 			);
 			const { r: _r, g: _g, b: _b } = startValue;
 			const { r, g, b } = endValue;
@@ -369,7 +371,7 @@ export default class StoryboardSprite extends ScopedClass {
 			this.container.tint = {
 				r: this.lerp(progress, _r, r),
 				g: this.lerp(progress, _g, g),
-				b: this.lerp(progress, _b, b),
+				b: this.lerp(progress, _b, b)
 			};
 
 			return;
@@ -380,7 +382,7 @@ export default class StoryboardSprite extends ScopedClass {
 			this.container.tint = {
 				r,
 				g,
-				b,
+				b
 			};
 			return;
 		}
@@ -399,7 +401,7 @@ export default class StoryboardSprite extends ScopedClass {
 
 		if (startTime <= timestamp && timestamp <= endTime) {
 			const progress = easingFunction(
-				duration !== 0 ? (timestamp - startTime) / duration : 0,
+				duration !== 0 ? (timestamp - startTime) / duration : 0
 			);
 			this.container.x = this.lerp(progress, startValue, endValue);
 
@@ -425,7 +427,7 @@ export default class StoryboardSprite extends ScopedClass {
 
 		if (startTime <= timestamp && timestamp <= endTime) {
 			const progress = easingFunction(
-				duration !== 0 ? (timestamp - startTime) / duration : 0,
+				duration !== 0 ? (timestamp - startTime) / duration : 0
 			);
 			this.container.y = this.lerp(progress, startValue, endValue);
 
@@ -443,15 +445,13 @@ export default class StoryboardSprite extends ScopedClass {
 		const { startTime } = nearestCommand;
 
 		if (timestamp < startTime) {
-			this.container.blendMode = "normal";
+			this.container.blendMode = 'normal';
 			return;
 		}
 
-		this.container.blendMode = "add";
+		this.container.blendMode = 'add';
 	}
 
-	private _flipH = false;
-	private _flipV = false;
 	processFlipHorizontal(timestamp: number, command: Command<boolean>) {
 		const { startValue, endValue, endTime } = command;
 		let value = startValue;
@@ -463,10 +463,10 @@ export default class StoryboardSprite extends ScopedClass {
 			const source = this.container.texture.source;
 			const texture = new Texture({
 				source,
-				rotate: value ? groupD8.MIRROR_HORIZONTAL : groupD8.N,
+				rotate: value ? groupD8.MIRROR_HORIZONTAL : groupD8.N
 			});
 			this.container.texture = texture;
-            this._flipH = value;
+			this._flipH = value;
 		}
 	}
 
@@ -482,10 +482,10 @@ export default class StoryboardSprite extends ScopedClass {
 			const source = this.container.texture.source;
 			const texture = new Texture({
 				source,
-				rotate: value ? groupD8.MIRROR_VERTICAL : groupD8.N,
+				rotate: value ? groupD8.MIRROR_VERTICAL : groupD8.N
 			});
 			this.container.texture = texture;
-            this._flipV = value;
+			this._flipV = value;
 		}
 	}
 
@@ -498,9 +498,17 @@ export default class StoryboardSprite extends ScopedClass {
 		this.processGroups(command, t);
 	}
 
+	destroy() {
+		this.container.destroy(true);
+	}
+
+	off() {
+		this.container.visible = false;
+	}
+
 	private getNearestCommand<T>(
 		timestamp: number,
-		commandGroup: CommandTimeline<T>,
+		commandGroup: CommandTimeline<T>
 	) {
 		let idx = 0;
 
@@ -534,7 +542,7 @@ export default class StoryboardSprite extends ScopedClass {
 			idx > 0 &&
 			baseCommand.startTime === prevCommand?.startTime &&
 			prevCommand?.endTime === baseCommand.endTime
-		) {
+			) {
 			idx--;
 
 			baseCommand = commandGroup.commands[idx];
@@ -546,13 +554,5 @@ export default class StoryboardSprite extends ScopedClass {
 
 	private lerp(progress: number, start: number, end: number) {
 		return start + (end - start) * Math.min(1, Math.max(0, progress));
-	}
-
-	destroy() {
-		this.container.destroy(true);
-	}
-
-	off() {
-		this.container.visible = false;
 	}
 }

@@ -1,11 +1,11 @@
-import type Audio from "@/Audio";
-import type BeatmapSet from "@/BeatmapSet";
-import type BackgroundConfig from "@/Config/BackgroundConfig";
-import { inject } from "@/Context";
-import type Background from "@/UI/main/viewer/Background";
-import { MessageType, type WorkerPayload } from "./types";
+import type Audio from '@/Audio';
+import type BeatmapSet from '@/BeatmapSet';
+import type BackgroundConfig from '@/Config/BackgroundConfig';
+import { inject } from '@/Context';
+import type Background from '@/UI/main/viewer/Background';
+import { MessageType, type WorkerPayload } from './types';
 
-import VideoWorker from "./Worker.ts?worker"
+import VideoWorker from './Worker.ts?worker';
 
 export default class Video {
 	worker = new VideoWorker();
@@ -13,36 +13,36 @@ export default class Video {
 	constructor() {
 		this.worker.postMessage({
 			type: MessageType.Init,
-			data: window.location.origin,
+			data: window.location.origin
 		});
 
 		this.worker.addEventListener(
-			"message",
+			'message',
 			(event: { data: WorkerPayload }) => {
 				switch (event.data.type) {
 					case MessageType.Frame: {
-						if (!inject<BackgroundConfig>("config/background")?.video) {
+						if (!inject<BackgroundConfig>('config/background')?.video) {
 							(event.data.data as VideoFrame).close();
 							break;
 						}
 
-						inject<Background>("ui/main/viewer/background")?.updateFrame(
-							event.data.data as VideoFrame,
+						inject<Background>('ui/main/viewer/background')?.updateFrame(
+							event.data.data as VideoFrame
 						);
 
 						break;
 					}
 				}
-			},
+			}
 		);
 
-		inject<BackgroundConfig>("config/background")?.onChange("video", (val) => {
+		inject<BackgroundConfig>('config/background')?.onChange('video', (val) => {
 			const audio =
-				inject<BeatmapSet>("beatmapset")?.context.consume<Audio>("audio");
+				inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio');
 			if (!audio) return;
 
 			if (!val) this.stop(audio.currentTime);
-			if (val && audio.state === "PLAYING") this.play(audio.currentTime);
+			if (val && audio.state === 'PLAYING') this.play(audio.currentTime);
 		});
 	}
 
@@ -50,14 +50,14 @@ export default class Video {
 		this.worker.postMessage({
 			type: MessageType.Load,
 			data: blob,
-			offset,
+			offset
 		});
 	}
 
 	seek(timestamp: number) {
 		this.worker.postMessage({
 			type: MessageType.Seek,
-			data: timestamp,
+			data: timestamp
 		});
 	}
 
@@ -65,14 +65,14 @@ export default class Video {
 		this.worker.postMessage({
 			type: MessageType.Play,
 			data: timestamp,
-			playbackRate: inject<BeatmapSet>("beatmapset")?.playbackRate ?? 1,
+			playbackRate: inject<BeatmapSet>('beatmapset')?.playbackRate ?? 1
 		});
 	}
 
 	stop(timestamp: number) {
 		this.worker.postMessage({
 			type: MessageType.Stop,
-			data: timestamp,
+			data: timestamp
 		});
 	}
 

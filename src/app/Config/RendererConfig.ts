@@ -1,7 +1,7 @@
-import type Config from ".";
-import ConfigSection from "./ConfigSection";
+import type Config from '.';
+import ConfigSection from './ConfigSection';
 
-export type RENDERER = "webgl" | "webgpu";
+export type RENDERER = 'webgl' | 'webgpu';
 export type RendererProps = {
 	renderer?: RENDERER;
 	resolution?: number;
@@ -9,8 +9,8 @@ export type RendererProps = {
 };
 
 enum RENDERER_VAL {
-	"webgl" = "WebGL",
-	"webgpu" = "WebGPU"
+	'webgl' = 'WebGL',
+	'webgpu' = 'WebGPU'
 }
 
 export default class RendererConfig extends ConfigSection {
@@ -23,46 +23,49 @@ export default class RendererConfig extends ConfigSection {
 
 		const { renderer, resolution, antialiasing } = defaultOptions;
 		this.renderer =
-			(renderer as string) === "WEBGL2" ? "webgl" : (renderer ?? "webgl");
+			(renderer as string) === 'WEBGL2' ? 'webgl' : (renderer ?? 'webgl');
 		this.resolution = resolution ?? 1;
 		this.antialiasing = antialiasing ?? false;
 	}
 
-	private _renderer: RENDERER = "webgl";
+	private _renderer: RENDERER = 'webgl';
 	get renderer() {
 		return this._renderer;
 	}
+
 	set renderer(val: RENDERER) {
 		this._renderer = val;
 
-		const ele = document.querySelector<HTMLSpanElement>("#currentRenderer");
+		const ele = document.querySelector<HTMLSpanElement>('#currentRenderer');
 		if (!ele) return;
 		ele.innerText = RENDERER_VAL[val];
 
-		this.emitChange("renderer", val);
+		this.emitChange('renderer', val);
 	}
 
 	private _resolution = 1;
 	get resolution() {
 		return this._resolution;
 	}
+
 	set resolution(val: number) {
 		this._resolution = val;
-		this.emitChange("resolution", val);
+		this.emitChange('resolution', val);
 	}
 
 	private _antialiasing = false;
 	get antialiasing() {
 		return this._antialiasing;
 	}
+
 	set antialiasing(val: boolean) {
-		const ele = document.querySelector<HTMLInputElement>("#antialiasing");
+		const ele = document.querySelector<HTMLInputElement>('#antialiasing');
 		if (!ele) return;
 		ele.checked = val;
 
 		if (this._antialiasing === val) return;
 		this._antialiasing = val;
-		this.emitChange("antialiasing", val);
+		this.emitChange('antialiasing', val);
 	}
 
 	async emitChange(key: keyof RendererProps, newValue: unknown) {
@@ -75,19 +78,19 @@ export default class RendererConfig extends ConfigSection {
 
 	loadEventListeners() {
 		document
-			.querySelector<HTMLInputElement>("#antialiasing")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.antialiasing = value;
-			});
+		.querySelector<HTMLInputElement>('#antialiasing')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.antialiasing = value;
+		});
 
 		for (const ele of document.querySelectorAll<HTMLButtonElement>(
-			".renderer-select",
+			'.renderer-select'
 		)) {
-			ele.addEventListener("click", (event) => {
+			ele.addEventListener('click', (event) => {
 				const value =
 					((event.target as HTMLButtonElement)?.dataset.renderer as RENDERER) ??
-					"webgl";
+					'webgl';
 				this.renderer = value;
 			});
 		}
@@ -97,7 +100,7 @@ export default class RendererConfig extends ConfigSection {
 		return {
 			renderer: this.renderer,
 			resolution: this.resolution,
-			antialiasing: this.antialiasing,
+			antialiasing: this.antialiasing
 		};
 	}
 }

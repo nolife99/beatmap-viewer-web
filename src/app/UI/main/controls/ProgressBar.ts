@@ -1,59 +1,55 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import {
-    Color,
-	type ColorSource,
-	type FederatedPointerEvent,
-	Graphics,
-} from "pixi.js";
-import type Audio from "@/Audio";
-import type BeatmapSet from "@/BeatmapSet";
-import type ColorConfig from "@/Config/ColorConfig";
-import { inject } from "@/Context";
+import { LayoutContainer } from '@pixi/layout/components';
+import { Color, type ColorSource, type FederatedPointerEvent, Graphics } from 'pixi.js';
+import type Audio from '@/Audio';
+import type BeatmapSet from '@/BeatmapSet';
+import type ColorConfig from '@/Config/ColorConfig';
+import { inject } from '@/Context';
 
 export default class ProgressBar {
 	container = new LayoutContainer({
 		layout: {
 			flex: 1,
-			height: "100%",
-			backgroundColor: new Color(inject<ColorConfig>("config/color")?.color.crust).setAlpha(0.7),
-			alignItems: "center",
-			justifyContent: "center",
-			paddingInline: 30,
-		},
+			height: '100%',
+			backgroundColor: new Color(inject<ColorConfig>('config/color')?.color.crust).setAlpha(0.7),
+			alignItems: 'center',
+			justifyContent: 'center',
+			paddingInline: 30
+		}
 	});
 
 	line = new LayoutContainer({
 		layout: {
 			height: 4,
-			width: "100%",
-			backgroundColor: inject<ColorConfig>("config/color")?.color.surface0,
-			borderRadius: 4,
-		},
+			width: '100%',
+			backgroundColor: inject<ColorConfig>('config/color')?.color.surface0,
+			borderRadius: 4
+		}
 	});
 
 	thumb = new Graphics({ x: 30, y: 30, roundPixels: true })
-		.rect(-1, -30, 2, 60)
-		.moveTo(-6, -30)
-		.lineTo(-1, -26)
-		.lineTo(1, -26)
-		.lineTo(6, -30)
-		.lineTo(-6, -30)
-		.moveTo(-6, 30)
-		.lineTo(-1, 26)
-		.lineTo(1, 26)
-		.lineTo(6, 30)
-		.lineTo(-6, 30)
-		.fill(inject<ColorConfig>("config/color")?.color.text);
+	.rect(-1, -30, 2, 60)
+	.moveTo(-6, -30)
+	.lineTo(-1, -26)
+	.lineTo(1, -26)
+	.lineTo(6, -30)
+	.lineTo(-6, -30)
+	.moveTo(-6, 30)
+	.lineTo(-1, 26)
+	.lineTo(1, 26)
+	.lineTo(6, 30)
+	.lineTo(-6, 30)
+	.fill(inject<ColorConfig>('config/color')?.color.text);
 
 	timeline: Graphics;
+	isSeeking = false;
 
 	constructor() {
 		this.timeline = new Graphics({ interactive: false, x: 30, y: 20 });
 		this.thumb.cacheAsTexture(true);
-		
+
 		this.container.addChild(this.line, this.thumb, this.timeline);
 
-		this.container.on("layout", () => {
+		this.container.on('layout', () => {
 			this.thumb.y = (this.container.layout?.computedLayout.height ?? 0) / 2;
 			this.timeline.y =
 				(this.container.layout?.computedLayout.height ?? 0) / 2 - 10;
@@ -61,35 +57,34 @@ export default class ProgressBar {
 
 		this.addEventHandler();
 
-		inject<ColorConfig>("config/color")?.onChange(
-			"color",
+		inject<ColorConfig>('config/color')?.onChange(
+			'color',
 			({ crust, surface0, text }) => {
 				this.container.layout = { backgroundColor: new Color(crust).setAlpha(0.7) };
 				this.line.layout = { backgroundColor: surface0 };
 				this.thumb
-					.clear()
-					.rect(-1, -30, 2, 60)
-					.moveTo(-6, -30)
-					.lineTo(-1, -26)
-					.lineTo(1, -26)
-					.lineTo(6, -30)
-					.lineTo(-6, -30)
-					.moveTo(-6, 30)
-					.lineTo(-1, 26)
-					.lineTo(1, 26)
-					.lineTo(6, 30)
-					.lineTo(-6, 30)
-					.fill(text)
-					.updateCacheTexture();
-			},
+				.clear()
+				.rect(-1, -30, 2, 60)
+				.moveTo(-6, -30)
+				.lineTo(-1, -26)
+				.lineTo(1, -26)
+				.lineTo(6, -30)
+				.lineTo(-6, -30)
+				.moveTo(-6, 30)
+				.lineTo(-1, 26)
+				.lineTo(1, 26)
+				.lineTo(6, 30)
+				.lineTo(-6, 30)
+				.fill(text)
+				.updateCacheTexture();
+			}
 		);
 	}
 
-	isSeeking = false;
 	addEventHandler() {
 		const seekByPercentage = (event: FederatedPointerEvent, smooth = false) => {
-			const beatmapset = inject<BeatmapSet>("beatmapset");
-			const audio = beatmapset?.context.consume<Audio>("audio");
+			const beatmapset = inject<BeatmapSet>('beatmapset');
+			const audio = beatmapset?.context.consume<Audio>('audio');
 
 			const percentage = this.getPercentage(event);
 
@@ -106,21 +101,21 @@ export default class ProgressBar {
 			}
 		};
 
-		this.container.addEventListener("pointerdown", (event) => {
+		this.container.addEventListener('pointerdown', (event) => {
 			this.isSeeking = true;
 			seekByPercentage(event, true);
 		});
 
-		this.container.addEventListener("pointermove", (event) => {
+		this.container.addEventListener('pointermove', (event) => {
 			if (!this.isSeeking) return;
 			seekByPercentage(event, false);
 		});
 
-		this.container.addEventListener("pointerup", () => {
+		this.container.addEventListener('pointerup', () => {
 			this.isSeeking = false;
 		});
 
-		this.container.addEventListener("pointerupoutside", () => {
+		this.container.addEventListener('pointerupoutside', () => {
 			this.isSeeking = false;
 		});
 	}
@@ -138,7 +133,7 @@ export default class ProgressBar {
 		if (!width) return;
 
 		this.thumb.x = Math.round(
-			30 + width * Math.min(1, Math.max(0, percentage)),
+			30 + width * Math.min(1, Math.max(0, percentage))
 		);
 	}
 
@@ -154,16 +149,16 @@ export default class ProgressBar {
 		breaks: {
 			start: number;
 			end: number;
-		}[] = [],
+		}[] = []
 	) {
-		this.container.once("layout", () => this.drawTimeline(points, kiai, breaks));
+		this.container.once('layout', () => this.drawTimeline(points, kiai, breaks));
 		if (!this.container.layout) {
 			return;
 		}
 
 		this.timeline.clear();
 		const width = ((this.container.layout.computedLayout.width ?? 60) - 60);
-		
+
 		for (const { start, end } of kiai) {
 			this.timeline.moveTo(start * width, 5).lineTo(end * width, 5);
 		}
@@ -188,8 +183,8 @@ export default class ProgressBar {
 		for (const [color, colorPoints] of pointsByColor) {
 			for (const point of colorPoints) {
 				this.timeline
-					.moveTo(point.position * width, -6)
-					.lineTo(point.position * width, 0);
+				.moveTo(point.position * width, -6)
+				.lineTo(point.position * width, 0);
 			}
 			this.timeline.stroke({ color, alpha: 0.7, width: 1 });
 		}

@@ -1,12 +1,12 @@
-import type { Vector2 } from "osu-classes";
-import type { Slider, StandardHitObject } from "osu-standard-stable";
-import { Container, Sprite } from "pixi.js";
-import { update } from "@/Skinning/Shared/FollowPoints";
-import type Skin from "@/Skinning/Skin";
-import { BLANK_TEXTURE } from "@/Skinning/Skin";
-import { Clamp } from "@/utils";
-import AnimatedSkinnableElement from "./AnimatedSkinnableElement";
-import type { Context } from "@/Context";
+import type { Vector2 } from 'osu-classes';
+import type { Slider, StandardHitObject } from 'osu-standard-stable';
+import { Container, Sprite } from 'pixi.js';
+import { update } from '@/Skinning/Shared/FollowPoints';
+import type Skin from '@/Skinning/Skin';
+import { BLANK_TEXTURE } from '@/Skinning/Skin';
+import { Clamp } from '@/utils';
+import AnimatedSkinnableElement from './AnimatedSkinnableElement';
+import type { Context } from '@/Context';
 
 export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 	container: Container = new Container();
@@ -19,13 +19,9 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 
 	distance!: number;
 
-	get duration() {
-		return this.endTime - this.startTime;
-	}
-
 	constructor(
 		public startObject: StandardHitObject,
-		public endObject: StandardHitObject,
+		public endObject: StandardHitObject
 	) {
 		super();
 
@@ -33,13 +29,17 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 
 		this.skinEventCallback = this.skinManager?.addSkinChangeListener((skin) => {
 			const followpoint = skin.getAnimatedTexture(
-				"followpoint",
-				this.context.consume<Skin>("beatmapSkin"),
+				'followpoint',
+				this.context.consume<Skin>('beatmapSkin')
 			);
 
-			this.container.blendMode = skin.config.General.Argon ? "add" : "normal";
+			this.container.blendMode = skin.config.General.Argon ? 'add' : 'normal';
 			this.texturesList = followpoint;
 		});
+	}
+
+	get duration() {
+		return this.endTime - this.startTime;
 	}
 
 	updateObjects(startObject: StandardHitObject, endObject: StandardHitObject) {
@@ -52,10 +52,10 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		this.endTime = this.endObject.startTime;
 
 		this.startPosition = this.startObject.endPosition.add(
-			this.startObject.stackedOffset,
+			this.startObject.stackedOffset
 		);
 		this.endPosition = this.endObject.startPosition.add(
-			this.endObject.stackedOffset,
+			this.endObject.stackedOffset
 		);
 
 		this.distance = this.endPosition.distance(this.startPosition);
@@ -79,17 +79,17 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		}
 
 		this.texturesList = this.skinManager
-			?.getCurrentSkin()
-			.getAnimatedTexture(
-				"followpoint",
-				this.context.consume<Skin>("beatmapSkin"),
-			) ?? [BLANK_TEXTURE];
+		?.getCurrentSkin()
+		.getAnimatedTexture(
+			'followpoint',
+			this.context.consume<Skin>('beatmapSkin')
+		) ?? [BLANK_TEXTURE];
 	}
-	
+
 	hook(context: Context) {
-        super.hook(context);
-        this.updateObjects(this.startObject, this.endObject);
-        return this;
+		super.hook(context);
+		this.updateObjects(this.startObject, this.endObject);
+		return this;
 	}
 
 	update(time: number) {
@@ -106,7 +106,7 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 			const frameIndex = Clamp(
 				Math.floor((time - fadeInTime) / frameLength),
 				0,
-				this.texturesList.length - 1,
+				this.texturesList.length - 1
 			);
 
 			(sprite as Sprite).texture = this.texturesList[frameIndex];

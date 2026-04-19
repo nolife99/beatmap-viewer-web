@@ -1,5 +1,5 @@
-import type Config from ".";
-import ConfigSection from "./ConfigSection";
+import type Config from '.';
+import ConfigSection from './ConfigSection';
 
 export type GameplayProps = {
 	showGrid?: boolean;
@@ -22,7 +22,7 @@ export default class GameplayConfig extends ConfigSection {
 			hitAnimation,
 			snakeInSlider,
 			snakeOutSlider,
-			tintSliderBall,
+			tintSliderBall
 		} = defaultOptions;
 		this.showGrid = showGrid ?? true;
 		this.hitAnimation = hitAnimation ?? true;
@@ -35,107 +35,112 @@ export default class GameplayConfig extends ConfigSection {
 	get showGrid() {
 		return this._showGrid;
 	}
+
 	set showGrid(val: boolean) {
 		this._showGrid = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#grid");
+		const ele = document.querySelector<HTMLInputElement>('#grid');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("showGrid", val);
+		this.emitChange('showGrid', val);
 	}
 
 	private _hitAnimation = true;
 	get hitAnimation() {
 		return this._hitAnimation;
 	}
+
 	set hitAnimation(val: boolean) {
 		this._hitAnimation = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#hitAnim");
+		const ele = document.querySelector<HTMLInputElement>('#hitAnim');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("hitAnimation", val);
+		this.emitChange('hitAnimation', val);
 	}
 
 	private _snakeInSlider = true;
 	get snakeInSlider() {
 		return this._snakeInSlider;
 	}
+
 	set snakeInSlider(val: boolean) {
 		this._snakeInSlider = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#snakeIn");
+		const ele = document.querySelector<HTMLInputElement>('#snakeIn');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("snakeIn", val);
+		this.emitChange('snakeIn', val);
 	}
 
 	private _snakeOutSlider = true;
 	get snakeOutSlider() {
 		return this._snakeOutSlider;
 	}
+
 	set snakeOutSlider(val: boolean) {
 		this._snakeOutSlider = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#snakeOut");
+		const ele = document.querySelector<HTMLInputElement>('#snakeOut');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("snakeOut", val);
+		this.emitChange('snakeOut', val);
 	}
 
 	private _tintSliderBall = false;
 	get tintSliderBall() {
 		return this._tintSliderBall;
 	}
+
 	set tintSliderBall(val: boolean) {
 		this._tintSliderBall = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#tintSliderBall");
+		const ele = document.querySelector<HTMLInputElement>('#tintSliderBall');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("tintSliderBall", val);
+		this.emitChange('tintSliderBall', val);
 	}
 
 	loadEventListeners() {
 		document
-			.querySelector<HTMLInputElement>("#grid")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.showGrid = value;
-			});
+		.querySelector<HTMLInputElement>('#grid')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.showGrid = value;
+		});
 
 		document
-			.querySelector<HTMLInputElement>("#hitAnim")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.hitAnimation = value;
-			});
+		.querySelector<HTMLInputElement>('#hitAnim')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.hitAnimation = value;
+		});
 
 		document
-			.querySelector<HTMLInputElement>("#snakeIn")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.snakeInSlider = value;
-			});
+		.querySelector<HTMLInputElement>('#snakeIn')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.snakeInSlider = value;
+		});
 
 		document
-			.querySelector<HTMLInputElement>("#snakeOut")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.snakeOutSlider = value;
-			});
+		.querySelector<HTMLInputElement>('#snakeOut')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.snakeOutSlider = value;
+		});
 
 		document
-			.querySelector<HTMLInputElement>("#tintSliderBall")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.tintSliderBall = value;
-			});
+		.querySelector<HTMLInputElement>('#tintSliderBall')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.tintSliderBall = value;
+		});
 	}
 
 	jsonify(): GameplayProps {

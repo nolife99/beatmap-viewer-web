@@ -1,8 +1,8 @@
-import { DifficultyPoint, type SamplePoint, TimingPoint } from "osu-classes";
-import { type ColorSource, Container, Graphics, BitmapText } from "pixi.js";
-import type ColorConfig from "@/Config/ColorConfig";
-import { inject } from "@/Context";
-import { millisecondsToMinutesString } from "@/utils";
+import { DifficultyPoint, type SamplePoint, TimingPoint } from 'osu-classes';
+import { BitmapText, type ColorSource, Container, Graphics } from 'pixi.js';
+import type ColorConfig from '@/Config/ColorConfig';
+import { inject } from '@/Context';
+import { millisecondsToMinutesString } from '@/utils';
 
 export default class Point {
 	container: Container;
@@ -13,7 +13,8 @@ export default class Point {
 	private color: Graphics;
 
 	private accent: ColorSource;
-	private bg = inject<ColorConfig>("config/color")?.color.mantle ?? 0x181825;
+	private bg = inject<ColorConfig>('config/color')?.color.mantle ?? 0x181825;
+	private _destroyed = false;
 
 	constructor(public data: TimingPoint | DifficultyPoint | SamplePoint) {
 		this.accent =
@@ -21,7 +22,7 @@ export default class Point {
 				? 0xf38ba8
 				: data instanceof DifficultyPoint
 					? 0xa6e3a1
-					: (inject<ColorConfig>("config/color")?.color.text ?? 0xcdd6f4);
+					: (inject<ColorConfig>('config/color')?.color.text ?? 0xcdd6f4);
 
 		this.color = new Graphics().roundRect(0, 0, 360, 40, 10).fill(0xffffff);
 		this.color.tint = this.bg;
@@ -34,7 +35,7 @@ export default class Point {
 			interactiveChildren: false
 		});
 
-		inject<ColorConfig>("config/color")?.onChange("color", ({ mantle }) => {
+		inject<ColorConfig>('config/color')?.onChange('color', ({ mantle }) => {
 			if (this._destroyed) return;
 
 			this.bg = mantle;
@@ -43,7 +44,7 @@ export default class Point {
 					? 0xf38ba8
 					: data instanceof DifficultyPoint
 						? 0xa6e3a1
-						: (inject<ColorConfig>("config/color")?.color.text ?? 0xcdd6f4);
+						: (inject<ColorConfig>('config/color')?.color.text ?? 0xcdd6f4);
 
 			if (this.indicator.visible) this.select();
 			if (!this.indicator.visible) this.unselect();
@@ -53,11 +54,11 @@ export default class Point {
 			text: millisecondsToMinutesString(data.startTime),
 			style: {
 				fontSize: 14,
-				fontFamily: "Rubik",
+				fontFamily: 'Rubik',
 				fill: this.accent,
-				align: "left",
+				align: 'left'
 			},
-			layout: false,
+			layout: false
 		});
 
 		this.content1 = new BitmapText({
@@ -66,13 +67,13 @@ export default class Point {
 					? `${Math.round(data.bpm)} BPM`
 					: data instanceof DifficultyPoint
 						? `x${data.sliderVelocity.toFixed(2)}`
-						: `${data.sampleSet} : ${data.customIndex === 0 ? "Default" : `Custom ${data.customIndex}`}`,
+						: `${data.sampleSet} : ${data.customIndex === 0 ? 'Default' : `Custom ${data.customIndex}`}`,
 			style: {
 				fontSize: 14,
-				fontFamily: "Rubik",
+				fontFamily: 'Rubik',
 				fill: this.accent,
-				align: "left",
-				fontWeight: "500",
+				align: 'left',
+				fontWeight: '500'
 			},
 			layout: false,
 			x: 80
@@ -83,24 +84,24 @@ export default class Point {
 				data instanceof TimingPoint
 					? `Signature ${data.timeSignature}/4`
 					: data instanceof DifficultyPoint
-						? ""
+						? ''
 						: `Volume ${data.volume}%`,
 			style: {
 				fontSize: 14,
-				fontFamily: "Rubik",
+				fontFamily: 'Rubik',
 				fill: this.accent,
-				align: "left",
+				align: 'left'
 			},
-			layout: false,
+			layout: false
 		});
 
 		this.indicator = new Graphics({ tint: this.accent, x: 10, y: 15, visible: false })
-			.moveTo(0, 0)
-			.lineTo(0, 10)
-			.lineTo(5, 5)
-			.lineTo(0, 0)
-			.fill(0xffffff);
-		
+		.moveTo(0, 0)
+		.lineTo(0, 10)
+		.lineTo(5, 5)
+		.lineTo(0, 0)
+		.fill(0xffffff);
+
 		this.indicator.cacheAsTexture(true);
 
 		this.container.addChild(
@@ -108,7 +109,7 @@ export default class Point {
 			this.timestamp,
 			this.content1,
 			this.content2,
-			this.indicator,
+			this.indicator
 		);
 
 		this.reWidth(360);
@@ -116,7 +117,7 @@ export default class Point {
 
 	reWidth(width: number, height = 40) {
 		this.color.clear().roundRect(0, 0, width, 40, 10).fill(0xffffff);
-		
+
 		this.content2.x = width - this.content2.width - 20;
 		this.content2.y = (height - this.content2.height) / 2;
 
@@ -168,7 +169,6 @@ export default class Point {
 		this.indicator.visible = false;
 	}
 
-	private _destroyed = false;
 	destroy() {
 		this.container.destroy();
 		this.color.destroy();

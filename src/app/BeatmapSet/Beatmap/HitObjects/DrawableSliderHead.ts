@@ -1,21 +1,16 @@
-import {
-	HitResult,
-	type LegacyReplayFrame,
-	type HitSample as Sample,
-} from "osu-classes";
-import type { Slider, SliderHead } from "osu-standard-stable";
-import type BeatmapSet from "@/BeatmapSet";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import { inject } from "@/Context";
-import { update as argonUpdate } from "@/Skinning/Argon/ArgonSliderHead";
-import type Skin from "@/Skinning/Skin";
-import HitSample from "../../../Audio/HitSample";
-import type Beatmap from "..";
-import DrawableApproachCircle from "./DrawableApproachCircle";
-import DrawableDefaults from "./DrawableDefaults";
-import DrawableHitCircle from "./DrawableHitCircle";
-import type DrawableSlider from "./DrawableSlider";
-import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
+import { HitResult, type HitSample as Sample, type LegacyReplayFrame } from 'osu-classes';
+import type { Slider, SliderHead } from 'osu-standard-stable';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import { inject } from '@/Context';
+import { update as argonUpdate } from '@/Skinning/Argon/ArgonSliderHead';
+import type Skin from '@/Skinning/Skin';
+import HitSample from '../../../Audio/HitSample';
+import type Beatmap from '..';
+import DrawableApproachCircle from './DrawableApproachCircle';
+import DrawableDefaults from './DrawableDefaults';
+import DrawableHitCircle from './DrawableHitCircle';
+import type DrawableSlider from './DrawableSlider';
+import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
 
 export default class DrawableSliderHead extends DrawableHitCircle {
 	hitSound?: HitSample;
@@ -26,14 +21,14 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 		object: SliderHead,
 		public parent: Slider,
 		samples: Sample[],
-		hasNumber = true,
+		hasNumber = true
 	) {
 		super(object, false);
 
 		if (hasNumber) {
 			this.defaults = new DrawableDefaults(parent).hook(this.context);
 			this.approachCircle = new DrawableApproachCircle(parent).hook(
-				this.context,
+				this.context
 			);
 			this.wrapper.addChild(this.defaults.container);
 		}
@@ -46,7 +41,7 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 		this.timelineObject = undefined;
 
 		this.refreshSprite();
-		this.container.eventMode = "none";
+		this.container.eventMode = 'none';
 	}
 
 	updateObjects(object: SliderHead, parent: Slider, samples: Sample[]) {
@@ -67,28 +62,28 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 		if (!skin) return;
 
 		const sliderStartCircle = skin.getTexture(
-			"sliderstartcircle",
-			this.context.consume<Skin>("beatmapSkin"),
+			'sliderstartcircle',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 
 		const sliderStartCircleOverlay = skin.getTexture(
-			"sliderstartcircleoverlay",
-			this.context.consume<Skin>("beatmapSkin"),
+			'sliderstartcircleoverlay',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 
 		const hitCircle =
 			sliderStartCircle ??
-			skin.getTexture("hitcircle", this.context.consume<Skin>("beatmapSkin"));
+			skin.getTexture('hitcircle', this.context.consume<Skin>('beatmapSkin'));
 		const hitCircleOverlay = sliderStartCircle
 			? (sliderStartCircleOverlay ??
 				skin.getTexture(
-					"hitcircleoverlay",
-					this.context.consume<Skin>("beatmapSkin"),
+					'hitcircleoverlay',
+					this.context.consume<Skin>('beatmapSkin')
 				))
 			: skin.getTexture(
-					"hitcircleoverlay",
-					this.context.consume<Skin>("beatmapSkin"),
-				);
+				'hitcircleoverlay',
+				this.context.consume<Skin>('beatmapSkin')
+			);
 
 		if (hitCircle) this.hitCircleSprite.texture = hitCircle;
 		if (hitCircleOverlay) this.hitCircleOverlay.texture = hitCircleOverlay;
@@ -104,15 +99,15 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
 
-		const beatmap = this.context.consume<Beatmap>("beatmapObject");
+		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const tintByDiff =
-			(inject<Gameplays>("ui/main/viewer/gameplays")?.gameplays.size ?? 1) - 1 &&
-			inject<ExperimentalConfig>("config/experimental")?.overlapGameplays &&
+			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+			inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 			beatmap?.randomColor;
 
 		const color = tintByDiff
 			? beatmap.randomColor
-			: (this.context.consume<DrawableSlider>("slider")?.getColor(skin) ??
+			: (this.context.consume<DrawableSlider>('slider')?.getColor(skin) ??
 				0xffffff);
 		this.hitCircleSprite.tint = color;
 		this.flashPiece.tint = color;
@@ -130,13 +125,13 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 		if (e.value === HitResult.None || e.value === HitResult.Miss) {
 			return {
 				...e,
-				value: HitResult.LargeTickMiss,
+				value: HitResult.LargeTickMiss
 			};
 		}
 
 		return {
 			...e,
-			value: HitResult.LargeTickHit,
+			value: HitResult.LargeTickHit
 		};
 	}
 }

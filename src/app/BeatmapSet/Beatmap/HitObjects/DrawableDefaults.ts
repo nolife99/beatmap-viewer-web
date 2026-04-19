@@ -1,9 +1,9 @@
-import type {Circle, StandardHitObject} from "osu-standard-stable";
-import {Container, Sprite} from "pixi.js";
-import {update} from "@/Skinning/Legacy/LegacyDefaults";
-import type Skin from "@/Skinning/Skin";
-import SkinnableElement from "./SkinnableElement";
-import type {Context} from "@/Context";
+import type { Circle, StandardHitObject } from 'osu-standard-stable';
+import { Container, Sprite } from 'pixi.js';
+import { update } from '@/Skinning/Legacy/LegacyDefaults';
+import type Skin from '@/Skinning/Skin';
+import SkinnableElement from './SkinnableElement';
+import type { Context } from '@/Context';
 
 export default class DrawableDefaults extends SkinnableElement {
 	container: Container;
@@ -19,7 +19,7 @@ export default class DrawableDefaults extends SkinnableElement {
 		this.container.interactiveChildren = false;
 
 		const number = object.currentComboIndex + 1;
-		const digits = number.toString().split("");
+		const digits = number.toString().split('');
 
 		this.container.addChild(...digits.map<Sprite>(() => new Sprite({ anchor: { x: 0, y: 0.5 } })));
 		this.refreshSprites();
@@ -36,13 +36,13 @@ export default class DrawableDefaults extends SkinnableElement {
 		this._object = val;
 
 		const number = val.currentComboIndex + 1;
-		this.digits = number.toString().split("");
+		this.digits = number.toString().split('');
 	}
 
 	refreshSprites(skin?: Skin) {
 		const s = skin ?? this.skinManager?.getCurrentSkin();
 		if (!s) return;
-		
+
 		let width = s.config.Fonts.HitCircleOverlap;
 
 		const children = this.container.children;
@@ -53,7 +53,7 @@ export default class DrawableDefaults extends SkinnableElement {
 			width -= s.config.Fonts.HitCircleOverlap;
 			const texture = s.getTexture(
 				`default-${digit}`,
-				this.context.consume<Skin>("beatmapSkin"),
+				this.context.consume<Skin>('beatmapSkin')
 			);
 			text.x = width;
 
@@ -66,7 +66,7 @@ export default class DrawableDefaults extends SkinnableElement {
 		// this.container.x = 0;
 		this.container.y = 0;
 	}
-	
+
 	hook(context: Context) {
 		super.hook(context);
 		this.refreshSprites();

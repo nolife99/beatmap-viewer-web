@@ -1,7 +1,7 @@
-import { Elysia, t } from "elysia";
+import { Elysia, t } from 'elysia';
 
 const download = new Elysia().post(
-	"/api/download",
+	'/api/download',
 	async ({ body: { url } }) => {
 		const response = await fetch(url);
 		if (!response.ok) {
@@ -12,9 +12,9 @@ const download = new Elysia().post(
 	},
 	{
 		body: t.Object({
-			url: t.String(),
-		}),
-	},
+			url: t.String()
+		})
+	}
 );
 
 export default download;

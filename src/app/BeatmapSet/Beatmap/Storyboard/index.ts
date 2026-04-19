@@ -1,92 +1,87 @@
-import IntervalTree from "@flatten-js/interval-tree";
-import type { Storyboard as StoryboardData } from "@rian8337/osu-base";
+import IntervalTree from '@flatten-js/interval-tree';
+import type { Storyboard as StoryboardData } from '@rian8337/osu-base';
 import {
 	StoryboardAnimation as StoryboardAnimationData,
 	StoryboardDecoder,
 	StoryboardLayerType,
-	StoryboardSprite as StoryboardSpriteData,
-} from "@rian8337/osu-base";
-import {
-	Assets,
-	Container,
-	Graphics,
-	GraphicsContext,
-	Rectangle,
-	type Texture,
-} from "pixi.js";
-import type BeatmapSet from "@/BeatmapSet";
-import type BackgroundConfig from "@/Config/BackgroundConfig";
-import { inject, ScopedClass } from "@/Context";
-import type { Resource } from "@/ZipHandler";
-import { StoryboardAnimation } from "./StoryboardAnimation";
-import StoryboardSprite from "./StoryboardSprite";
+	StoryboardSprite as StoryboardSpriteData
+} from '@rian8337/osu-base';
+import { Assets, Container, Graphics, GraphicsContext, Rectangle, type Texture } from 'pixi.js';
+import type BeatmapSet from '@/BeatmapSet';
+import type BackgroundConfig from '@/Config/BackgroundConfig';
+import { inject, ScopedClass } from '@/Context';
+import type { Resource } from '@/ZipHandler';
+import { StoryboardAnimation } from './StoryboardAnimation';
+import StoryboardSprite from './StoryboardSprite';
 
 export default class Storyboard extends ScopedClass {
-	private data!: StoryboardData;
-	private sprites!: StoryboardSprite[];
-	private masterData!: StoryboardData;
-	private masterSprites!: StoryboardSprite[];
 	container: Container = new Container({
-		visible: inject<BackgroundConfig>("config/background")?.storyboard,
+		visible: inject<BackgroundConfig>('config/background')?.storyboard
 	});
-
 	backgroundLayer = new Container({
 		interactive: false,
 		interactiveChildren: false,
-		sortableChildren: true,
+		sortableChildren: true
 	});
 	foregroundLayer = new Container({
 		interactive: false,
 		interactiveChildren: false,
-		sortableChildren: false,
+		sortableChildren: false
 	});
 	overlayLayer = new Container({
 		interactive: false,
 		interactiveChildren: false,
-		sortableChildren: false,
+		sortableChildren: false
 	});
-
 	fill: Graphics;
 	startTime: number = Infinity;
+	private data!: StoryboardData;
+	private sprites!: StoryboardSprite[];
+	private masterData!: StoryboardData;
+	private masterSprites!: StoryboardSprite[];
+	private _masterTree?: IntervalTree;
+	private _tree?: IntervalTree;
+	private _previous = new Set<number>();
+	private _previousMaster = new Set<number>();
 
 	constructor(private blob: Blob) {
 		super();
 
 		const mask = new Graphics()
-			.rect(-106.666666667, 0, 853.333333333, 480)
-			.fill({
-				color: 0x0,
-				alpha: 0.01,
-			});
+		.rect(-106.666666667, 0, 853.333333333, 480)
+		.fill({
+			color: 0x0,
+			alpha: 0.01
+		});
 
 		this.fill = new Graphics()
-			.rect(-106.666666667, 0, 853.333333333, 480)
-			.fill({
-				color: 0x0,
-				alpha: 0,
-			});
+		.rect(-106.666666667, 0, 853.333333333, 480)
+		.fill({
+			color: 0x0,
+			alpha: 0
+		});
 
 		this.container.addChild(
 			mask,
 			this.fill,
 			this.backgroundLayer,
 			this.foregroundLayer,
-			this.overlayLayer,
+			this.overlayLayer
 		);
 
 		this.container.boundsArea = new Rectangle(
 			-106.666666667,
 			0,
 			853.333333333,
-			480,
+			480
 		);
 		this.container.mask = mask;
 
-		inject<BackgroundConfig>("config/background")?.onChange(
-			"storyboard",
+		inject<BackgroundConfig>('config/background')?.onChange(
+			'storyboard',
 			(val) => {
 				this.container.visible = val;
-			},
+			}
 		);
 	}
 
@@ -94,94 +89,34 @@ export default class Storyboard extends ScopedClass {
 		const textureMap = new Map<string, Texture>();
 		const promises = [
 			// biome-ignore lint/style/noNonNullAssertion: Hooked
-			...this.context.consume<Map<string, Resource>>("resources")!,
+			...this.context.consume<Map<string, Resource>>('resources')!
 		].map(async ([key, resource]) => {
 			if (
 				// biome-ignore lint/style/noNonNullAssertion: Always have extension
-				!["png", "jpg", "jpeg"].includes(key.split(".").at(-1)!.toLowerCase())
+				!['png', 'jpg', 'jpeg'].includes(key.split('.').at(-1)!.toLowerCase())
 			)
 				return;
 
+			const url = URL.createObjectURL(resource!);
 			try {
 				const texture = await Assets.load<Texture>({
 					// biome-ignore lint/style/noNonNullAssertion: Should be able to be found
-					src: URL.createObjectURL(resource!),
-					parser: "texture",
+					src: url,
+					parser: 'texture'
 				});
 
 				textureMap.set(key.toLowerCase(), texture);
 			} catch {
 				console.warn(`Cannot load resource with name: ${key}`);
+			} finally {
+				URL.revokeObjectURL(url);
 			}
 		});
 
 		await Promise.all(promises);
-		this.context.provide("textures", textureMap);
+		this.context.provide('textures', textureMap);
 	}
 
-	private async load(raw: string) {
-		const decoder = new StoryboardDecoder();
-		const data = decoder.decode(raw).result;
-
-		const sprites = await Promise.all([
-			...[...(data.layers.Background?.elements ?? [])]
-				.filter((element) => element instanceof StoryboardSpriteData)
-				.map((element) => {
-					const ele = (
-						element instanceof StoryboardAnimationData
-							? new StoryboardAnimation(element, StoryboardLayerType.background)
-							: new StoryboardSprite(element, StoryboardLayerType.background)
-					).hook(this.context);
-					ele.loadTexture();
-
-					return ele;
-				}),
-			...[...(data.layers.Foreground?.elements ?? [])]
-				.filter((element) => element instanceof StoryboardSpriteData)
-				.map((element) => {
-					const ele = (
-						element instanceof StoryboardAnimationData
-							? new StoryboardAnimation(element, StoryboardLayerType.foreground)
-							: new StoryboardSprite(element, StoryboardLayerType.foreground)
-					).hook(this.context);
-					ele.loadTexture();
-
-					return ele;
-				}),
-			...[...(data.layers.Overlay?.elements ?? [])]
-				.filter((element) => element instanceof StoryboardSpriteData)
-				.map((element) => {
-					const ele = (
-						element instanceof StoryboardAnimationData
-							? new StoryboardAnimation(element, StoryboardLayerType.overlay)
-							: new StoryboardSprite(element, StoryboardLayerType.overlay)
-					).hook(this.context);
-					ele.loadTexture();
-
-					return ele;
-				}),
-		]);
-
-		const s = sprites.map((sprite, idx) => {
-			sprite.order = idx;
-			return sprite;
-		});
-
-		const tree = new IntervalTree<number>();
-		for (let i = 0; i < sprites.length; i++) {
-			const { startTime, endTime } = sprites[i];
-			if (startTime < this.startTime) this.startTime = startTime;
-			tree.insert([startTime, endTime], i);
-		}
-
-		return {
-			data,
-			sprites: s,
-			tree,
-		};
-	}
-
-	private _masterTree?: IntervalTree;
 	async loadMaster(raw: string) {
 		const { data, sprites, tree } = await this.load(raw);
 
@@ -219,7 +154,6 @@ export default class Storyboard extends ScopedClass {
 		this._masterTree = tree;
 	}
 
-	private _tree?: IntervalTree;
 	async loadCurrent() {
 		const raw = await this.blob.text();
 		const { data, sprites, tree } = await this.load(raw);
@@ -229,18 +163,15 @@ export default class Storyboard extends ScopedClass {
 		this._tree = tree;
 	}
 
-	private _previous = new Set<number>();
-	private _previousMaster = new Set<number>();
-
 	update(timestamp: number) {
-		if (!inject<BackgroundConfig>("config/background")?.storyboard) return;
+		if (!inject<BackgroundConfig>('config/background')?.storyboard) return;
 		this.fill.alpha = timestamp < this.startTime ? 0 : 1;
 
 		const set = new Set<number>(
-			this._tree?.search([timestamp - 1, timestamp + 1]) as Array<number>,
+			this._tree?.search([timestamp - 1, timestamp + 1]) as Array<number>
 		);
 		const setMaster = new Set<number>(
-			this._masterTree?.search([timestamp - 1, timestamp + 1]) as Array<number>,
+			this._masterTree?.search([timestamp - 1, timestamp + 1]) as Array<number>
 		);
 
 		const disposed = this._previous.difference(set);
@@ -361,16 +292,16 @@ export default class Storyboard extends ScopedClass {
 	checkRemoveBG() {
 		const hasBG = this.sprites.some(
 			(sprite) =>
-				sprite.data.path.replaceAll("\\", "/") ===
-				this.context.consume<BeatmapSet>("beatmapset")?.backgroundKey,
+				sprite.data.path.replaceAll('\\', '/') ===
+				this.context.consume<BeatmapSet>('beatmapset')?.backgroundKey
 		);
 
 		const context = new GraphicsContext()
-			.rect(-106.666666667, 0, 853.333333333, 480)
-			.fill({
-				color: 0x0,
-				alpha: hasBG ? 1 : 0,
-			});
+		.rect(-106.666666667, 0, 853.333333333, 480)
+		.fill({
+			color: 0x0,
+			alpha: hasBG ? 1 : 0
+		});
 
 		this.fill.context.destroy();
 		this.fill.context = context;
@@ -389,5 +320,67 @@ export default class Storyboard extends ScopedClass {
 		this.backgroundLayer.destroy(true);
 		this.overlayLayer.destroy(true);
 		this.container.destroy(true);
+	}
+
+	private async load(raw: string) {
+		const decoder = new StoryboardDecoder();
+		const data = decoder.decode(raw).result;
+
+		const sprites = await Promise.all([
+			...[...(data.layers.Background?.elements ?? [])]
+			.filter((element) => element instanceof StoryboardSpriteData)
+			.map((element) => {
+				const ele = (
+					element instanceof StoryboardAnimationData
+						? new StoryboardAnimation(element, StoryboardLayerType.background)
+						: new StoryboardSprite(element, StoryboardLayerType.background)
+				).hook(this.context);
+				ele.loadTexture();
+
+				return ele;
+			}),
+			...[...(data.layers.Foreground?.elements ?? [])]
+			.filter((element) => element instanceof StoryboardSpriteData)
+			.map((element) => {
+				const ele = (
+					element instanceof StoryboardAnimationData
+						? new StoryboardAnimation(element, StoryboardLayerType.foreground)
+						: new StoryboardSprite(element, StoryboardLayerType.foreground)
+				).hook(this.context);
+				ele.loadTexture();
+
+				return ele;
+			}),
+			...[...(data.layers.Overlay?.elements ?? [])]
+			.filter((element) => element instanceof StoryboardSpriteData)
+			.map((element) => {
+				const ele = (
+					element instanceof StoryboardAnimationData
+						? new StoryboardAnimation(element, StoryboardLayerType.overlay)
+						: new StoryboardSprite(element, StoryboardLayerType.overlay)
+				).hook(this.context);
+				ele.loadTexture();
+
+				return ele;
+			})
+		]);
+
+		const s = sprites.map((sprite, idx) => {
+			sprite.order = idx;
+			return sprite;
+		});
+
+		const tree = new IntervalTree<number>();
+		for (let i = 0; i < sprites.length; i++) {
+			const { startTime, endTime } = sprites[i];
+			if (startTime < this.startTime) this.startTime = startTime;
+			tree.insert([startTime, endTime], i);
+		}
+
+		return {
+			data,
+			sprites: s,
+			tree
+		};
 	}
 }

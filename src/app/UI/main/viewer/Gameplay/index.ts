@@ -1,45 +1,44 @@
-import type { LayoutOptions } from "@pixi/layout";
-import { LayoutContainer } from "@pixi/layout/components";
-import { Tween } from "@tweenjs/tween.js";
-import { Vector2 } from "osu-classes";
+import type { LayoutOptions } from '@pixi/layout';
+import { LayoutContainer } from '@pixi/layout/components';
+import { Tween } from '@tweenjs/tween.js';
+import { Vector2 } from 'osu-classes';
 import {
-    Color,
-	// Application,
+	Color,
 	Container,
 	Graphics,
 	Rectangle,
 	Sprite,
-	Text,
-	Texture,
 	type StrokeStyle,
+	Text,
 	type TextStyleOptions,
-} from "pixi.js";
-import type Audio from "@/Audio";
-import type BeatmapSet from "@/BeatmapSet";
-import type Beatmap from "@/BeatmapSet/Beatmap";
-import DrawableHitCircle from "@/BeatmapSet/Beatmap/HitObjects/DrawableHitCircle";
-import DrawableSlider from "@/BeatmapSet/Beatmap/HitObjects/DrawableSlider";
-import type BackgroundConfig from "@/Config/BackgroundConfig";
-import type ColorConfig from "@/Config/ColorConfig";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import type FullscreenConfig from "@/Config/FullscreenConfig";
-import type GameplayConfig from "@/Config/GameplayConfig";
-import { inject, ScopedClass } from "@/Context";
-import { tweenGroup } from "@/UI/animation/AnimationController";
-import Easings from "@/UI/Easings";
-import Spinner from "./Spinner";
+	Texture
+} from 'pixi.js';
+import type Audio from '@/Audio';
+import type BeatmapSet from '@/BeatmapSet';
+import type Beatmap from '@/BeatmapSet/Beatmap';
+import DrawableHitCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableHitCircle';
+import DrawableSlider from '@/BeatmapSet/Beatmap/HitObjects/DrawableSlider';
+import type BackgroundConfig from '@/Config/BackgroundConfig';
+import type ColorConfig from '@/Config/ColorConfig';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import type FullscreenConfig from '@/Config/FullscreenConfig';
+import type GameplayConfig from '@/Config/GameplayConfig';
+import { inject, ScopedClass } from '@/Context';
+import { tweenGroup } from '@/UI/animation/AnimationController';
+import Easings from '@/UI/Easings';
+import Spinner from './Spinner';
 
 const defaultStyle: TextStyleOptions = {
-	fontFamily: "Rubik",
+	fontFamily: 'Rubik',
 	fill: 0xbac2de,
-	align: "left",
+	align: 'left',
 	fontSize: 14,
-	fontWeight: "400",
+	fontWeight: '400'
 };
 
-const defaultLayout: Omit<LayoutOptions, "target"> = {
-	objectPosition: "top left",
-	objectFit: "none",
+const defaultLayout: Omit<LayoutOptions, 'target'> = {
+	objectPosition: 'top left',
+	objectFit: 'none'
 };
 
 export default class Gameplay extends ScopedClass {
@@ -62,46 +61,48 @@ export default class Gameplay extends ScopedClass {
 	hpText!: Text;
 
 	selected: Set<number> = new Set();
+	dragWindow: [Vector2, Vector2] = [new Vector2(0, 0), new Vector2(0, 0)];
+	private _currentTween?: Tween;
 
 	constructor(public beatmap: Beatmap) {
 		super();
 
 		this.container = new Container({
 			layout: {
-				position: "absolute",
+				position: 'absolute',
 				width: 0,
 				height: 0,
-				alignItems: "flex-start",
+				alignItems: 'flex-start'
 			},
-			interactive: true,
+			interactive: true
 		});
 		this.wrapper = new Container({
 			layout: {
-				width: "100%",
-				height: "100%",
+				width: '100%',
+				height: '100%'
 			},
-			interactive: true,
+			interactive: true
 		});
 		this.background = new LayoutContainer({
 			layout: {
-				width: "100%",
-				height: "100%",
+				width: '100%',
+				height: '100%',
 				backgroundColor: [
 					0,
 					0,
 					0,
 					Math.min(
 						1,
-						(inject<BackgroundConfig>("config/background")?.backgroundDim ??
-							70) / 100,
-					),
+						(inject<BackgroundConfig>('config/background')?.backgroundDim ??
+							70) / 100
+					)
 				],
-				borderRadius: 20,
-			},
+				borderRadius: 20
+			}
 		});
 		this.selector = new Graphics()
-			.rect(0, 0, 1, 1)
-			.fill({ color: 0xffffff, alpha: 0.3 });
+		.rect(0, 0, 1, 1)
+		.fill({ color: 0xffffff, alpha: 0.3 });
 		this.selector.cacheAsTexture(true);
 
 		this.objectsContainer = new Container({
@@ -110,11 +111,11 @@ export default class Gameplay extends ScopedClass {
 		});
 
 		this.cursorLayer = new Container({
-			boundsArea: new Rectangle(0, 0, 512, 384),
+			boundsArea: new Rectangle(0, 0, 512, 384)
 		});
 
 		this.selectContainer = new Container({
-			boundsArea: new Rectangle(0, 0, 512, 384),
+			boundsArea: new Rectangle(0, 0, 512, 384)
 		});
 
 		this.spinner = new Spinner(this);
@@ -122,8 +123,8 @@ export default class Gameplay extends ScopedClass {
 
 		this.grid = new Graphics({
 			interactive: false,
-			eventMode: "none",
-			visible: inject<GameplayConfig>("config/gameplay")?.showGrid ?? true
+			eventMode: 'none',
+			visible: inject<GameplayConfig>('config/gameplay')?.showGrid ?? true
 		});
 
 		this.createStats();
@@ -136,63 +137,63 @@ export default class Gameplay extends ScopedClass {
 			this.objectsContainer,
 			this.selectContainer,
 			this.selector,
-			this.cursorLayer,
+			this.cursorLayer
 		);
-		this.wrapper.on("layout", () => this.reLayout());
+		this.wrapper.on('layout', () => this.reLayout());
 
 		this.loadEventListeners();
 
-		inject<ColorConfig>("config/color")?.onChange("color", ({ base, text }) => {
+		inject<ColorConfig>('config/color')?.onChange('color', ({ base, text }) => {
 			this.closeButton.layout = { backgroundColor: base };
 			this.statsContainer.layout = { backgroundColor: base };
 			this.diffName.style.fill = text;
 		});
 
-		inject<BackgroundConfig>("config/background")?.onChange(
-			"backgroundDim",
+		inject<BackgroundConfig>('config/background')?.onChange(
+			'backgroundDim',
 			(value: number) => {
 				this.background.layout = {
-					backgroundColor: [0, 0, 0, Math.max(0.01, value / 100)],
+					backgroundColor: [0, 0, 0, Math.max(0.01, value / 100)]
 				};
-			},
+			}
 		);
 
-		inject<BackgroundConfig>("config/background")?.onChange(
-			"breakSection",
+		inject<BackgroundConfig>('config/background')?.onChange(
+			'breakSection',
 			(isBreak: boolean) => {
 				this._currentTween?.stop();
 
 				const tween = new Tween({
-					value: this.background.alpha,
+					value: this.background.alpha
 				})
-					.easing(Easings.Out)
-					.to(
-						{
-							value: isBreak ? 0.6 : 1,
-						},
-						1000,
-					)
-					.onUpdate(({ value }) => {
-						this.background.alpha = value;
-					})
-					.onComplete(() => {
-						tweenGroup.remove(tween);
-					})
-					.onStop(() => {
-						tweenGroup.remove(tween);
-					})
-					.start();
+				.easing(Easings.Out)
+				.to(
+					{
+						value: isBreak ? 0.6 : 1
+					},
+					1000
+				)
+				.onUpdate(({ value }) => {
+					this.background.alpha = value;
+				})
+				.onComplete(() => {
+					tweenGroup.remove(tween);
+				})
+				.onStop(() => {
+					tweenGroup.remove(tween);
+				})
+				.start();
 
 				tweenGroup.add(tween);
 				this._currentTween = tween;
-			},
+			}
 		);
 
-		inject<GameplayConfig>("config/gameplay")?.onChange(
-			"showGrid",
+		inject<GameplayConfig>('config/gameplay')?.onChange(
+			'showGrid',
 			(val: boolean) => {
 				this.grid.visible = val;
-			},
+			}
 		);
 
 		this.reLayout();
@@ -200,12 +201,12 @@ export default class Gameplay extends ScopedClass {
 
 	reLayout() {
 		const isFullscreen =
-			inject<FullscreenConfig>("config/fullscreen")?.fullscreen;
+			inject<FullscreenConfig>('config/fullscreen')?.fullscreen;
 
 		const shouldKeepScale =
 			isFullscreen ||
-			(this.context.consume<number>("clients") !== 1 &&
-				!inject<ExperimentalConfig>("config/experimental")?.overlapGameplays);
+			(this.context.consume<number>('clients') !== 1 &&
+				!inject<ExperimentalConfig>('config/experimental')?.overlapGameplays);
 
 		const width = this.wrapper.layout?.computedLayout.width ?? 0;
 		const height = this.wrapper.layout?.computedLayout.height ?? 0;
@@ -239,8 +240,6 @@ export default class Gameplay extends ScopedClass {
 		this.wrapper.scale.set(shouldKeepScale ? 1 : 0.98 / 0.8);
 	}
 
-	private _currentTween?: Tween;
-
 	drawGrid(width = 512) {
 		const scale = width / 512;
 		const height = 384 * scale;
@@ -248,10 +247,10 @@ export default class Gameplay extends ScopedClass {
 		const halfUnit = unit / 2;
 		const cornerRadius = 8 * scale;
 		const color = new Color([1, 1, 1, 0.5]);
-		
+
 		this.grid.clear();
 		this.grid.roundRect(0, 0, width, height, cornerRadius)
-			.stroke({ color, width: 2, alignment: 0.5 });
+		.stroke({ color, width: 2, alignment: 0.5 });
 
 		for (let i = unit; i < width - 1; i += unit) {
 			this.grid.rect(i - 0.5, 0, 1, height).fill(color);
@@ -268,31 +267,29 @@ export default class Gameplay extends ScopedClass {
 			color,
 			width: 4,
 			alignment: 0.5,
-			cap: "round",
-			join: "round",
+			cap: 'round',
+			join: 'round'
 		};
 
 		this.grid
-			.moveTo(0, halfUnit).lineTo(0, cornerRadius)
-			.arc(cornerRadius, cornerRadius, cornerRadius, Math.PI, -Math.PI / 2)
-			.lineTo(halfUnit, 0).stroke(cornerStroke)
+		.moveTo(0, halfUnit).lineTo(0, cornerRadius)
+		.arc(cornerRadius, cornerRadius, cornerRadius, Math.PI, -Math.PI / 2)
+		.lineTo(halfUnit, 0).stroke(cornerStroke)
 
-			.moveTo(width - halfUnit, 0).lineTo(width - cornerRadius, 0)
-			.arc(width - cornerRadius, cornerRadius, cornerRadius, -Math.PI / 2, 0)
-			.lineTo(width, halfUnit).stroke(cornerStroke)
+		.moveTo(width - halfUnit, 0).lineTo(width - cornerRadius, 0)
+		.arc(width - cornerRadius, cornerRadius, cornerRadius, -Math.PI / 2, 0)
+		.lineTo(width, halfUnit).stroke(cornerStroke)
 
-			.moveTo(width, height - halfUnit).lineTo(width, height - cornerRadius)
-			.arc(width - cornerRadius, height - cornerRadius, cornerRadius, 0, Math.PI / 2)
-			.lineTo(width - halfUnit, height).stroke(cornerStroke)
+		.moveTo(width, height - halfUnit).lineTo(width, height - cornerRadius)
+		.arc(width - cornerRadius, height - cornerRadius, cornerRadius, 0, Math.PI / 2)
+		.lineTo(width - halfUnit, height).stroke(cornerStroke)
 
-			.moveTo(halfUnit, height).lineTo(cornerRadius, height)
-			.arc(cornerRadius, height - cornerRadius, cornerRadius, Math.PI / 2, Math.PI)
-			.lineTo(0, height - halfUnit).stroke(cornerStroke)
-			
-			.cacheAsTexture(true);
+		.moveTo(halfUnit, height).lineTo(cornerRadius, height)
+		.arc(cornerRadius, height - cornerRadius, cornerRadius, Math.PI / 2, Math.PI)
+		.lineTo(0, height - halfUnit).stroke(cornerStroke)
+
+		.cacheAsTexture(true);
 	}
-
-	dragWindow: [Vector2, Vector2] = [new Vector2(0, 0), new Vector2(0, 0)];
 
 	loadEventListeners() {
 		const beatmap = this.beatmap;
@@ -300,7 +297,7 @@ export default class Gameplay extends ScopedClass {
 
 		let clicked = false;
 
-		this.wrapper.on("pointerup", () => {
+		this.wrapper.on('pointerup', () => {
 			clicked = false;
 			this.dragWindow = [new Vector2(0, 0), new Vector2(0, 0)];
 
@@ -309,7 +306,7 @@ export default class Gameplay extends ScopedClass {
 			// }
 		});
 
-		this.wrapper.on("pointerupoutside", () => {
+		this.wrapper.on('pointerupoutside', () => {
 			clicked = false;
 			this.dragWindow = [new Vector2(0, 0), new Vector2(0, 0)];
 
@@ -318,7 +315,7 @@ export default class Gameplay extends ScopedClass {
 			// }
 		});
 
-		this.wrapper.on("globalpointermove", (event) => {
+		this.wrapper.on('globalpointermove', (event) => {
 			const pos = this.objectsContainer.toLocal(event.global);
 
 			if (clicked) {
@@ -331,8 +328,8 @@ export default class Gameplay extends ScopedClass {
 					const collided = obj.checkCollide(
 						pos.x,
 						pos.y,
-						inject<BeatmapSet>("beatmapset")?.context.consume<Audio>("audio")
-							?.currentTime ?? 0,
+						inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
+							?.currentTime ?? 0
 					);
 
 					if (obj instanceof DrawableSlider) {
@@ -342,7 +339,7 @@ export default class Gameplay extends ScopedClass {
 			}
 		});
 
-		this.wrapper.on("pointerdown", (event) => {
+		this.wrapper.on('pointerdown', (event) => {
 			// if (canvas) {
 			// 	canvas.style.touchAction = "none";
 			// }
@@ -360,8 +357,8 @@ export default class Gameplay extends ScopedClass {
 					const collided = obj.checkCollide(
 						pos.x,
 						pos.y,
-						inject<BeatmapSet>("beatmapset")?.context.consume<Audio>("audio")
-							?.currentTime ?? 0,
+						inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
+							?.currentTime ?? 0
 					);
 					if (collided) selected.push(idx);
 				}
@@ -437,11 +434,11 @@ export default class Gameplay extends ScopedClass {
 			layout: {
 				width: 20,
 				height: 20,
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: inject<ColorConfig>("config/color")?.color.base,
-				borderRadius: 15,
-			},
+				alignItems: 'center',
+				justifyContent: 'center',
+				backgroundColor: inject<ColorConfig>('config/color')?.color.base,
+				borderRadius: 15
+			}
 		});
 
 		const closeButton = new Sprite({
@@ -449,47 +446,47 @@ export default class Gameplay extends ScopedClass {
 			height: 20,
 			layout: {
 				width: 20,
-				height: 20,
-			},
+				height: 20
+			}
 		});
 
 		closeButton.tint =
-			inject<ColorConfig>("config/color")?.color.text ?? 0xffffff;
+			inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
 
-		inject<ColorConfig>("config/color")?.onChange("color", ({ text }) => {
+		inject<ColorConfig>('config/color')?.onChange('color', ({ text }) => {
 			closeButton.tint = text;
 		});
 
 		(async () => {
-			closeButton.texture = Texture.from("x.png");
+			closeButton.texture = Texture.from('x.png');
 		})();
 
-		closeButtonContainer.cursor = "pointer";
+		closeButtonContainer.cursor = 'pointer';
 		const unloadSelf = () => {
 			closeButtonContainer.layout = {
 				backgroundColor:
-					inject<ColorConfig>("config/color")?.color.base ?? 0xffffff,
+					inject<ColorConfig>('config/color')?.color.base ?? 0xffffff
 			};
 
-			const bms = this.beatmap.context.consume<BeatmapSet>("beatmapset");
+			const bms = this.beatmap.context.consume<BeatmapSet>('beatmapset');
 			if (!bms) return;
 
 			const idx = bms.difficulties.indexOf(this.beatmap);
 			bms.unloadSlave(idx);
 		};
-		closeButtonContainer.addEventListener("pointertap", () => unloadSelf());
+		closeButtonContainer.addEventListener('pointertap', () => unloadSelf());
 
-		closeButtonContainer.addEventListener("pointerenter", () => {
+		closeButtonContainer.addEventListener('pointerenter', () => {
 			closeButtonContainer.layout = {
 				backgroundColor:
-					inject<ColorConfig>("config/color")?.color.surface2 ?? 0xffffff,
+					inject<ColorConfig>('config/color')?.color.surface2 ?? 0xffffff
 			};
 		});
 
-		closeButtonContainer.addEventListener("pointerleave", () => {
+		closeButtonContainer.addEventListener('pointerleave', () => {
 			closeButtonContainer.layout = {
 				backgroundColor:
-					inject<ColorConfig>("config/color")?.color.base ?? 0xffffff,
+					inject<ColorConfig>('config/color')?.color.base ?? 0xffffff
 			};
 		});
 
@@ -499,32 +496,32 @@ export default class Gameplay extends ScopedClass {
 
 	createStats() {
 		this.statsContainer = new LayoutContainer({
-			label: "stats",
+			label: 'stats',
 			layout: {
-				display: "flex",
-				alignItems: "center",
-				flexDirection: "row",
+				display: 'flex',
+				alignItems: 'center',
+				flexDirection: 'row',
 				gap: 10,
-				backgroundColor: inject<ColorConfig>("config/color")?.color.base,
+				backgroundColor: inject<ColorConfig>('config/color')?.color.base,
 				borderRadius: 20,
 				padding: 10,
 				paddingInline: 20,
 				flex: 0,
-				height: "auto",
-				position: "absolute",
+				height: 'auto',
+				position: 'absolute',
 				top: 20,
 				left: 20,
-				transformOrigin: "top left",
-			},
+				transformOrigin: 'top left'
+			}
 		});
 
 		this.diffName = new Text({
 			text: this.beatmap.data.metadata.version,
 			style: {
 				...defaultStyle,
-				fill: inject<ColorConfig>("config/color")?.color.text,
+				fill: inject<ColorConfig>('config/color')?.color.text
 			},
-			layout: defaultLayout,
+			layout: defaultLayout
 		});
 
 		this.statsContainer.addChild(this.diffName);

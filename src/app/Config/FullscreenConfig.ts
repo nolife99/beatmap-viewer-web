@@ -1,5 +1,5 @@
-import type Config from ".";
-import ConfigSection from "./ConfigSection";
+import type Config from '.';
+import ConfigSection from './ConfigSection';
 
 type FullscreenProps = {
 	fullscreen: boolean;
@@ -19,9 +19,10 @@ export default class FullscreenConfig extends ConfigSection {
 	get fullscreen() {
 		return this._fullscreen;
 	}
+
 	set fullscreen(val: boolean) {
 		this._fullscreen = val;
-		this.emitChange("fullscreen", val);
+		this.emitChange('fullscreen', val);
 	}
 
 	jsonify() {

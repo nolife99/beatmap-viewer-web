@@ -1,12 +1,12 @@
-import * as d3 from "d3";
-import type { Circle } from "osu-standard-stable";
-import { Sprite } from "pixi.js";
-import type { Context } from "@/Context";
-import type Skin from "@/Skinning/Skin";
-import { BLANK_TEXTURE } from "@/Skinning/Skin";
-import DrawableDefaults from "../HitObjects/DrawableDefaults";
-import type DrawableHitCircle from "../HitObjects/DrawableHitCircle";
-import TimelineHitObject from "./TimelineHitObject";
+import * as d3 from 'd3';
+import type { Circle } from 'osu-standard-stable';
+import { Sprite } from 'pixi.js';
+import type { Context } from '@/Context';
+import type Skin from '@/Skinning/Skin';
+import { BLANK_TEXTURE } from '@/Skinning/Skin';
+import DrawableDefaults from '../HitObjects/DrawableDefaults';
+import type DrawableHitCircle from '../HitObjects/DrawableHitCircle';
+import TimelineHitObject from './TimelineHitObject';
 
 export default class TimelineHitCircle extends TimelineHitObject {
 	hitCircle: Sprite;
@@ -33,7 +33,7 @@ export default class TimelineHitCircle extends TimelineHitObject {
 			this.hitCircle,
 			this.defaults.container,
 			this.hitCircleOverlay,
-			this.select,
+			this.select
 		);
 
 		this.refreshSprite();
@@ -52,6 +52,7 @@ export default class TimelineHitCircle extends TimelineHitObject {
 	get isSelected() {
 		return this._isSelected;
 	}
+
 	set isSelected(val: boolean) {
 		this._isSelected = val;
 		this.select.visible = val;
@@ -62,20 +63,20 @@ export default class TimelineHitCircle extends TimelineHitObject {
 		if (!skin) return;
 
 		const timelineHitCircle = skin.getTexture(
-			"timelinehitcircle",
-			this.context.consume<Skin>("beatmapSkin"),
+			'timelinehitcircle',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 		const hitCircle = skin.getTexture(
-			"hitcircle",
-			this.context.consume<Skin>("beatmapSkin"),
+			'hitcircle',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 		const hitCircleOverlay = skin.getTexture(
-			"hitcircleoverlay",
-			this.context.consume<Skin>("beatmapSkin"),
+			'hitcircleoverlay',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 		const select = skin.getTexture(
-			"hitcircleselect",
-			this.context.consume<Skin>("beatmapSkin"),
+			'hitcircleselect',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 
 		this.hitCircle.texture =
@@ -89,7 +90,7 @@ export default class TimelineHitCircle extends TimelineHitObject {
 		this.select.scale.set(skin.config.General.Argon ? 256 / 236 : 1);
 
 		const color =
-			this.context.consume<DrawableHitCircle>("object")?.color ?? "rgb(0,0,0)";
+			this.context.consume<DrawableHitCircle>('object')?.color ?? 'rgb(0,0,0)';
 		this.hitCircle.tint = color;
 		this.defaults.container.tint = 0xffffff;
 		this.defaults.container.children.map((sprite) => {
@@ -122,7 +123,7 @@ export default class TimelineHitCircle extends TimelineHitObject {
 	getTimeRange(): { start: number; end: number } {
 		return {
 			start: this.object.startTime - 30 * 5,
-			end: this.object.startTime + 30 * 5,
+			end: this.object.startTime + 30 * 5
 		};
 	}
 }

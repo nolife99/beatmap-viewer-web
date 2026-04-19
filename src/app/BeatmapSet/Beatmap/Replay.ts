@@ -1,14 +1,14 @@
-import { HitResult, type LegacyReplayFrame, type Score } from "osu-classes";
-import { ScoreDecoder } from "osu-parsers";
-import { Slider, Spinner } from "osu-standard-stable";
-import { Sprite } from "pixi.js";
-import SkinningConfig from "@/Config/SkinningConfig";
-import { inject } from "@/Context";
-import { BLANK_TEXTURE } from "@/Skinning/Skin";
-import type SkinManager from "@/Skinning/SkinManager";
-import { binarySearch, Clamp } from "@/utils";
-import type Beatmap from ".";
-import DrawableSlider from "./HitObjects/DrawableSlider";
+import { HitResult, type LegacyReplayFrame, type Score } from 'osu-classes';
+import { ScoreDecoder } from 'osu-parsers';
+import { Slider, Spinner } from 'osu-standard-stable';
+import { Sprite } from 'pixi.js';
+import SkinningConfig from '@/Config/SkinningConfig';
+import { inject } from '@/Context';
+import { BLANK_TEXTURE } from '@/Skinning/Skin';
+import type SkinManager from '@/Skinning/SkinManager';
+import { binarySearch, Clamp } from '@/utils';
+import type Beatmap from '.';
+import DrawableSlider from './HitObjects/DrawableSlider';
 
 export type BaseObjectEvaluation = {
 	value: number;
@@ -28,17 +28,17 @@ export default class Replay {
 	cursor: Sprite = new Sprite({
 		anchor: 0.5,
 		interactive: false,
-		eventMode: "none",
+		eventMode: 'none'
 	});
 	trails: Sprite[];
 
 	constructor() {
 		this.cursor.texture =
-			inject<SkinManager>("skinManager")
-				?.getCurrentSkin()
-				.getTexture("cursor") ?? BLANK_TEXTURE;
+			inject<SkinManager>('skinManager')
+			?.getCurrentSkin()
+			.getTexture('cursor') ?? BLANK_TEXTURE;
 		this.cursor.scale.set(
-			inject<SkinningConfig>("config/skinning")?.cursorSize ?? 1,
+			inject<SkinningConfig>('config/skinning')?.cursorSize ?? 1
 		);
 
 		this.trails = [...Array(10)].map(
@@ -47,45 +47,45 @@ export default class Replay {
 					anchor: 0.5,
 					alpha: (10 - idx) / 10,
 					interactive: false,
-					eventMode: "none",
-				}),
+					eventMode: 'none'
+				})
 		);
 		for (const trail of this.trails) {
 			trail.texture =
-				inject<SkinManager>("skinManager")
-					?.getCurrentSkin()
-					.getTexture("cursortrail") ?? BLANK_TEXTURE;
+				inject<SkinManager>('skinManager')
+				?.getCurrentSkin()
+				.getTexture('cursortrail') ?? BLANK_TEXTURE;
 			trail.scale.set(
-				inject<SkinningConfig>("config/skinning")?.cursorSize ?? 1,
+				inject<SkinningConfig>('config/skinning')?.cursorSize ?? 1
 			);
 		}
 
-		inject<SkinManager>("skinManager")?.addSkinChangeListener((skin) => {
-			this.cursor.texture = skin.getTexture("cursor") ?? BLANK_TEXTURE;
+		inject<SkinManager>('skinManager')?.addSkinChangeListener((skin) => {
+			this.cursor.texture = skin.getTexture('cursor') ?? BLANK_TEXTURE;
 			for (const trail of this.trails) {
-				trail.texture = skin.getTexture("cursortrail") ?? BLANK_TEXTURE;
+				trail.texture = skin.getTexture('cursortrail') ?? BLANK_TEXTURE;
 			}
 		});
 
-		inject<SkinningConfig>("config/skinning")?.onChange(
-			"cursorSize",
+		inject<SkinningConfig>('config/skinning')?.onChange(
+			'cursorSize',
 			(val: number) => {
 				this.cursor.scale.set(val);
 				for (const trail of this.trails) trail.scale.set(val);
-			},
+			}
 		);
 	}
 
 	async process(raw: Blob) {
 		this.data = await this.decoder.decodeFromBuffer(
 			await raw.arrayBuffer(),
-			true,
+			true
 		);
 	}
 
 	evaluate(beatmap: Beatmap) {
 		if (!this.data?.replay) {
-			throw "Replay has not been initiated";
+			throw 'Replay has not been initiated';
 		}
 
 		const frames = this.data.replay?.frames as LegacyReplayFrame[];
@@ -97,18 +97,18 @@ export default class Replay {
 			const startTime =
 				drawable instanceof DrawableSlider
 					? drawable.drawableCircles[0].object.startTime -
-						drawable.drawableCircles[0].object.hitWindows.windowFor(
-							HitResult.Meh,
-						)
+					drawable.drawableCircles[0].object.hitWindows.windowFor(
+						HitResult.Meh
+					)
 					: drawable.object.startTime -
-						drawable.object.hitWindows.windowFor(HitResult.Meh);
+					drawable.object.hitWindows.windowFor(HitResult.Meh);
 			const endTime =
 				drawable.object instanceof Slider
 					? drawable.object.endTime
 					: drawable.object instanceof Spinner
 						? drawable.object.endTime
 						: drawable.object.startTime +
-							drawable.object.hitWindows.windowFor(HitResult.Meh);
+						drawable.object.hitWindows.windowFor(HitResult.Meh);
 
 			while (frames[frameIndex] && frames[frameIndex].startTime < startTime) {
 				frameIndex++;
@@ -130,9 +130,9 @@ export default class Replay {
 						Math.min(
 							evaluation.hitTime,
 							drawable.object.startTime +
-								drawable.object.hitWindows.windowFor(HitResult.Meh) +
-								1,
-						),
+							drawable.object.hitWindows.windowFor(HitResult.Meh) +
+							1
+						)
 				) + 1;
 		}
 
@@ -151,10 +151,10 @@ export default class Replay {
 		const next = frames[idx + 1] ?? last;
 
 		const percentage = Clamp(
-			(time - last.startTime) / Math.max(1, next.startTime - last.startTime),
+			(time - last.startTime) / Math.max(1, next.startTime - last.startTime)
 		);
 		const position = last.position.add(
-			next.position.subtract(last.position).scale(percentage),
+			next.position.subtract(last.position).scale(percentage)
 		);
 
 		this.cursor.x = position.x;

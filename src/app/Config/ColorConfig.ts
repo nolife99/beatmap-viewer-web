@@ -1,4 +1,4 @@
-import ConfigSection from "./ConfigSection";
+import ConfigSection from './ConfigSection';
 
 export type ColorPalette = {
 	crust: number;
@@ -27,7 +27,7 @@ const defaultPalette = {
 	overlay2: 0x9399b2,
 	subtext0: 0xa6adc8,
 	subtext1: 0xbac2de,
-	text: 0xcdd6f4,
+	text: 0xcdd6f4
 };
 
 export default class ColorConfig extends ConfigSection {
@@ -35,8 +35,9 @@ export default class ColorConfig extends ConfigSection {
 	get color() {
 		return this._color;
 	}
+
 	set color(val: Partial<ColorPalette>) {
 		this._color = { ...defaultPalette, ...val };
-        this.emitChange("color", this._color);
+		this.emitChange('color', this._color);
 	}
 }

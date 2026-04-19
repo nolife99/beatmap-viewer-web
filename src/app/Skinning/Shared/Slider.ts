@@ -1,18 +1,18 @@
-import { HitResult } from "osu-classes";
-import type DrawableSlider from "@/BeatmapSet/Beatmap/HitObjects/DrawableSlider";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import type GameplayConfig from "@/Config/GameplayConfig";
-import { inject } from "@/Context";
-import { Clamp } from "@/utils";
+import { HitResult } from 'osu-classes';
+import type DrawableSlider from '@/BeatmapSet/Beatmap/HitObjects/DrawableSlider';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import type GameplayConfig from '@/Config/GameplayConfig';
+import { inject } from '@/Context';
+import { Clamp } from '@/utils';
 
 export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
-	const isHD = inject<ExperimentalConfig>("config/experimental")?.hidden;
+	const isHD = inject<ExperimentalConfig>('config/experimental')?.hidden;
 
 	const startFadeInTime =
 		drawable.object.startTime - drawable.object.timePreempt;
 
 	const fadeOutDuration = 240;
-	const bodyFadeOutDuration = inject<GameplayConfig>("config/gameplay")
+	const bodyFadeOutDuration = inject<GameplayConfig>('config/gameplay')
 		?.snakeOutSlider
 		? 40
 		: fadeOutDuration;
@@ -26,7 +26,7 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 
 	const completionProgress = Math.min(
 		1,
-		Math.max(0, (time - drawable.object.startTime) / drawable.object.duration),
+		Math.max(0, (time - drawable.object.startTime) / drawable.object.duration)
 	);
 	const span = drawable.spanAt(completionProgress);
 	const spanProgress = drawable.progressAt(completionProgress);
@@ -37,8 +37,8 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 		Math.max(
 			0,
 			(time - (drawable.object.startTime - drawable.object.timePreempt)) /
-				(drawable.object.timePreempt / 3),
-		),
+			(drawable.object.timePreempt / 3)
+		)
 	);
 
 	if (span >= drawable.object.spans - 1) {
@@ -59,14 +59,14 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 	if (time < drawable.object.startTime) {
 		const opacity = Math.min(
 			1,
-			Math.max(0, (time - startFadeInTime) / drawable.object.timeFadeIn),
+			Math.max(0, (time - startFadeInTime) / drawable.object.timeFadeIn)
 		);
 		drawable.bodyAlpha = opacity;
 
 		if (isHD && opacity >= 1) {
 			const fadeOutTime = startFadeInTime + drawable.object.timeFadeIn;
 			const opacity = Clamp(
-				(time - fadeOutTime) / (drawable.object.endTime - fadeOutTime),
+				(time - fadeOutTime) / (drawable.object.endTime - fadeOutTime)
 			);
 
 			drawable.bodyAlpha = 1 - opacity;
@@ -79,7 +79,7 @@ export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 	if (isHD && time >= drawable.object.startTime) {
 		const fadeOutTime = startFadeInTime + drawable.object.timeFadeIn;
 		const opacity = Clamp(
-			(time - fadeOutTime) / (drawable.object.endTime - fadeOutTime),
+			(time - fadeOutTime) / (drawable.object.endTime - fadeOutTime)
 		);
 
 		drawable.bodyAlpha = 1 - opacity;

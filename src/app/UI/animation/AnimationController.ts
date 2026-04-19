@@ -1,5 +1,5 @@
-import { Group, Tween } from "@tweenjs/tween.js";
-import bezier from "bezier-easing";
+import { Group, Tween } from '@tweenjs/tween.js';
+import bezier from 'bezier-easing';
 
 export const tweenGroup = new Group();
 
@@ -21,34 +21,34 @@ export default class AnimationController {
 		duration = 200,
 		easing?: (t: number) => number,
 		onComplete?: () => void,
-		onStop?: () => void,
+		onStop?: () => void
 	) {
 		this.animations.get(key)?.stop();
 
 		const tween = new Tween({
-			value: from,
+			value: from
 		})
-			.easing(easing ?? defaultEasing)
-			.to(
-				{
-					value: to,
-				},
-				duration,
-			)
-			.onUpdate(({ value }) => {
-				callback(value);
-			})
-			.onComplete(() => {
-				this.animations.delete(key);
-				tweenGroup.remove(tween);
-				onComplete?.();
-			})
-			.onStop(() => {
-				this.animations.delete(key);
-				tweenGroup.remove(tween);
-				onStop?.();
-			})
-			.start();
+		.easing(easing ?? defaultEasing)
+		.to(
+			{
+				value: to
+			},
+			duration
+		)
+		.onUpdate(({ value }) => {
+			callback(value);
+		})
+		.onComplete(() => {
+			this.animations.delete(key);
+			tweenGroup.remove(tween);
+			onComplete?.();
+		})
+		.onStop(() => {
+			this.animations.delete(key);
+			tweenGroup.remove(tween);
+			onStop?.();
+		})
+		.start();
 
 		this.animations.set(key, tween);
 		tweenGroup.add(tween);

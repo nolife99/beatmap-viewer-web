@@ -1,18 +1,18 @@
-import type { Circle } from "osu-standard-stable";
-import { Sprite } from "pixi.js";
-import type BeatmapSet from "@/BeatmapSet";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import type SkinningConfig from "@/Config/SkinningConfig";
-import { inject } from "@/Context";
-import { update as argonUpdate } from "@/Skinning/Argon/ArgonApproachCircle";
-import { update as legacyUpdate } from "@/Skinning/Legacy/LegacyApproachCircle";
-import type Skin from "@/Skinning/Skin";
-import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
-import type Beatmap from "..";
-import SkinnableElement from "./SkinnableElement";
+import type { Circle } from 'osu-standard-stable';
+import { Sprite } from 'pixi.js';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import type SkinningConfig from '@/Config/SkinningConfig';
+import { inject } from '@/Context';
+import { update as argonUpdate } from '@/Skinning/Argon/ArgonApproachCircle';
+import { update as legacyUpdate } from '@/Skinning/Legacy/LegacyApproachCircle';
+import type Skin from '@/Skinning/Skin';
+import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import type Beatmap from '..';
+import SkinnableElement from './SkinnableElement';
 
 export default class DrawableApproachCircle extends SkinnableElement {
 	container = new Sprite();
+	updateFn = legacyUpdate;
 
 	constructor(object: Circle) {
 		super();
@@ -23,19 +23,20 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		this.container.anchor.set(0.5);
 		this.container.interactive = false;
 		this.container.interactiveChildren = false;
-		this.container.eventMode = "none";
+		this.container.eventMode = 'none';
 
 		this.refreshSprite();
 		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
-			this.refreshSprite(),
+			this.refreshSprite()
 		);
 		this.gameplaysEventCallback = inject<Gameplays>(
-			"ui/main/viewer/gameplays",
-		)?.on("change", () => this.refreshColor());
-		inject<ExperimentalConfig>("config/experimental")?.onChange("overlapGameplays", () => this.refreshColor());
+			'ui/main/viewer/gameplays'
+		)?.on('change', () => this.refreshColor());
+		inject<ExperimentalConfig>('config/experimental')?.onChange('overlapGameplays', () => this.refreshColor());
 	}
 
 	private _object!: Circle;
+
 	get object() {
 		return this._object;
 	}
@@ -46,8 +47,6 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		this.container.x = val.startX + val.stackedOffset.x;
 		this.container.y = val.startY + val.stackedOffset.y;
 	}
-
-	updateFn = legacyUpdate;
 
 	refreshSprite() {
 		const skin = this.skinManager?.getCurrentSkin();
@@ -60,8 +59,8 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		}
 
 		const approachCircle = skin.getTexture(
-			"approachcircle",
-			this.context.consume<Skin>("beatmapSkin"),
+			'approachcircle',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 		if (approachCircle) this.container.texture = approachCircle;
 
@@ -72,10 +71,10 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
 
-		const beatmap = this.context.consume<Beatmap>("beatmapObject");
+		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const tintByDiff =
-			(inject<Gameplays>("ui/main/viewer/gameplays")?.gameplays.size ?? 1) - 1 &&
-			inject<ExperimentalConfig>("config/experimental")?.overlapGameplays &&
+			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+			inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 			beatmap?.randomColor;
 
 		if (tintByDiff) {
@@ -85,7 +84,7 @@ export default class DrawableApproachCircle extends SkinnableElement {
 
 		if (
 			beatmap?.data.colors.comboColors.length &&
-			!inject<SkinningConfig>("config/skinning")?.disableBeatmapSkin
+			!inject<SkinningConfig>('config/skinning')?.disableBeatmapSkin
 		) {
 			const colors = beatmap.data.colors.comboColors;
 			const comboIndex = this.object.comboIndexWithOffsets % colors.length;
@@ -98,7 +97,7 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		// biome-ignore lint/suspicious/noExplicitAny: It is complicated
 		const color = (skin.config.Colours as any)[
 			`Combo${comboIndex + 1}`
-		] as string;
+			] as string;
 		this.container.tint = `rgb(${color})`;
 	}
 
@@ -111,9 +110,9 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		if (this.skinEventCallback)
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
 		if (this.gameplaysEventCallback)
-			inject<Gameplays>("ui/main/viewer/gameplays")?.remove(
-				"change",
-				this.gameplaysEventCallback,
+			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
+				'change',
+				this.gameplaysEventCallback
 			);
 	}
 }

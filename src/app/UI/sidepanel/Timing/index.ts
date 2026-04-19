@@ -1,14 +1,14 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import type { DifficultyPoint, SamplePoint, TimingPoint } from "osu-classes";
-import { Container, type FederatedPointerEvent, Rectangle } from "pixi.js";
-import type ColorConfig from "@/Config/ColorConfig";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import { inject } from "@/Context";
-import type ResponsiveHandler from "@/ResponsiveHandler";
-import type State from "@/State";
-import AnimationController from "@/UI/animation/AnimationController";
-import Easings from "@/UI/Easings";
-import Point from "./Point";
+import { LayoutContainer } from '@pixi/layout/components';
+import type { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
+import { Container, type FederatedPointerEvent, Rectangle } from 'pixi.js';
+import type ColorConfig from '@/Config/ColorConfig';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import { inject } from '@/Context';
+import type ResponsiveHandler from '@/ResponsiveHandler';
+import type State from '@/State';
+import AnimationController from '@/UI/animation/AnimationController';
+import Easings from '@/UI/Easings';
+import Point from './Point';
 
 export default class Timing {
 	container: LayoutContainer;
@@ -18,24 +18,34 @@ export default class Timing {
 	private animationControler = new AnimationController();
 
 	private _cachedWidth? = 360;
+	private points: Point[] = [];
+	private currentIdx = 0;
+	private previous = new Set<number>();
+	private _isDown = false;
+	private _startPosition = 0;
+	private _cacheOffset = 0;
+	private _startTime = 0;
+	private _currentVelocity = 0;
+	private _currentTime = 0;
+	private _last = 0;
 
 	constructor() {
 		this.container = new LayoutContainer({
-			label: "timing",
+			label: 'timing',
 			layout: {
 				width: 360,
 				flex: 1,
-				overflow: "hidden",
-				backgroundColor: inject<ColorConfig>("config/color")?.color.mantle,
-				borderRadius: 0,
+				overflow: 'hidden',
+				backgroundColor: inject<ColorConfig>('config/color')?.color.mantle,
+				borderRadius: 0
 			},
-			visible: false,
+			visible: false
 		});
 
 		this._timingContainer = new Container();
 		this.container.addChild(this._timingContainer);
 
-		this.container.on("layout", () => {
+		this.container.on('layout', () => {
 			const offset =
 				this.currentIdx * 45 -
 				(this.container.layout?.computedLayout.height ?? 0) +
@@ -50,86 +60,54 @@ export default class Timing {
 			}
 		});
 
-		inject<ColorConfig>("config/color")?.onChange("color", ({ mantle }) => {
+		inject<ColorConfig>('config/color')?.onChange('color', ({ mantle }) => {
 			this.container.layout = {
-				backgroundColor: mantle,
+				backgroundColor: mantle
 			};
 		});
 
-		inject<ResponsiveHandler>("responsiveHandler")?.on(
-			"layout",
+		inject<ResponsiveHandler>('responsiveHandler')?.on(
+			'layout',
 			(direction) => {
 				switch (direction) {
-					case "landscape": {
+					case 'landscape': {
 						this.container.layout = {
-							width: 360,
+							width: 360
 						};
 						break;
 					}
-					case "portrait": {
+					case 'portrait': {
 						this.container.layout = {
-							width: "100%",
+							width: '100%'
 						};
 					}
 				}
-			},
+			}
 		);
 
-		inject<State>("state")?.on("sidebar", (newState) => {
-			if (newState === "OPENED") {
+		inject<State>('state')?.on('sidebar', (newState) => {
+			if (newState === 'OPENED') {
 				this.container.visible = true;
 			}
 
-			if (newState === "CLOSED") {
+			if (newState === 'CLOSED') {
 				this.container.visible = false;
 			}
 		});
 
-		this.container.on("wheel", (event) => {
+		this.container.on('wheel', (event) => {
 			const deltaY = event.deltaY;
 			this.scrollTo(this._scrollOffset + deltaY * 1.5);
 		});
 
-		this.container.on("pointerdown", (event) => this.handleDragStart(event));
-		this.container.on("pointermove", (event) => this.handleDragMove(event));
-		this.container.on("pointerup", () => this.handleDragEnd());
-		this.container.on("pointerout", () => this.handleDragEnd());
+		this.container.on('pointerdown', (event) => this.handleDragStart(event));
+		this.container.on('pointermove', (event) => this.handleDragMove(event));
+		this.container.on('pointerup', () => this.handleDragEnd());
+		this.container.on('pointerout', () => this.handleDragEnd());
 	}
 
-	private points: Point[] = [];
-
-	private createTimingPointsSync(
-		points: (TimingPoint | DifficultyPoint | SamplePoint)[],
-	) {
-		const p = [];
-		let i = 0;
-
-		for (const point of points) {
-			const x = new Point(point);
-			x.container.y = i++ * 45;
-			p.push(x);
-		}
-
-		return p;
-	}
-
-	private async createTimingPointsAsync(
-		points: (TimingPoint | DifficultyPoint | SamplePoint)[],
-	) {
-		return await Promise.all(
-			Iterator.from(points).map((point, i) => {
-				return new Promise<Point>((resolve) => {
-					setTimeout(() => {
-						const x = new Point(point);
-						x.container.y = i * 45;
-						resolve(x);
-					});
-				});
-			}),
-		);
-	}
 	async updateTimingPoints(
-		points: (TimingPoint | DifficultyPoint | SamplePoint)[],
+		points: (TimingPoint | DifficultyPoint | SamplePoint)[]
 	) {
 		if (this.points.length > 0) {
 			for (const point of this.points) {
@@ -141,7 +119,7 @@ export default class Timing {
 		this.points = [];
 
 		const async = inject<ExperimentalConfig>(
-			"config/experimental",
+			'config/experimental'
 		)?.asyncLoading;
 
 		const p: Point[] = async
@@ -152,12 +130,11 @@ export default class Timing {
 			0,
 			0,
 			360,
-			p.length * 45 - 5,
+			p.length * 45 - 5
 		);
 		this.points = p;
 	}
 
-	private currentIdx = 0;
 	scrollToTimingPoint(time: number) {
 		const idx = this.points.findIndex((point) => point.data.startTime === time);
 		this.points[this.currentIdx]?.unselect();
@@ -171,41 +148,10 @@ export default class Timing {
 		if (
 			offset < this._scrollOffset &&
 			Math.abs(offset - this._scrollOffset) <
-				(this.container.layout?.computedLayout.height ?? 0)
+			(this.container.layout?.computedLayout.height ?? 0)
 		)
 			return;
 		this.scrollTo(Math.max(0, offset));
-	}
-
-	private previous = new Set<number>();
-	private _scrollTo(offset: number) {
-		this._scrollOffset = offset;
-		this._timingContainer.y = -offset;
-
-		const topBound = Math.floor(offset / 45);
-		const bottomBound = Math.ceil(
-			(offset + (this.container?.layout?.computedLayout.height ?? 0)) / 45,
-		);
-
-		const currentSet = new Set<number>();
-		for (let i = topBound; i <= bottomBound; i++) {
-			currentSet.add(i);
-		}
-
-		const excluded = this.previous.difference(currentSet);
-		for (const idx of excluded) {
-			if (!this.points[idx]) continue;
-			this.points[idx].off();
-			this._timingContainer.removeChild(this.points[idx].container);
-		}
-
-		for (const idx of currentSet) {
-			if (!this.points[idx]) continue;
-			this.points[idx].on();
-			this._timingContainer.addChild(this.points[idx].container);
-		}
-
-		this.previous = currentSet;
 	}
 
 	scrollTo(offset: number, instant = false) {
@@ -232,7 +178,7 @@ export default class Timing {
 		}
 
 		const tween = this.animationControler.addAnimation(
-			"offset",
+			'offset',
 			this._scrollOffset,
 			boundOffset,
 			(value) => {
@@ -253,17 +199,9 @@ export default class Timing {
 					this.scrollTo(maxScroll);
 					return;
 				}
-			},
+			}
 		);
 	}
-
-	private _isDown = false;
-	private _startPosition = 0;
-	private _cacheOffset = 0;
-	private _startTime = 0;
-
-	private _currentVelocity = 0;
-	private _currentTime = 0;
 
 	handleDragStart(event: FederatedPointerEvent) {
 		this._isDown = true;
@@ -290,8 +228,8 @@ export default class Timing {
 		this._scrollTo(
 			Math.max(
 				topBound - 200,
-				Math.min(bottomBound + 200, this._cacheOffset - delta),
-			),
+				Math.min(bottomBound + 200, this._cacheOffset - delta)
+			)
 		);
 	}
 
@@ -309,6 +247,81 @@ export default class Timing {
 
 		this._last = performance.now();
 		this.container.onRender = () => this.handleVelocity();
+	}
+
+	handleVelocity() {
+		if (this.bounceBack()) return;
+
+		const delta = performance.now() - this._last;
+		this._scrollTo(this._scrollOffset - delta * this._currentVelocity);
+
+		if (Math.abs(this._currentVelocity) < 0.01) {
+			this.bounceBack(0);
+			return;
+		}
+
+		this._currentVelocity *= 0.85;
+	}
+
+	private createTimingPointsSync(
+		points: (TimingPoint | DifficultyPoint | SamplePoint)[]
+	) {
+		const p = [];
+		let i = 0;
+
+		for (const point of points) {
+			const x = new Point(point);
+			x.container.y = i++ * 45;
+			p.push(x);
+		}
+
+		return p;
+	}
+
+	private async createTimingPointsAsync(
+		points: (TimingPoint | DifficultyPoint | SamplePoint)[]
+	) {
+		return await Promise.all(
+			Iterator.from(points).map((point, i) => {
+				return new Promise<Point>((resolve) => {
+					setTimeout(() => {
+						const x = new Point(point);
+						x.container.y = i * 45;
+						resolve(x);
+					});
+				});
+			})
+		);
+	}
+
+	private _scrollTo(offset: number) {
+		this._scrollOffset = offset;
+		this._timingContainer.y = -offset;
+
+		const topBound = Math.floor(offset / 45);
+		const bottomBound = Math.ceil(
+			(offset + (this.container?.layout?.computedLayout.height ?? 0)) / 45
+		);
+
+		const currentSet = new Set<number>();
+		for (let i = topBound; i <= bottomBound; i++) {
+			currentSet.add(i);
+		}
+
+		const excluded = this.previous.difference(currentSet);
+		for (const idx of excluded) {
+			if (!this.points[idx]) continue;
+			this.points[idx].off();
+			this._timingContainer.removeChild(this.points[idx].container);
+		}
+
+		for (const idx of currentSet) {
+			if (!this.points[idx]) continue;
+			this.points[idx].on();
+			this._timingContainer.addChild(this.points[idx].container);
+		}
+
+		this.previous = currentSet;
 	}
 
 	private bounceBack(leway = 200) {
@@ -329,20 +342,5 @@ export default class Timing {
 		}
 
 		return false;
-	}
-
-	private _last = 0;
-	handleVelocity() {
-		if (this.bounceBack()) return;
-
-		const delta = performance.now() - this._last;
-		this._scrollTo(this._scrollOffset - delta * this._currentVelocity);
-
-		if (Math.abs(this._currentVelocity) < 0.01) {
-			this.bounceBack(0);
-			return;
-		}
-
-		this._currentVelocity *= 0.85;
 	}
 }

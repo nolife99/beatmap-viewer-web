@@ -1,30 +1,84 @@
-import { Tween } from "@tweenjs/tween.js";
-import { Container } from "pixi.js";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import { inject, ScopedClass } from "@/Context";
-import type ResponsiveHandler from "@/ResponsiveHandler";
-import { defaultEasing, tweenGroup } from "@/UI/animation/AnimationController";
-import FPS from "../FPS";
-import type Gameplay from ".";
+import { Tween } from '@tweenjs/tween.js';
+import { Container } from 'pixi.js';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import { inject, ScopedClass } from '@/Context';
+import type ResponsiveHandler from '@/ResponsiveHandler';
+import { defaultEasing, tweenGroup } from '@/UI/animation/AnimationController';
+import FPS from '../FPS';
+import type Gameplay from '.';
 
-type GameplayEvents = "add" | "remove" | "change";
+type GameplayEvents = 'add' | 'remove' | 'change';
 
 export type GameplaysEventCallback = (val: unknown) => unknown;
 
 export default class Gameplays extends ScopedClass {
 	container = new Container({
-		label: "gameplays",
+		label: 'gameplays',
 		layout: {
-			width: "100%",
-			flex: 1,
+			width: '100%',
+			flex: 1
 		},
 		interactive: true,
-		zIndex: 1,
+		zIndex: 1
 	});
 
 	gameplays: Set<Gameplay> = new Set();
-
+	w = 0;
+	h = 0;
+	fps: FPS;
+	tweenMap: Map<Gameplay, Tween> = new Map();
 	private _callbacks = new Map<GameplayEvents, Set<GameplaysEventCallback>>();
+
+	constructor() {
+		super();
+		this.context.provide<number>('clients', 0);
+
+		const fps = new FPS();
+		this.fps = fps;
+
+		this.container.addChild(fps.container);
+		this.container.on('layout', (layout) => {
+			const width = layout.computedLayout.width;
+			const height = layout.computedLayout.height;
+
+			if (width !== this.w || height !== this.h) {
+				this.w = width;
+				this.h = height;
+
+				this.reLayoutChildren();
+			}
+		});
+
+		inject<ResponsiveHandler>('responsiveHandler')?.on(
+			'layout',
+			(direction) => {
+				switch (direction) {
+					case 'landscape': {
+						this.container.layout = {
+							flex: 1,
+							aspectRatio: undefined
+						};
+						break;
+					}
+					case 'portrait': {
+						this.container.layout = {
+							flex: undefined,
+							aspectRatio: 4 / 3
+						};
+						break;
+					}
+				}
+			}
+		);
+
+		inject<ExperimentalConfig>('config/experimental')?.onChange(
+			'overlapGameplays',
+			() => {
+				this.reLayoutChildren();
+				this._emitChange('change');
+			}
+		);
+	}
 
 	addGameplay(gameplay: Gameplay, index?: number) {
 		gameplay.hook(this.context);
@@ -35,14 +89,14 @@ export default class Gameplays extends ScopedClass {
 			const newArr = [
 				...deserialized.slice(0, index),
 				gameplay,
-				...deserialized.slice(index),
+				...deserialized.slice(index)
 			];
 			this.gameplays = new Set(newArr);
 		}
 		this.container.addChild(...[...this.gameplays].toReversed().map(gameplay => gameplay.container), this.fps.container);
 
-		this._emitChange("add");
-		this._emitChange("change");
+		this._emitChange('add');
+		this._emitChange('change');
 		this.reLayoutChildren(gameplay);
 	}
 
@@ -50,8 +104,8 @@ export default class Gameplays extends ScopedClass {
 		this.gameplays.delete(gameplay);
 		this.container.removeChild(gameplay.container);
 
-		this._emitChange("remove");
-		this._emitChange("change");
+		this._emitChange('remove');
+		this._emitChange('change');
 		this.reLayoutChildren();
 	}
 
@@ -68,68 +122,11 @@ export default class Gameplays extends ScopedClass {
 		this.reLayoutChildren();
 	}
 
-	w = 0;
-	h = 0;
-
-	fps: FPS;
-	constructor() {
-		super();
-		this.context.provide<number>("clients", 0);
-
-		const fps = new FPS();
-		this.fps = fps;
-
-		this.container.addChild(fps.container);
-		this.container.on("layout", (layout) => {
-			const width = layout.computedLayout.width;
-			const height = layout.computedLayout.height;
-
-			if (width !== this.w || height !== this.h) {
-				this.w = width;
-				this.h = height;
-
-				this.reLayoutChildren();
-			}
-		});
-
-		inject<ResponsiveHandler>("responsiveHandler")?.on(
-			"layout",
-			(direction) => {
-				switch (direction) {
-					case "landscape": {
-						this.container.layout = {
-							flex: 1,
-							aspectRatio: undefined,
-						};
-						break;
-					}
-					case "portrait": {
-						this.container.layout = {
-							flex: undefined,
-							aspectRatio: 4 / 3,
-						};
-						break;
-					}
-				}
-			},
-		);
-
-		inject<ExperimentalConfig>("config/experimental")?.onChange(
-			"overlapGameplays",
-			() => {
-				this.reLayoutChildren();
-				this._emitChange("change");
-			},
-		);
-	}
-
-	tweenMap: Map<Gameplay, Tween> = new Map();
-
 	reLayoutChildren(target?: Gameplay) {
-		this.context.provide<number>("clients", this.gameplays.size);
+		this.context.provide<number>('clients', this.gameplays.size);
 
 		const overlapGameplays = inject<ExperimentalConfig>(
-			"config/experimental",
+			'config/experimental'
 		)?.overlapGameplays;
 
 		const deserialized = [...this.gameplays];
@@ -164,7 +161,7 @@ export default class Gameplays extends ScopedClass {
 				paddingBottom: gameplay.container.layout?.yoga.getPadding(3).value,
 				paddingRight: gameplay.container.layout?.yoga.getPadding(2).value,
 				scale: 0,
-				borderRadius: gameplay.background.layout?.style.borderRadius ?? 20,
+				borderRadius: gameplay.background.layout?.style.borderRadius ?? 20
 			};
 
 			const newLayout = {
@@ -172,7 +169,7 @@ export default class Gameplays extends ScopedClass {
 				left: overlapGameplays
 					? 0
 					: (i % columnsCount) * w +
-						(row === rowsCount - 1 ? (w * missingLast) / 2 : 0),
+					(row === rowsCount - 1 ? (w * missingLast) / 2 : 0),
 				width: w,
 				height: h,
 				paddingTop: w !== 100 ? (row === 0 ? 10 : 5) : 0,
@@ -190,69 +187,69 @@ export default class Gameplays extends ScopedClass {
 							: 5
 						: 0,
 				scale: 1,
-				borderRadius: w !== 100 ? 20 : 0,
+				borderRadius: w !== 100 ? 20 : 0
 			};
 
 			const tween = new Tween({
-				value: oldLayout,
+				value: oldLayout
 			})
-				.easing(defaultEasing)
-				.to(
-					{
-						value: newLayout,
-					},
-					500,
-				)
-				.onUpdate(
-					({
-						value: {
-							top,
-							left,
-							width,
-							height,
-							paddingTop,
-							paddingBottom,
-							paddingLeft,
-							paddingRight,
-							scale,
-							borderRadius,
-						},
-					}) => {
-						gameplay.container.layout = {
-							top: gameplay === target ? `${newLayout.top}%` : `${top ?? 0}%`,
-							left:
-								gameplay === target ? `${newLayout.left}%` : `${left ?? 0}%`,
-							width:
-								gameplay === target ? `${newLayout.width}%` : `${width ?? 0}%`,
-							height:
-								gameplay === target
-									? `${newLayout.height}%`
-									: `${height ?? 0}%`,
-							paddingTop,
-							paddingLeft,
-							paddingBottom,
-							paddingRight,
-						};
+			.easing(defaultEasing)
+			.to(
+				{
+					value: newLayout
+				},
+				500
+			)
+			.onUpdate(
+				({
+					 value: {
+						 top,
+						 left,
+						 width,
+						 height,
+						 paddingTop,
+						 paddingBottom,
+						 paddingLeft,
+						 paddingRight,
+						 scale,
+						 borderRadius
+					 }
+				 }) => {
+					gameplay.container.layout = {
+						top: gameplay === target ? `${newLayout.top}%` : `${top ?? 0}%`,
+						left:
+							gameplay === target ? `${newLayout.left}%` : `${left ?? 0}%`,
+						width:
+							gameplay === target ? `${newLayout.width}%` : `${width ?? 0}%`,
+						height:
+							gameplay === target
+								? `${newLayout.height}%`
+								: `${height ?? 0}%`,
+						paddingTop,
+						paddingLeft,
+						paddingBottom,
+						paddingRight
+					};
 
-						if (gameplay === target) {
-							gameplay.container.scale = 0.5 + 0.5 * scale;
-							gameplay.container.alpha = scale;
-						}
+					if (gameplay === target) {
+						gameplay.container.scale = 0.5 + 0.5 * scale;
+						gameplay.container.alpha = scale;
+					}
 
-						gameplay.background.layout = {
-							borderRadius: borderRadius,
-						};
-					},
-				)
-				.onComplete(() => {
-					this.tweenMap.delete(gameplay);
-					tweenGroup.remove(tween);
-				})
-				.onStop(() => {
-					this.tweenMap.delete(gameplay);
-					tweenGroup.remove(tween);
-				})
-				.start();
+					gameplay.background.layout = {
+						borderRadius: borderRadius
+					};
+				}
+			)
+			.onComplete(() => {
+				this.tweenMap.delete(gameplay);
+				tweenGroup.remove(tween);
+			})
+			.onStop(() => {
+				this.tweenMap.delete(gameplay);
+				tweenGroup.remove(tween);
+			})
+			.start();
 
 			tweenGroup.add(tween);
 

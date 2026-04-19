@@ -1,16 +1,16 @@
-import type { Slider } from "osu-standard-stable";
-import { Sprite } from "pixi.js";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import { inject } from "@/Context";
-import { update as argonUpdate } from "@/Skinning/Argon/ArgonSliderFollowCircle";
-import { update as legacyUpdate } from "@/Skinning/Legacy/LegacySliderFollowCircle";
-import type Skin from "@/Skinning/Skin";
-import { BLANK_TEXTURE } from "@/Skinning/Skin";
-import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
-import { Clamp } from "../../../utils";
-import type Beatmap from "..";
-import AnimatedSkinnableElement from "./AnimatedSkinnableElement";
-import type DrawableSlider from "./DrawableSlider";
+import type { Slider } from 'osu-standard-stable';
+import { Sprite } from 'pixi.js';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import { inject } from '@/Context';
+import { update as argonUpdate } from '@/Skinning/Argon/ArgonSliderFollowCircle';
+import { update as legacyUpdate } from '@/Skinning/Legacy/LegacySliderFollowCircle';
+import type Skin from '@/Skinning/Skin';
+import { BLANK_TEXTURE } from '@/Skinning/Skin';
+import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import { Clamp } from '../../../utils';
+import type Beatmap from '..';
+import AnimatedSkinnableElement from './AnimatedSkinnableElement';
+import type DrawableSlider from './DrawableSlider';
 
 export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement {
 	container;
@@ -24,21 +24,21 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		this.container.visible = false;
 		this.container.anchor.set(0.5);
 		this.container.scale.set(this.object.scale);
-		this.container.eventMode = "none";
+		this.container.eventMode = 'none';
 
 		this.texturesList = this.skinManager
-			?.getCurrentSkin()
-			.getAnimatedTexture("sliderfollowcircle") ?? [BLANK_TEXTURE];
+		?.getCurrentSkin()
+		.getAnimatedTexture('sliderfollowcircle') ?? [BLANK_TEXTURE];
 
 		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
-			this.refreshSprite(),
+			this.refreshSprite()
 		);
 		this.gameplaysEventCallback = inject<Gameplays>(
-			"ui/main/viewer/gameplays",
-		)?.on("change", () => this.refreshColor());
-		inject<ExperimentalConfig>("config/experimental")?.onChange(
-			"overlapGameplays",
-			() => this.refreshColor(),
+			'ui/main/viewer/gameplays'
+		)?.on('change', () => this.refreshColor());
+		inject<ExperimentalConfig>('config/experimental')?.onChange(
+			'overlapGameplays',
+			() => this.refreshColor()
 		);
 	}
 
@@ -62,15 +62,15 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		this.updateFn = skin.config.General.Argon ? argonUpdate : legacyUpdate;
 
 		this.texturesList = this.skinManager
-			?.getCurrentSkin()
-			.getAnimatedTexture(
-				"sliderfollowcircle",
-				skin.config.General.Argon
-					? this.context.consume<Skin>("beatmapSkin")
-					: undefined,
-			) ?? [BLANK_TEXTURE];
+		?.getCurrentSkin()
+		.getAnimatedTexture(
+			'sliderfollowcircle',
+			skin.config.General.Argon
+				? this.context.consume<Skin>('beatmapSkin')
+				: undefined
+		) ?? [BLANK_TEXTURE];
 
-		this.container.blendMode = skin.config.General.Argon ? "add" : "normal";
+		this.container.blendMode = skin.config.General.Argon ? 'add' : 'normal';
 		this.refreshColor();
 	}
 
@@ -78,17 +78,17 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
 
-		const beatmap = this.context.consume<Beatmap>("beatmapObject");
+		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 
 		const tintByDiff =
-			(inject<Gameplays>("ui/main/viewer/gameplays")?.gameplays.size ?? 1) - 1 &&
-			inject<ExperimentalConfig>("config/experimental")?.overlapGameplays &&
+			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+			inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 			beatmap?.randomColor;
 
 		this.container.tint = tintByDiff
 			? beatmap.randomColor
 			: skin.config.General.Argon
-				? (this.context.consume<DrawableSlider>("slider")?.getColor(skin) ??
+				? (this.context.consume<DrawableSlider>('slider')?.getColor(skin) ??
 					0xffffff)
 				: 0xffffff;
 	}
@@ -106,7 +106,7 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		const frameIndex = Clamp(
 			Math.floor((time - startTime) / frameLength),
 			0,
-			this.texturesList.length - 1,
+			this.texturesList.length - 1
 		);
 		this.container.texture = this.texturesList[frameIndex];
 	}
@@ -116,9 +116,9 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		if (this.skinEventCallback)
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
 		if (this.gameplaysEventCallback)
-			inject<Gameplays>("ui/main/viewer/gameplays")?.remove(
-				"change",
-				this.gameplaysEventCallback,
+			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
+				'change',
+				this.gameplaysEventCallback
 			);
 	}
 }

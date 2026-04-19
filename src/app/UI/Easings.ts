@@ -42,15 +42,15 @@ const BounceOut = (x: number) =>
 		? 7.5625 * x * x
 		: x < 2 / 2.75
 			? // biome-ignore lint/suspicious/noAssignInExpressions: Hackerman
-				// biome-ignore lint/style/noParameterAssign: Hackerman
-				7.5625 * (x -= 1.5 / 2.75) * x + 0.75
+			// biome-ignore lint/style/noParameterAssign: Hackerman
+			7.5625 * (x -= 1.5 / 2.75) * x + 0.75
 			: x < 2.5 / 2.75
 				? // biome-ignore lint/suspicious/noAssignInExpressions: Hackerman
-					// biome-ignore lint/style/noParameterAssign: Hackerman
-					7.5625 * (x -= 2.25 / 2.75) * x + 0.9375
+				// biome-ignore lint/style/noParameterAssign: Hackerman
+				7.5625 * (x -= 2.25 / 2.75) * x + 0.9375
 				: // biome-ignore lint/suspicious/noAssignInExpressions: Hackerman
-					// biome-ignore lint/style/noParameterAssign: Hackerman
-					7.5625 * (x -= 2.625 / 2.75) * x + 0.984375;
+				// biome-ignore lint/style/noParameterAssign: Hackerman
+				7.5625 * (x -= 2.625 / 2.75) * x + 0.984375;
 const BounceIn = (x: number) => Reverse(BounceOut, x);
 const BounceInOut = (x: number) => ToInOut(BounceIn, x);
 
@@ -111,7 +111,7 @@ const Easings = {
 
 	InBounce: BounceIn,
 	OutBounce: BounceOut,
-	InOutBounce: BounceInOut,
+	InOutBounce: BounceInOut
 };
 
 const EasingsMap = [
@@ -159,7 +159,7 @@ const EasingsMap = [
 
 	BounceIn,
 	BounceOut,
-	BounceInOut,
+	BounceInOut
 ];
 
 export default Easings;

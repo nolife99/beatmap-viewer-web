@@ -1,15 +1,15 @@
-import type DrawableSliderBall from "@/BeatmapSet/Beatmap/HitObjects/DrawableSliderBall";
-import Easings from "@/UI/Easings";
+import type DrawableSliderBall from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderBall';
+import Easings from '@/UI/Easings';
 
 export const update = (drawable: DrawableSliderBall, time: number) => {
 	const completionProgress = Math.min(
 		1,
-		Math.max(0, (time - drawable.object.startTime) / drawable.object.duration),
+		Math.max(0, (time - drawable.object.startTime) / drawable.object.duration)
 	);
 
 	const position = drawable.object.path.curvePositionAt(
 		completionProgress,
-		drawable.object.spans,
+		drawable.object.spans
 	);
 
 	const duration = 200;
@@ -31,7 +31,7 @@ export const update = (drawable: DrawableSliderBall, time: number) => {
 
 	if (time >= drawable.object.startTime && time <= drawable.object.endTime) {
 		drawable.container.alpha = Easings.OutQuint(
-			Math.max(0, Math.min(1, (time - drawable.object.startTime) / duration)),
+			Math.max(0, Math.min(1, (time - drawable.object.startTime) / duration))
 		);
 		return;
 	}
@@ -42,8 +42,8 @@ export const update = (drawable: DrawableSliderBall, time: number) => {
 			Easings.OutQuint(
 				Math.max(
 					0,
-					Math.min(1, (time - drawable.object.endTime) / (duration / 4)),
-				),
+					Math.min(1, (time - drawable.object.endTime) / (duration / 4))
+				)
 			);
 	}
 };

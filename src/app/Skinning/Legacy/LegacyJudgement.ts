@@ -1,8 +1,8 @@
-import { HitResult } from "osu-classes";
-import type { Slider, Spinner } from "osu-standard-stable";
-import type DrawableJudgement from "@/BeatmapSet/Beatmap/HitObjects/DrawableJudgement";
-import Easings from "@/UI/Easings";
-import { Clamp } from "@/utils";
+import { HitResult } from 'osu-classes';
+import type { Slider, Spinner } from 'osu-standard-stable';
+import type DrawableJudgement from '@/BeatmapSet/Beatmap/HitObjects/DrawableJudgement';
+import Easings from '@/UI/Easings';
+import { Clamp } from '@/utils';
 
 export const update = (drawable: DrawableJudgement, timestamp: number) => {
 	if (!drawable.evaluation) {
@@ -19,8 +19,8 @@ export const update = (drawable: DrawableJudgement, timestamp: number) => {
 		Math.min(
 			drawable.evaluation.hitTime,
 			drawable.drawable.object.startTime +
-				drawable.drawable.object.hitWindows.windowFor(HitResult.Meh) +
-				1,
+			drawable.drawable.object.hitWindows.windowFor(HitResult.Meh) +
+			1
 		);
 
 	const animationDuration = fadeInLength + fadeOutDelay + fadeOutLength;
@@ -41,7 +41,7 @@ export const update = (drawable: DrawableJudgement, timestamp: number) => {
 		const alpha =
 			1 -
 			Clamp(
-				(timestamp - (startTime + fadeInLength + fadeOutDelay)) / fadeOutLength,
+				(timestamp - (startTime + fadeInLength + fadeOutDelay)) / fadeOutLength
 			);
 		drawable.text.alpha = alpha;
 	}
@@ -96,14 +96,14 @@ export const update = (drawable: DrawableJudgement, timestamp: number) => {
 		if (timestamp >= startTime + fadeInLength) {
 			const rotation = Clamp(
 				(timestamp - (startTime + fadeInLength)) /
-					(fadeOutDelay + fadeOutLength),
+				(fadeOutDelay + fadeOutLength)
 			);
 
 			drawable.text.angle = r + r * Easings.In(rotation);
 
 			const y = Clamp(
 				(timestamp - (startTime + fadeInLength)) /
-					(fadeOutDelay + fadeOutLength),
+				(fadeOutDelay + fadeOutLength)
 			);
 			drawable.text.y = -5 + Easings.In(y) * 85;
 		}

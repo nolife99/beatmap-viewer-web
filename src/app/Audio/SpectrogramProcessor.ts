@@ -1,8 +1,8 @@
-import { Texture } from "pixi.js";
-import WaveSurfer from "wavesurfer.js";
-import { inject } from "@/Context";
-import type SpectrogramContainer from "@/UI/sidepanel/Modding/Spectrogram";
-import SpectrogramPlugin from "@/Audio/spectrogram/spectrogram.js";
+import { Texture } from 'pixi.js';
+import WaveSurfer from 'wavesurfer.js';
+import { inject } from '@/Context';
+import type SpectrogramContainer from '@/UI/sidepanel/Modding/Spectrogram';
+import SpectrogramPlugin from '@/Audio/spectrogram/spectrogram.js';
 
 const sampleRate = 40000;
 const emptyWavBlob = createEmptyWavBlob();
@@ -56,10 +56,10 @@ function createEmptyWavBlob() {
 
 export default class SpectrogramProcessor {
 	constructor(buffer: AudioBuffer) {
-		console.time("Spectrogram ready");
+		console.time('Spectrogram ready');
 
 		const waveSurfer = WaveSurfer.create({
-			container: "#a",
+			container: '#a',
 			sampleRate: sampleRate,
 			width: 400
 		});
@@ -67,7 +67,7 @@ export default class SpectrogramProcessor {
 		const spectrogram = SpectrogramPlugin.create({
 			labels: false,
 			splitChannels: false,
-			scale: "linear",
+			scale: 'linear',
 			frequencyMax: sampleRate / 2,
 			frequencyMin: 0,
 			fftSamples: 512,
@@ -79,19 +79,19 @@ export default class SpectrogramProcessor {
 
 		waveSurfer.registerPlugin(spectrogram);
 
-		spectrogram.on("ready", () => {
+		spectrogram.on('ready', () => {
 			const canvas: HTMLCanvasElement | null | undefined = document
-				.querySelector("#a > div")
-				?.shadowRoot?.querySelector(".wrapper > div:last-child canvas");
+			.querySelector('#a > div')
+			?.shadowRoot?.querySelector('.wrapper > div:last-child canvas');
 
 			if (!canvas) return;
 
 			setTimeout(async () => {
-				console.timeEnd("Spectrogram ready");
+				console.timeEnd('Spectrogram ready');
 				waveSurfer.destroy();
 
-				inject<SpectrogramContainer>("ui/sidepanel/modding/spectrogram",)
-					?.setTexture(Texture.from(canvas));
+				inject<SpectrogramContainer>('ui/sidepanel/modding/spectrogram')
+				?.setTexture(Texture.from(canvas));
 			});
 		}, { once: true });
 

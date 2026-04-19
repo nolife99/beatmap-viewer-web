@@ -1,35 +1,35 @@
-import { AVSeekFlag, WebDemuxer } from "web-demuxer";
-import { debounce } from "@/utils";
-import { MessageType, type WorkerPayload } from "./types";
+import { AVSeekFlag, WebDemuxer } from 'web-demuxer';
+import { debounce } from '@/utils';
+import { MessageType, type WorkerPayload } from './types';
 
 let engine: VideoEngine | undefined;
 
 const ISOAVC_MAP: Record<string, string> = {
-	avc1: "H.264",
-	avc2: "H.264",
-	svc1: "Scalable Video Coding",
-	mvc1: "Multiview Video Coding",
-	mvc2: "Multiview Video Coding",
+	avc1: 'H.264',
+	avc2: 'H.264',
+	svc1: 'Scalable Video Coding',
+	mvc1: 'Multiview Video Coding',
+	mvc2: 'Multiview Video Coding'
 };
 
 const PROFILE: Record<string, string> = {
 	//https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Profiles
-	"0": "No", //  0             - *** when profile=RCDO and level=0 - "RCDO"  - RCDO bitstream MUST obey to all the constraints of the Baseline profile
-	"42": "Baseline", // 66 in-decimal
-	"4d": "Main", // 77 in-decimal
-	"58": "Extended", // 88 in-decimal
-	"64": "High", //100 in-decimal
-	"6e": "High 10", //110 in-decimal
-	"7a": "High 4:2:2", //122 in-decimal
-	f4: "High 4:4:4", //244 in-decimal
-	"2c": "CAVLC 4:4:4", // 44 in-decimal
+	'0': 'No', //  0             - *** when profile=RCDO and level=0 - "RCDO"  - RCDO bitstream MUST obey to all the constraints of the Baseline profile
+	'42': 'Baseline', // 66 in-decimal
+	'4d': 'Main', // 77 in-decimal
+	'58': 'Extended', // 88 in-decimal
+	'64': 'High', //100 in-decimal
+	'6e': 'High 10', //110 in-decimal
+	'7a': 'High 4:2:2', //122 in-decimal
+	f4: 'High 4:4:4', //244 in-decimal
+	'2c': 'CAVLC 4:4:4', // 44 in-decimal
 	//profiles for SVC - Scalable Video Coding extension to H.264
-	"53": "Scalable Baseline", // 83 in-decimal
-	"56": "Scalable High", // 86 in-decimal
+	'53': 'Scalable Baseline', // 83 in-decimal
+	'56': 'Scalable High', // 86 in-decimal
 	//profiles for MVC - Multiview Video Coding extension to H.264
-	"80": "Stereo High", // 128 in-decimal
-	"76": "Multiview High", // 118 in-decimal
-	"8a": "Multiview Depth High", // 138 in-decimal
+	'80': 'Stereo High', // 128 in-decimal
+	'76': 'Multiview High', // 118 in-decimal
+	'8a': 'Multiview Depth High' // 138 in-decimal
 };
 
 function avcoti_to_str(s: string) {
@@ -44,15 +44,15 @@ function avcoti_to_str(s: string) {
 
 	let profile_idc = matches[0];
 	profile_idc = PROFILE[profile_idc];
-	profile_idc = profile_idc ? profile_idc : "Unknown"; //explicit fix.
+	profile_idc = profile_idc ? profile_idc : 'Unknown'; //explicit fix.
 
 	let level_idc = matches[2];
 	level_idc = `${Number.parseInt(level_idc, 16)}`; //will give something like 30  (integer thirty)
-	level_idc = level_idc.split("").join("."); //will give something like "3.0"
+	level_idc = level_idc.split('').join('.'); //will give something like "3.0"
 
 	return {
 		profile_idc,
-		level_idc,
+		level_idc
 	};
 }
 
@@ -67,11 +67,11 @@ function h264avc_to_string(s: string) {
 	if (!matches) return null;
 
 	let avc_codec = ISOAVC_MAP[matches[0]];
-	avc_codec = "string" === typeof avc_codec ? avc_codec : "Unknown"; //explicit fix
+	avc_codec = 'string' === typeof avc_codec ? avc_codec : 'Unknown'; //explicit fix
 
 	return {
 		avc_codec,
-		...avcoti_to_str(s),
+		...avcoti_to_str(s)
 	};
 }
 
@@ -83,7 +83,7 @@ class VideoEngine {
 
 	encodedChunks: EncodedVideoChunk[] = [];
 
-	status: "PLAY" | "STOP" = "STOP";
+	status: 'PLAY' | 'STOP' = 'STOP';
 	config!: VideoDecoderConfig;
 
 	currentIndex = 0;
@@ -96,6 +96,9 @@ class VideoEngine {
 
 	offset = 0;
 	playbackRate = 1;
+	frameTimer?: number;
+	absStartTime = 0;
+	startTime = 0;
 
 	constructor(origin: string) {
 		this.seek = debounce((timestamp: number) => this._seek(timestamp), 200);
@@ -103,7 +106,7 @@ class VideoEngine {
 		this.demuxer = new WebDemuxer({
 			// ⚠️ you need to put the dist/wasm-files file in the npm package into a static directory like public
 			// making sure that the js and wasm in wasm-files are in the same directory
-			wasmFilePath: `${origin}/web-demuxer.wasm`,
+			wasmFilePath: `${origin}/web-demuxer.wasm`
 		});
 
 		this.decoder = new VideoDecoder({
@@ -112,17 +115,17 @@ class VideoEngine {
 			},
 			error: (e) => {
 				console.error(e);
-			},
+			}
 		});
 	}
 
 	async demux(blob: Blob, offset: number) {
 		this.offset = offset;
 
-		const file = new File([blob], "video.avi");
+		const file = new File([blob], 'video.avi');
 		await this.demuxer.load(file);
 
-		const videoDecoderConfig = await this.demuxer.getDecoderConfig("video");
+		const videoDecoderConfig = await this.demuxer.getDecoderConfig('video');
 		const videoMediaInfo = await this.demuxer.getMediaInfo();
 
 		console.log(videoDecoderConfig, videoMediaInfo);
@@ -130,20 +133,20 @@ class VideoEngine {
 		this.decoder.configure(videoDecoderConfig);
 
 		const frameRateStr = videoMediaInfo.streams[0].r_frame_rate;
-		this.frameRate = +frameRateStr.split("/")[0] / +frameRateStr.split("/")[1];
+		this.frameRate = +frameRateStr.split('/')[0] / +frameRateStr.split('/')[1];
 
 		const reader = this.demuxer
-			.readMediaPacket("video", 0, undefined, AVSeekFlag.AVSEEK_FLAG_BACKWARD)
-			.getReader();
+		.readMediaPacket('video', 0, undefined, AVSeekFlag.AVSEEK_FLAG_BACKWARD)
+		.getReader();
 
-		console.time("Reading Video Chunks");
+		console.time('Reading Video Chunks');
 		while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
 
-			this.encodedChunks.push(this.demuxer.genEncodedChunk("video", value));
+			this.encodedChunks.push(this.demuxer.genEncodedChunk('video', value));
 		}
-		console.timeEnd("Reading Video Chunks");
+		console.timeEnd('Reading Video Chunks');
 		await reader.cancel();
 	}
 
@@ -157,16 +160,14 @@ class VideoEngine {
 		this.timer = setTimeout(() => {
 			self.postMessage({
 				type: MessageType.Frame,
-				data: frame,
+				data: frame
 			});
 		}, 16);
 		this.currentFrame = frame;
 	}
 
-	frameTimer?: number;
-
 	async reInitDecoder() {
-		console.log("Restarting VideoDecoder");
+		console.log('Restarting VideoDecoder');
 
 		this.decoder = new VideoDecoder({
 			output: (frame) => {
@@ -174,7 +175,7 @@ class VideoEngine {
 			},
 			error: (e) => {
 				console.error(e);
-			},
+			}
 		});
 		this.decoder.configure(this.config);
 		await this.seekToChunk(this.currentIndex);
@@ -187,18 +188,18 @@ class VideoEngine {
 
 			if (
 				this.startTime +
-					(now - this.absStartTime) * this.playbackRate -
-					this.offset >
+				(now - this.absStartTime) * this.playbackRate -
+				this.offset >
 				this.currentIndex * frameTime
 			) {
 				const i = this.currentIndex;
 
-				if (this.status === "STOP") {
+				if (this.status === 'STOP') {
 					return;
 				}
 
 				if (i >= this.encodedChunks.length) {
-					this.status = "STOP";
+					this.status = 'STOP';
 					this.decoder.flush();
 					this.currentIndex = 0;
 					return;
@@ -238,7 +239,7 @@ class VideoEngine {
 
 	findKeyChunk(index: number) {
 		const currentChunk = this.encodedChunks[index];
-		if (currentChunk.type === "key") return index;
+		if (currentChunk.type === 'key') return index;
 
 		let i = index;
 		for (; i > 0 && this.encodedChunks[i].type !== "key"; i--) {}
@@ -246,13 +247,11 @@ class VideoEngine {
 		return i;
 	}
 
-	absStartTime = 0;
-	startTime = 0;
 	async _seek(timestamp: number) {
 		const index = this.binarySearch(timestamp * 1000);
 		this.currentIndex = index;
 
-		if (this.status === "PLAY") {
+		if (this.status === 'PLAY') {
 			if (this.frameTimer) cancelAnimationFrame(this.frameTimer);
 			this.pauseResolver = undefined;
 		}
@@ -264,13 +263,13 @@ class VideoEngine {
 			await this.seekToChunk(index);
 		}
 
-		if (this.status === "PLAY") {
+		if (this.status === 'PLAY') {
 			this.play(timestamp);
 		}
 	}
 
 	async play(timestamp: number) {
-		this.status = "PLAY";
+		this.status = 'PLAY';
 
 		this.absStartTime = performance.now();
 		this.startTime = timestamp;
@@ -305,7 +304,7 @@ class VideoEngine {
 	}
 }
 
-self.addEventListener("message", (event: { data: WorkerPayload }) => {
+self.addEventListener('message', (event: { data: WorkerPayload }) => {
 	switch (event.data.type) {
 		case MessageType.Init: {
 			engine = new VideoEngine(event.data.data);
@@ -334,7 +333,7 @@ self.addEventListener("message", (event: { data: WorkerPayload }) => {
 			if (!engine) return;
 			// console.log("stop");
 			// console.log(engine.currentIndex);
-			engine.status = "STOP";
+			engine.status = 'STOP';
 			break;
 		}
 	}

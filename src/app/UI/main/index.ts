@@ -1,43 +1,43 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import type BeatmapSet from "@/BeatmapSet";
-import type FullscreenConfig from "@/Config/FullscreenConfig";
-import type TimelineConfig from "@/Config/TimelineConfig";
-import { inject, provide } from "@/Context";
-import type ResponsiveHandler from "@/ResponsiveHandler";
-import Easings from "../Easings";
-import Controls from "./controls";
-import Viewer from "./viewer";
+import { LayoutContainer } from '@pixi/layout/components';
+import type BeatmapSet from '@/BeatmapSet';
+import type FullscreenConfig from '@/Config/FullscreenConfig';
+import type TimelineConfig from '@/Config/TimelineConfig';
+import { inject, provide } from '@/Context';
+import type ResponsiveHandler from '@/ResponsiveHandler';
+import Easings from '../Easings';
+import Controls from './controls';
+import Viewer from './viewer';
 
 export default class Main {
 	container = new LayoutContainer({
 		layout: {
-			position: "relative",
+			position: 'relative',
 			flex: 1,
-			height: "100%",
-			boxSizing: "border-box",
-			flexDirection: "column",
-		},
+			height: '100%',
+			boxSizing: 'border-box',
+			flexDirection: 'column'
+		}
 	});
 
 	constructor() {
-		const controls = provide("ui/main/controls", new Controls());
-		const viewer = provide("ui/main/viewer", new Viewer(controls));
+		const controls = provide('ui/main/controls', new Controls());
+		const viewer = provide('ui/main/viewer', new Viewer(controls));
 
 		this.container.addChild(viewer.container);
 
-		inject<ResponsiveHandler>("responsiveHandler")?.on(
-			"layout",
+		inject<ResponsiveHandler>('responsiveHandler')?.on(
+			'layout',
 			(direction) => {
 				const isFullscreen =
-					inject<FullscreenConfig>("config/fullscreen")?.fullscreen;
+					inject<FullscreenConfig>('config/fullscreen')?.fullscreen;
 
 				switch (direction) {
-					case "landscape": {
+					case 'landscape': {
 						this.container.removeChild(controls.container);
 						viewer.container.addChild(controls.container);
 						break;
 					}
-					case "portrait": {
+					case 'portrait': {
 						if (!isFullscreen) {
 							this.container.removeChild(controls.container);
 							viewer.container.addChild(controls.container);
@@ -48,34 +48,34 @@ export default class Main {
 						this.container.addChild(controls.container);
 					}
 				}
-			},
+			}
 		);
 
 		this.container.addEventListener(
-			"wheel",
+			'wheel',
 			(event) => {
 				if (event.altKey) {
 					return;
 				}
 
 				if (event.ctrlKey) {
-					inject<TimelineConfig>("config/timeline")?.handleWheel(event);
+					inject<TimelineConfig>('config/timeline')?.handleWheel(event);
 					return;
 				}
 
-				inject<BeatmapSet>("beatmapset")?.handleWheel(event);
+				inject<BeatmapSet>('beatmapset')?.handleWheel(event);
 			},
 			{
 				capture: true,
-				passive: false,
-			},
+				passive: false
+			}
 		);
 
-		this.container.addEventListener("pointertap", () => {
-			if (!inject<FullscreenConfig>("config/fullscreen")?.fullscreen) return;
+		this.container.addEventListener('pointertap', () => {
+			if (!inject<FullscreenConfig>('config/fullscreen')?.fullscreen) return;
 			if (
-				inject<ResponsiveHandler>("responsiveHandler")?.direction ===
-				"landscape"
+				inject<ResponsiveHandler>('responsiveHandler')?.direction ===
+				'landscape'
 			)
 				return;
 
@@ -84,20 +84,20 @@ export default class Main {
 			if (controls.open) {
 				controls.container.visible = true;
 				controls.container.triggerAnimation(
-					"alpha",
+					'alpha',
 					controls.container.alpha ?? 0,
 					1,
 					(val) => {
 						controls.container.alpha = val;
 					},
 					200,
-					Easings.InOut,
+					Easings.InOut
 				);
 			}
 
 			if (!controls.open) {
 				controls.container.triggerAnimation(
-					"alpha",
+					'alpha',
 					controls.container.alpha ?? 1,
 					0,
 					(val) => {
@@ -107,15 +107,15 @@ export default class Main {
 					Easings.InOut,
 					() => {
 						controls.container.visible = false;
-					},
+					}
 				);
 			}
 		});
 
-		this.container.addEventListener("pointermove", (event) => {
-			if (!inject<FullscreenConfig>("config/fullscreen")?.fullscreen) return;
+		this.container.addEventListener('pointermove', (event) => {
+			if (!inject<FullscreenConfig>('config/fullscreen')?.fullscreen) return;
 			if (
-				inject<ResponsiveHandler>("responsiveHandler")?.direction === "portrait"
+				inject<ResponsiveHandler>('responsiveHandler')?.direction === 'portrait'
 			)
 				return;
 
@@ -129,20 +129,20 @@ export default class Main {
 			if (controls.open) {
 				controls.container.visible = true;
 				controls.container.triggerAnimation(
-					"height",
+					'height',
 					controls.container.layout?.computedLayout.height ?? 0,
 					60,
 					(val) => {
 						controls.container.layout = { height: val };
 					},
 					200,
-					Easings.InOut,
+					Easings.InOut
 				);
 			}
 
 			if (!controls.open) {
 				controls.container.triggerAnimation(
-					"height",
+					'height',
 					controls.container.layout?.computedLayout.height ?? 60,
 					0,
 					(val) => {
@@ -152,7 +152,7 @@ export default class Main {
 					Easings.InOut,
 					() => {
 						controls.container.visible = false;
-					},
+					}
 				);
 			}
 		});

@@ -1,10 +1,10 @@
-import * as d3 from "d3";
-import type { Slider, SliderHead } from "osu-standard-stable";
-import type Skin from "@/Skinning/Skin";
-import DrawableDefaults from "../HitObjects/DrawableDefaults";
-import type DrawableSlider from "../HitObjects/DrawableSlider";
-import TimelineHitCircle from "./TimelineHitCircle";
-import { BLANK_TEXTURE } from "@/Skinning/Skin";
+import * as d3 from 'd3';
+import type { Slider, SliderHead } from 'osu-standard-stable';
+import type Skin from '@/Skinning/Skin';
+import { BLANK_TEXTURE } from '@/Skinning/Skin';
+import DrawableDefaults from '../HitObjects/DrawableDefaults';
+import type DrawableSlider from '../HitObjects/DrawableSlider';
+import TimelineHitCircle from './TimelineHitCircle';
 
 export default class TimelineSliderHead extends TimelineHitCircle {
 	constructor(object: SliderHead, parent: Slider) {
@@ -22,16 +22,16 @@ export default class TimelineSliderHead extends TimelineHitCircle {
 		if (!skin) return;
 
 		const hitCircle = skin.getTexture(
-			"hitcircle",
-			this.context.consume<Skin>("beatmapSkin"),
+			'hitcircle',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 		const hitCircleOverlay = skin.getTexture(
-			"hitcircleoverlay",
-			this.context.consume<Skin>("beatmapSkin"),
+			'hitcircleoverlay',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 		const select = skin.getTexture(
-			"hitcircleselect",
-			this.context.consume<Skin>("beatmapSkin"),
+			'hitcircleselect',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 
 		if (hitCircle) this.hitCircle.texture = hitCircle;
@@ -42,10 +42,10 @@ export default class TimelineSliderHead extends TimelineHitCircle {
 		this.hitCircle.visible = !skin.config.General.Argon;
 		this.hitCircleOverlay.visible = !skin.config.General.Argon;
 
-		const baseColor = this.context.consume<DrawableSlider>("object")?.color;
-		const color = baseColor?.includes("rgb")
-			? (baseColor ?? "rgb(0, 0, 0)")
-			: `rgb(${baseColor ?? "0,0,0"})`;
+		const baseColor = this.context.consume<DrawableSlider>('object')?.color;
+		const color = baseColor?.includes('rgb')
+			? (baseColor ?? 'rgb(0, 0, 0)')
+			: `rgb(${baseColor ?? '0,0,0'})`;
 		this.hitCircle.tint = color;
 		this.defaults.container.tint = 0xffffff;
 		this.defaults.container.children.map((sprite) => {

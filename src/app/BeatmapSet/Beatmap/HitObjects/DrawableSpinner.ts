@@ -1,16 +1,16 @@
-import type { Slider, Spinner, StandardHitObject } from "osu-standard-stable";
-import type BeatmapSet from "@/BeatmapSet";
-import { inject } from "@/Context";
-import { BLANK_TEXTURE } from "@/Skinning/Skin";
-import type ProgressBar from "@/UI/main/controls/ProgressBar";
-import type Beatmap from "..";
-import type TimelineHitCircle from "../Timeline/TimelineHitCircle";
-import TimelineSlider from "../Timeline/TimelineSlider";
-import DrawableHitCircle from "./DrawableHitCircle";
-import { TAIL_LENIENCY } from "./DrawableSliderTail";
-import DrawableSpinnerApproachCircle from "./DrawableSpinnerApproachCircle";
-import { HitResult, type LegacyReplayFrame } from "osu-classes";
-import { Clamp } from "@/utils";
+import type { Slider, Spinner, StandardHitObject } from 'osu-standard-stable';
+import type BeatmapSet from '@/BeatmapSet';
+import { inject } from '@/Context';
+import { BLANK_TEXTURE } from '@/Skinning/Skin';
+import type ProgressBar from '@/UI/main/controls/ProgressBar';
+import type Beatmap from '..';
+import type TimelineHitCircle from '../Timeline/TimelineHitCircle';
+import TimelineSlider from '../Timeline/TimelineSlider';
+import DrawableHitCircle from './DrawableHitCircle';
+import { TAIL_LENIENCY } from './DrawableSliderTail';
+import DrawableSpinnerApproachCircle from './DrawableSpinnerApproachCircle';
+import { HitResult, type LegacyReplayFrame } from 'osu-classes';
+import { Clamp } from '@/utils';
 
 export default class DrawableSpinner extends DrawableHitCircle {
 	constructor(object: Spinner) {
@@ -21,7 +21,7 @@ export default class DrawableSpinner extends DrawableHitCircle {
 		this.approachCircle.container.visible = true;
 
 		this.approachCircle = new DrawableSpinnerApproachCircle(object).hook(
-			this.context,
+			this.context
 		);
 
 		this.timelineObject?.destroy();
@@ -33,7 +33,7 @@ export default class DrawableSpinner extends DrawableHitCircle {
 		tail.startTime = tail.endTime - TAIL_LENIENCY;
 		cloned.nestedHitObjects = [head, tail];
 		this.timelineObject = new TimelineSlider(cloned as unknown as Slider).hook(
-			this.context,
+			this.context
 		) as unknown as TimelineHitCircle;
 	}
 
@@ -48,7 +48,7 @@ export default class DrawableSpinner extends DrawableHitCircle {
 	getTimeRange(): { start: number; end: number } {
 		return {
 			start: this.object.startTime - this.object.timePreempt,
-			end: (this.object as Spinner).endTime + 800,
+			end: (this.object as Spinner).endTime + 800
 		};
 	}
 
@@ -56,7 +56,7 @@ export default class DrawableSpinner extends DrawableHitCircle {
 		super.refreshSprite();
 
 		this.hitCircleOverlay.texture =
-			this.skinManager?.getCurrentSkin().getTexture("spinner-bottom") ??
+			this.skinManager?.getCurrentSkin().getTexture('spinner-bottom') ??
 			BLANK_TEXTURE;
 		this.hitCircleSprite.texture = BLANK_TEXTURE;
 		this.flashPiece.texture = BLANK_TEXTURE;
@@ -97,11 +97,11 @@ export default class DrawableSpinner extends DrawableHitCircle {
 	}
 
 	playHitSound(time: number, _?: number): void {
-		const beatmap = this.context.consume<Beatmap>("beatmapObject");
+		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const endTime = (this.object as Spinner).endTime;
 		const isSeeking =
-			inject<ProgressBar>("ui/main/controls/progress")?.isSeeking ||
-			inject<BeatmapSet>("beatmapset")?.isSeeking;
+			inject<ProgressBar>('ui/main/controls/progress')?.isSeeking ||
+			inject<BeatmapSet>('beatmapset')?.isSeeking;
 		if (!beatmap || isSeeking) return;
 		if (
 			!(
@@ -119,7 +119,7 @@ export default class DrawableSpinner extends DrawableHitCircle {
 	override eval(_: LegacyReplayFrame[]) {
 		return {
 			value: HitResult.Great,
-			hitTime: (this.object as Spinner).endTime,
+			hitTime: (this.object as Spinner).endTime
 		};
 	}
 }

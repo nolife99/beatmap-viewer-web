@@ -1,71 +1,71 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import { Container, BitmapText } from "pixi.js";
-import type ColorConfig from "@/Config/ColorConfig";
-import { inject, provide } from "@/Context";
-import type ResponsiveHandler from "@/ResponsiveHandler";
-import { defaultStyle } from "../Metadata";
-import DifficultyGraph from "./DifficultyGraph";
-import Spectrogram from "./Spectrogram";
+import { LayoutContainer } from '@pixi/layout/components';
+import { BitmapText, Container } from 'pixi.js';
+import type ColorConfig from '@/Config/ColorConfig';
+import { inject, provide } from '@/Context';
+import type ResponsiveHandler from '@/ResponsiveHandler';
+import { defaultStyle } from '../Metadata';
+import DifficultyGraph from './DifficultyGraph';
+import Spectrogram from './Spectrogram';
 
 export default class Modding {
 	container: LayoutContainer;
 
 	constructor() {
 		this.container = new LayoutContainer({
-			label: "modding",
+			label: 'modding',
 			layout: {
 				width: 360,
-				flexDirection: "column",
+				flexDirection: 'column',
 				gap: 15,
-				overflow: "scroll",
+				overflow: 'scroll',
 				borderWidth: 1,
 				borderColor: [0, 0, 0, 0],
-				flex: 1,
-			},
+				flex: 1
+			}
 		});
 
 		const spectrogram = this.createEntry(
-			"spectrogram",
-			provide("ui/sidepanel/modding/spectrogram", new Spectrogram()).container,
+			'spectrogram',
+			provide('ui/sidepanel/modding/spectrogram', new Spectrogram()).container
 		);
 
 		const difficultyGraph = this.createEntry(
-			"difficulty graph",
-			provide("ui/sidepanel/modding/difficulty", new DifficultyGraph())
-				.container,
+			'difficulty graph',
+			provide('ui/sidepanel/modding/difficulty', new DifficultyGraph())
+				.container
 		);
 
 		this.container.addChild(spectrogram, difficultyGraph);
 
-		inject<ResponsiveHandler>("responsiveHandler")?.on(
-			"layout",
+		inject<ResponsiveHandler>('responsiveHandler')?.on(
+			'layout',
 			(direction) => {
 				switch (direction) {
-					case "landscape": {
+					case 'landscape': {
 						this.container.layout = {
-							width: 360,
+							width: 360
 						};
 						break;
 					}
-					case "portrait": {
+					case 'portrait': {
 						this.container.layout = {
-							width: "100%",
+							width: '100%'
 						};
 						break;
 					}
 				}
-			},
+			}
 		);
 	}
 
 	createEntry(label: string, children: Container) {
 		const container = new Container({
 			layout: {
-				flexDirection: "column",
-				width: "100%",
+				flexDirection: 'column',
+				width: '100%',
 				gap: 10,
 				flexShrink: 0
-			},
+			}
 		});
 
 		const text = new BitmapText({
@@ -73,18 +73,18 @@ export default class Modding {
 			style: {
 				...defaultStyle,
 				fontSize: 14,
-				fontWeight: "300",
-				fill: inject<ColorConfig>("config/color")?.color.subtext1,
+				fontWeight: '300',
+				fill: inject<ColorConfig>('config/color')?.color.subtext1
 			},
 			layout: {
-				objectPosition: "top left",
-				objectFit: "none",
-				width: "100%",
+				objectPosition: 'top left',
+				objectFit: 'none',
+				width: '100%',
 				flexShrink: 0
-			},
+			}
 		});
 
-		inject<ColorConfig>("config/color")?.onChange("color", ({ subtext1 }) => {
+		inject<ColorConfig>('config/color')?.onChange('color', ({ subtext1 }) => {
 			text.style.fill = subtext1;
 		});
 

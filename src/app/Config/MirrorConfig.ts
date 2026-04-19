@@ -1,5 +1,5 @@
-import type Config from ".";
-import ConfigSection from "./ConfigSection";
+import type Config from '.';
+import ConfigSection from './ConfigSection';
 
 export type Mirror = {
 	name: string;
@@ -20,42 +20,43 @@ export default class MirrorConfig extends ConfigSection {
 
 		const { mirror } = defaultOptions;
 		this.mirror = mirror ?? {
-			name: "Nerinyan",
-			urlTemplate: "https://api.nerinyan.moe/v2/d/$setId",
+			name: 'Nerinyan',
+			urlTemplate: 'https://api.nerinyan.moe/v2/d/$setId'
 		};
 	}
 
 	private _mirror = {
-		name: "Nerinyan",
-		urlTemplate: "https://api.nerinyan.moe/v2/d/$setId",
+		name: 'Nerinyan',
+		urlTemplate: 'https://api.nerinyan.moe/v2/d/$setId'
 	};
 	get mirror() {
 		return this._mirror;
 	}
+
 	set mirror(val: Mirror) {
 		this._mirror = { ...val, urlTemplate: this.migrate(val) };
 
 		for (const element of document.querySelectorAll<HTMLInputElement>(
-			"[name=beatmapMirror]",
+			'[name=beatmapMirror]'
 		)) {
 			element.checked = element.value === val.name;
 		}
 
-		this.emitChange("mirror", val);
+		this.emitChange('mirror', val);
 	}
 
 	loadEventListeners() {
 		for (const element of document.querySelectorAll<HTMLInputElement>(
-			"[name=beatmapMirror]",
+			'[name=beatmapMirror]'
 		)) {
-			element.addEventListener("change", (event) => {
+			element.addEventListener('change', (event) => {
 				const name = (event.target as HTMLInputElement).value;
 				const url = (event.target as HTMLInputElement).dataset.url;
 
 				if (!url) return;
 				this.mirror = {
 					name,
-					urlTemplate: url,
+					urlTemplate: url
 				};
 			});
 		}
@@ -63,14 +64,14 @@ export default class MirrorConfig extends ConfigSection {
 
 	jsonify(): MirrorProps {
 		return {
-			mirror: this.mirror,
+			mirror: this.mirror
 		};
 	}
 
 	migrate(val: Mirror) {
 		switch (val.name) {
-			case "Nerinyan": {
-				return "https://api.nerinyan.moe/v2/d/$setId";
+			case 'Nerinyan': {
+				return 'https://api.nerinyan.moe/v2/d/$setId';
 			}
 			default: {
 				return val.urlTemplate;

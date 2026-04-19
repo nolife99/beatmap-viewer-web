@@ -1,10 +1,11 @@
-import type Config from ".";
+import type Config from '.';
 
 export default class ConfigSection {
 	// biome-ignore lint/suspicious/noExplicitAny: I don't care
 	private _callbacks: Map<string, Set<(newValue: any) => void>> = new Map();
 
-	constructor(private config: Config) { }
+	constructor(private config: Config) {
+	}
 
 	// biome-ignore lint/suspicious/noExplicitAny: I don't care
 	onChange(key: string, callback: (newValue: any) => void) {
@@ -20,12 +21,13 @@ export default class ConfigSection {
 
 		const callbacks = this._callbacks.get(key);
 		if (!callbacks) return Promise.resolve();
-		return Promise.all(Iterator.from(callbacks).map(callback => 
+		return Promise.all(Iterator.from(callbacks).map(callback =>
 			new Promise(resolve => setTimeout(() => {
 				callback(newValue);
-				resolve(undefined)
+				resolve(undefined);
 			}))));
 	}
 
-	jsonify() {}
+	jsonify() {
+	}
 }

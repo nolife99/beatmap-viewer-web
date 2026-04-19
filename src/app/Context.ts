@@ -10,14 +10,14 @@ export const provide = <T>(key: string, value: T): T => {
 export const inject = <T = any>(key: string): T | undefined => {
 	const result = _map.get(key);
 	if (result === undefined) console.warn(`Cannot find key ${key}`);
-	
+
 	return result;
 };
 
 export class Context {
 	// biome-ignore lint/suspicious/noExplicitAny: Literally any
 	private _map: Map<string, any> = new Map();
-	private parent?: Context
+	private parent?: Context;
 
 	provide<T>(key: string, value: T): T {
 		// if (this._map.has(key)) {
@@ -31,7 +31,7 @@ export class Context {
 	}
 
 	// biome-ignore lint/suspicious/noExplicitAny: Literally any
-	consume<T = any>(key: string): T | undefined {	
+	consume<T = any>(key: string): T | undefined {
 		return this._map.get(key) ?? this.parent?.consume(key);
 	}
 
@@ -47,7 +47,7 @@ const createContext = () => {
 	const provide = <T>(key: string, value: T): T => {
 		if (_map.has(key)) {
 			throw new Error(
-				"You cannot re-provide an already provided key-value pair!!!",
+				'You cannot re-provide an already provided key-value pair!!!'
 			);
 		}
 
@@ -60,10 +60,10 @@ const createContext = () => {
 		return _map.get(key);
 	};
 
-    return {
-        provide,
-        consume,
-    }
+	return {
+		provide,
+		consume
+	};
 };
 
 export class ScopedClass {

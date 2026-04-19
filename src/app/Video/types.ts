@@ -1,10 +1,10 @@
 export enum MessageType {
-	Init = "init",
-	Load = "load",
-	Seek = "seek",
-	Frame = "frame",
-	Play = "play",
-	Stop = "stop",
+	Init = 'init',
+	Load = 'load',
+	Seek = 'seek',
+	Frame = 'frame',
+	Play = 'play',
+	Stop = 'stop',
 }
 
 type WorkerInit = {

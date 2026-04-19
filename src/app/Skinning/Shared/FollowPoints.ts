@@ -1,6 +1,6 @@
-import {Spinner} from "osu-standard-stable";
-import type DrawableFollowPoints from "@/BeatmapSet/Beatmap/HitObjects/DrawableFollowPoints";
-import Easings from "@/UI/Easings";
+import { Spinner } from 'osu-standard-stable';
+import type DrawableFollowPoints from '@/BeatmapSet/Beatmap/HitObjects/DrawableFollowPoints';
+import Easings from '@/UI/Easings';
 
 export const update = (drawable: DrawableFollowPoints, time: number) => {
 	const timeFadeIn = drawable.startObject.timeFadeIn;
@@ -22,7 +22,7 @@ export const update = (drawable: DrawableFollowPoints, time: number) => {
 
 		if (time < fadeInTime + timeFadeIn) {
 			const opacity = Easings.OutQuad(
-				Math.min(1, Math.max(0, (time - fadeInTime) / timeFadeIn)),
+				Math.min(1, Math.max(0, (time - fadeInTime) / timeFadeIn))
 			);
 
 			sprite.alpha = opacity;
@@ -41,7 +41,7 @@ export const update = (drawable: DrawableFollowPoints, time: number) => {
 		if (time > fadeOutTime) {
 			sprite.alpha = 1 -
 				Easings.OutQuad(
-					Math.min(1, Math.max(0, (time - fadeOutTime) / timeFadeIn)),
+					Math.min(1, Math.max(0, (time - fadeOutTime) / timeFadeIn))
 				);
 			sprite.scale.set(drawable.startObject.scale);
 			sprite.x = f * drawable.distance;

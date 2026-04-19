@@ -1,16 +1,14 @@
-import { provide } from "../Context";
-import AudioConfig, { type AudioProps } from "./AudioConfig";
-import BackgroundConfig, { type BackgroundProps } from "./BackgroundConfig";
-import ColorConfig from "./ColorConfig";
-import ExperimentalConfig, {
-	type ExperimentalProps,
-} from "./ExperimentalConfig";
-import FullscreenConfig from "./FullscreenConfig";
-import GameplayConfig, { type GameplayProps } from "./GameplayConfig";
-import MirrorConfig, { type MirrorProps } from "./MirrorConfig";
-import RendererConfig, { type RendererProps } from "./RendererConfig";
-import SkinningConfig, { type SkinningProps } from "./SkinningConfig";
-import TimelineConfig, { type TimelineProps } from "./TimelineConfig";
+import { provide } from '../Context';
+import AudioConfig, { type AudioProps } from './AudioConfig';
+import BackgroundConfig, { type BackgroundProps } from './BackgroundConfig';
+import ColorConfig from './ColorConfig';
+import ExperimentalConfig, { type ExperimentalProps } from './ExperimentalConfig';
+import FullscreenConfig from './FullscreenConfig';
+import GameplayConfig, { type GameplayProps } from './GameplayConfig';
+import MirrorConfig, { type MirrorProps } from './MirrorConfig';
+import RendererConfig, { type RendererProps } from './RendererConfig';
+import SkinningConfig, { type SkinningProps } from './SkinningConfig';
+import TimelineConfig, { type TimelineProps } from './TimelineConfig';
 
 type Configs = {
 	renderer: RendererProps;
@@ -39,117 +37,117 @@ export default class Config {
 		const savedSettings = this.loadSettings();
 
 		this.renderer = provide(
-			"config/renderer",
+			'config/renderer',
 			new RendererConfig(this,
 				savedSettings?.renderer ?? {
 					antialiasing: true,
-					renderer: "webgl",
-				},
-			),
+					renderer: 'webgl'
+				}
+			)
 		);
 		this.mirror = provide(
-			"config/mirror",
-			new MirrorConfig(this, savedSettings?.mirror),
+			'config/mirror',
+			new MirrorConfig(this, savedSettings?.mirror)
 		);
 		this.timeline = provide(
-			"config/timeline",
-			new TimelineConfig(this, savedSettings?.timeline),
+			'config/timeline',
+			new TimelineConfig(this, savedSettings?.timeline)
 		);
 		this.background = provide(
-			"config/background",
+			'config/background',
 			new BackgroundConfig(this,
 				savedSettings?.background ?? {
 					backgroundDim: 60,
 					backgroundBlur: 0,
 					storyboard: true,
 					video: true,
-					breakSection: false,
-				},
-			),
+					breakSection: false
+				}
+			)
 		);
 		this.audio = provide(
-			"config/audio",
+			'config/audio',
 			new AudioConfig(this,
 				savedSettings?.audio ?? {
 					masterVolume: 0.8,
 					musicVolume: 0.5,
 					effectVolume: 0.5,
-					hitsound: false,
-				},
-			),
+					hitsound: false
+				}
+			)
 		);
 		this.skinning = provide(
-			"config/skinning",
+			'config/skinning',
 			new SkinningConfig(this,
 				savedSettings?.skinning ?? {
 					skinningIdx: 0,
 					disableBeatmapSkin: false,
-					cursorSize: 1,
-				},
-			),
+					cursorSize: 1
+				}
+			)
 		);
-		this.color = provide("config/color", new ColorConfig(this));
+		this.color = provide('config/color', new ColorConfig(this));
 		this.experimental = provide(
-			"config/experimental",
+			'config/experimental',
 			new ExperimentalConfig(this,
 				savedSettings?.experimental ?? {
 					asyncLoading: true,
-					overlapGameplays: false,
-				},
-			),
+					overlapGameplays: false
+				}
+			)
 		);
 		this.fullscreen = provide(
-			"config/fullscreen",
+			'config/fullscreen',
 			new FullscreenConfig(this, {
-				fullscreen: false,
-			}),
+				fullscreen: false
+			})
 		);
 		this.gameplay = provide(
-			"config/gameplay",
+			'config/gameplay',
 			new GameplayConfig(this,
 				savedSettings?.gameplay ?? {
 					showGrid: true,
 					hitAnimation: true,
 					snakeInSlider: true,
 					snakeOutSlider: true,
-					tintSliderBall: false,
-				},
-			),
+					tintSliderBall: false
+				}
+			)
 		);
 
-		const overlay = document.querySelector<HTMLDivElement>("#overlay");
-		const settings = document.querySelector<HTMLDivElement>("#settings");
-		
-		overlay?.addEventListener("click", () => {
-			overlay?.classList.add("overlayHidden");
-			overlay?.classList.remove("overlay");
-			settings?.classList.remove("show");
+		const overlay = document.querySelector<HTMLDivElement>('#overlay');
+		const settings = document.querySelector<HTMLDivElement>('#settings');
+
+		overlay?.addEventListener('click', () => {
+			overlay?.classList.add('overlayHidden');
+			overlay?.classList.remove('overlay');
+			settings?.classList.remove('show');
 		});
 
-		const button = document.querySelector<HTMLButtonElement>("#settingsButton");
-		button?.addEventListener("click", () => {
-			settings?.classList.add("show");
-			overlay?.classList.add("overlay");
-			overlay?.classList.remove("overlayHidden");
+		const button = document.querySelector<HTMLButtonElement>('#settingsButton');
+		button?.addEventListener('click', () => {
+			settings?.classList.add('show');
+			overlay?.classList.add('overlay');
+			overlay?.classList.remove('overlayHidden');
 		});
 
-		document.addEventListener("keydown", (event) => {
-			if (event.key && event.key.toLowerCase() !== "o" || !event.ctrlKey) return;
+		document.addEventListener('keydown', (event) => {
+			if (event.key && event.key.toLowerCase() !== 'o' || !event.ctrlKey) return;
 
 			event.preventDefault();
-			settings?.classList.toggle("show");
-			overlay?.classList.toggle("overlay");
-			overlay?.classList.toggle("overlayHidden");
+			settings?.classList.toggle('show');
+			overlay?.classList.toggle('overlay');
+			overlay?.classList.toggle('overlayHidden');
 		});
 	}
 
 	loadSettings(): Configs | null {
-		return JSON.parse(localStorage.getItem("josuSettings") ?? "null");
+		return JSON.parse(localStorage.getItem('josuSettings') ?? 'null');
 	}
 
 	saveSettings() {
 		localStorage.setItem(
-			"josuSettings",
+			'josuSettings',
 			JSON.stringify({
 				audio: this.audio?.jsonify(),
 				background: this.background?.jsonify(),
@@ -158,8 +156,8 @@ export default class Config {
 				skinning: this.skinning?.jsonify(),
 				timeline: this.timeline?.jsonify(),
 				experimental: this.experimental?.jsonify(),
-				gameplay: this.gameplay?.jsonify(),
-			}),
+				gameplay: this.gameplay?.jsonify()
+			})
 		);
 	}
 }

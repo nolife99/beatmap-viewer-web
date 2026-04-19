@@ -1,5 +1,5 @@
-import type Config from ".";
-import ConfigSection from "./ConfigSection";
+import type Config from '.';
+import ConfigSection from './ConfigSection';
 
 export type SkinningProps = {
 	skinningIdx?: number;
@@ -24,72 +24,75 @@ export default class SkinningConfig extends ConfigSection {
 	get skinningIdx() {
 		return this._skinningIdx;
 	}
+
 	set skinningIdx(val: number) {
 		this._skinningIdx = val;
-		this.emitChange("skin", val);
+		this.emitChange('skin', val);
 	}
 
 	private _disableBeatmapSkin = false;
 	get disableBeatmapSkin() {
 		return this._disableBeatmapSkin;
 	}
+
 	set disableBeatmapSkin(val: boolean) {
 		this._disableBeatmapSkin = val;
 
-		const ele = document.querySelector<HTMLInputElement>("#disableBeatmapSkin");
+		const ele = document.querySelector<HTMLInputElement>('#disableBeatmapSkin');
 		if (!ele) return;
 		ele.checked = val;
 
-		this.emitChange("disableBeatmapSkin", val);
+		this.emitChange('disableBeatmapSkin', val);
 	}
 
 	private _cursorSize = 1;
 	get cursorSize() {
 		return this._cursorSize;
 	}
+
 	set cursorSize(val: number) {
 		this._cursorSize = val;
 
 		const label = document.querySelector<HTMLLabelElement>(
-			"label[for=cursorSize]",
+			'label[for=cursorSize]'
 		);
 		if (!label) return;
 		label.textContent = `${val.toFixed(2)}x`;
 
-		const ele = document.querySelector<HTMLInputElement>("#cursorSize");
+		const ele = document.querySelector<HTMLInputElement>('#cursorSize');
 		if (ele) {
 			ele.value = `${val}`;
-			ele.dataset.modified = val !== 1 ? "true" : "false";
+			ele.dataset.modified = val !== 1 ? 'true' : 'false';
 		}
 
-		this.emitChange("cursorSize", val);
+		this.emitChange('cursorSize', val);
 	}
 
 	loadEventListeners() {
 		document
-			.querySelector<HTMLInputElement>("#disableBeatmapSkin")
-			?.addEventListener("change", (event) => {
-				const value = (event.target as HTMLInputElement)?.checked ?? true;
-				this.disableBeatmapSkin = value;
-			});
+		.querySelector<HTMLInputElement>('#disableBeatmapSkin')
+		?.addEventListener('change', (event) => {
+			const value = (event.target as HTMLInputElement)?.checked ?? true;
+			this.disableBeatmapSkin = value;
+		});
 		document
-			.querySelector<HTMLInputElement>("#cursorSize")
-			?.addEventListener("input", (event) => {
-				const value = +((event.target as HTMLInputElement)?.value ?? 1);
-				this.cursorSize = value;
-			});
+		.querySelector<HTMLInputElement>('#cursorSize')
+		?.addEventListener('input', (event) => {
+			const value = +((event.target as HTMLInputElement)?.value ?? 1);
+			this.cursorSize = value;
+		});
 		document
-			.querySelector<HTMLInputElement>("button.reset[data-for=cursorSize]")
-			?.addEventListener("click", () => {
-				this.cursorSize = 1;
-			});
+		.querySelector<HTMLInputElement>('button.reset[data-for=cursorSize]')
+		?.addEventListener('click', () => {
+			this.cursorSize = 1;
+		});
 	}
 
 	jsonify(): SkinningProps {
 		return {
 			skinningIdx: this.skinningIdx,
 			disableBeatmapSkin: this.disableBeatmapSkin,
-			cursorSize: this.cursorSize,
+			cursorSize: this.cursorSize
 		};
 	}
 }

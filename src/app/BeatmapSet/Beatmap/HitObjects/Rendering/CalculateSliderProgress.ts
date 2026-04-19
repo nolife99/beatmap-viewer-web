@@ -1,5 +1,5 @@
-import { Vector2, type SliderPath } from "osu-classes";
-import pool from "@stdlib/array-pool";
+import { type SliderPath, Vector2 } from 'osu-classes';
+import pool from '@stdlib/array-pool';
 
 export type SliderProgressResult = {
 	points: Vector2[];
@@ -29,7 +29,7 @@ export default function calculateSliderProgress(
 	const numPoints = endIdx - startIdx + 2;
 	let finalLen = 0;
 
-	if ((path as any).curveType === "P" || numPoints <= 3) {
+	if ((path as any).curveType === 'P' || numPoints <= 3) {
 		out[finalLen++] = pStart;
 
 		for (let j = startIdx; j < endIdx; j++) {
@@ -92,7 +92,7 @@ export default function calculateSliderProgress(
 	let mergedLen = 0;
 	let prevMergedId = -1;
 
-	const mergedSequence = pool(numPoints, 'uint32') as Uint32Array
+	const mergedSequence = pool(numPoints, 'uint32') as Uint32Array;
 	for (let i = 0; i < numPoints; i++) {
 		const node = getOrCreateNode(
 			getVirtualPoint(path, startIdx, numPoints, pStart, pEnd, i)
@@ -202,7 +202,7 @@ export default function calculateSliderProgress(
 			chunkLen,
 			out,
 			finalLen,
-			0.1,     // fitEpsilonSq
+			0.075,     // fitEpsilonSq
 			0.0005,  // collinearEpsilonSq
 			0.72     // sharpTurnCos
 		);
@@ -575,7 +575,7 @@ export function debugPoolMemory() {
 				gridArrayPool.reduce((sum, arr) => sum + arr.length * 8, 0),
 
 			addedEdges: addedEdges.size * 16,
-			edgeVisitCount: edgeVisitCount.size * 24,
-		},
+			edgeVisitCount: edgeVisitCount.size * 24
+		}
 	};
 }

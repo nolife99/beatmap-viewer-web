@@ -1,109 +1,110 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import { BitmapText, Sprite, Texture } from "pixi.js";
-import type ColorConfig from "@/Config/ColorConfig";
-import { inject, provide } from "@/Context";
-import type { Game } from "@/Game";
-import type ResponsiveHandler from "@/ResponsiveHandler";
-import type State from "@/State";
-import type { SidebarState } from "@/State";
-import ZContainer from "../core/ZContainer";
-import Metadata from "./Metadata";
-import Modding from "./Modding";
-import Timing from "./Timing";
+import { LayoutContainer } from '@pixi/layout/components';
+import { BitmapText, Sprite, Texture } from 'pixi.js';
+import type ColorConfig from '@/Config/ColorConfig';
+import { inject, provide } from '@/Context';
+import type { Game } from '@/Game';
+import type ResponsiveHandler from '@/ResponsiveHandler';
+import type State from '@/State';
+import type { SidebarState } from '@/State';
+import ZContainer from '../core/ZContainer';
+import Metadata from './Metadata';
+import Modding from './Modding';
+import Timing from './Timing';
 
 export default class SidePanel {
 	tabs = [
 		{
-			title: "Metadata",
-			content: provide("ui/sidepanel/metadata", new Metadata()),
+			title: 'Metadata',
+			content: provide('ui/sidepanel/metadata', new Metadata())
 		},
 		{
-			title: "Timing",
-			content: provide("ui/sidepanel/timing", new Timing()),
+			title: 'Timing',
+			content: provide('ui/sidepanel/timing', new Timing())
 		},
 		{
-			title: "Modding",
-			content: provide("ui/sidepanel/modding", new Modding()),
-		},
+			title: 'Modding',
+			content: provide('ui/sidepanel/modding', new Modding())
+		}
 	];
 
 	header = new LayoutContainer({
-		label: "header",
+		label: 'header',
 		layout: {
-			width: "100%",
-			alignItems: "center",
-			justifyContent: "space-between",
-		},
+			width: '100%',
+			alignItems: 'center',
+			justifyContent: 'space-between'
+		}
 	});
 
 	tabSwitcher = new LayoutContainer({
-		label: "tab switcher",
+		label: 'tab switcher',
 		layout: {
 			gap: 5,
-			flex: 1,
-		},
+			flex: 1
+		}
 	});
 
 	container = new ZContainer({
-		label: "side panel",
+		label: 'side panel',
 		layout: {
 			width: 0,
-			height: "100%",
-			backgroundColor: inject<ColorConfig>("config/color")?.color.mantle,
+			height: '100%',
+			backgroundColor: inject<ColorConfig>('config/color')?.color.mantle,
 			borderRadius: 20,
-			flexDirection: "column",
-			justifyContent: "flex-start",
-			boxSizing: "border-box",
+			flexDirection: 'column',
+			justifyContent: 'flex-start',
+			boxSizing: 'border-box',
 			padding: 20,
 			paddingInline: 0,
 			gap: 20,
 			// borderWidth: 1,
-			borderColor: [0, 0, 0, 0],
-		},
+			borderColor: [0, 0, 0, 0]
+		}
 	});
 
 	headers: LayoutContainer[];
+	private index: number;
 
 	constructor() {
 		this.container.alpha = 0;
 		this.headers = this.tabs.map(({ title }, idx) => {
 			const container = new LayoutContainer({
 				layout: {
-					width: "intrinsic",
+					width: 'intrinsic',
 					paddingInline: 50,
 					height: 40,
-					alignItems: "center",
+					alignItems: 'center',
 					flexShrink: 0,
 					borderRadius: 10,
-					backgroundColor: inject<ColorConfig>("config/color")?.color.base,
+					backgroundColor: inject<ColorConfig>('config/color')?.color.base
 				},
-				cursor: "pointer",
+				cursor: 'pointer'
 			});
 			const text = new BitmapText({
 				text: title,
 				style: {
-					fontFamily: "Rubik",
+					fontFamily: 'Rubik',
 					fontSize: 14,
-					fill: inject<ColorConfig>("config/color")?.color.text,
-					fontWeight: "400",
-					align: "center",
+					fill: inject<ColorConfig>('config/color')?.color.text,
+					fontWeight: '400',
+					align: 'center'
 				},
 				layout: {
-					objectFit: "none",
-				},
+					objectFit: 'none'
+				}
 			});
 
 			container.addChild(text);
-			container.addEventListener("pointertap", () => {
+			container.addEventListener('pointertap', () => {
 				this.switchTab(idx);
 			});
 
-			inject<ColorConfig>("config/color")?.onChange(
-				"color",
+			inject<ColorConfig>('config/color')?.onChange(
+				'color',
 				({ base, text: textColor }) => {
 					container.layout = { backgroundColor: base };
 					text.style.fill = textColor;
-				},
+				}
 			);
 
 			return container;
@@ -114,10 +115,10 @@ export default class SidePanel {
 			layout: {
 				width: 30,
 				height: 30,
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: "rgba(0, 0, 0, 0)",
-			},
+				alignItems: 'center',
+				justifyContent: 'center',
+				backgroundColor: 'rgba(0, 0, 0, 0)'
+			}
 		});
 
 		const closeButton = new Sprite({
@@ -125,23 +126,23 @@ export default class SidePanel {
 			height: 20,
 			layout: {
 				width: 20,
-				height: 20,
-			},
+				height: 20
+			}
 		});
 
 		(async () => {
-			closeButton.texture = Texture.from("x.png");
+			closeButton.texture = Texture.from('x.png');
 
 			closeButton.tint =
-				inject<ColorConfig>("config/color")?.color.text ?? 0xffffff;
+				inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
 		})();
 
-		inject<ColorConfig>("config/color")?.onChange("color", ({ text }) => {
+		inject<ColorConfig>('config/color')?.onChange('color', ({ text }) => {
 			closeButton.tint = text;
 		});
 
-		closeButtonContainer.cursor = "pointer";
-		closeButtonContainer.addEventListener("pointertap", () => this.closeSidePanel());
+		closeButtonContainer.cursor = 'pointer';
+		closeButtonContainer.addEventListener('pointertap', () => this.closeSidePanel());
 
 		closeButtonContainer.addChild(closeButton);
 
@@ -151,176 +152,176 @@ export default class SidePanel {
 
 		this.switchTab(0);
 
-		inject<ColorConfig>("config/color")?.onChange(
-			"color",
+		inject<ColorConfig>('config/color')?.onChange(
+			'color',
 			({ mantle, surface1, base }) => {
 				this.container.layout = {
-					backgroundColor: mantle,
+					backgroundColor: mantle
 				};
 
 				for (let i = 0; i < this.headers.length; i++) {
 					if (i === this.index) {
 						this.headers[i].layout = {
-							backgroundColor: surface1,
+							backgroundColor: surface1
 						};
 					} else {
 						this.headers[i].layout = {
-							backgroundColor: base,
+							backgroundColor: base
 						};
 					}
 				}
-			},
+			}
 		);
 
-		inject<ResponsiveHandler>("responsiveHandler")?.on(
-			"layout",
+		inject<ResponsiveHandler>('responsiveHandler')?.on(
+			'layout',
 			(direction) => {
 				switch (direction) {
-					case "landscape": {
+					case 'landscape': {
 						this.container.layout = {
-							position: "relative",
-							width: inject<Game>("game")?.state.sidebar === "CLOSED" ? 0 : 400,
-							height: "100%",
-							padding: 20,
+							position: 'relative',
+							width: inject<Game>('game')?.state.sidebar === 'CLOSED' ? 0 : 400,
+							height: '100%',
+							padding: 20
 						};
 						break;
 					}
-					case "portrait": {
+					case 'portrait': {
 						this.container.layout = {
-							position: "absolute",
+							position: 'absolute',
 							bottom: 0,
-							width: "100%",
+							width: '100%',
 							height:
-								inject<Game>("game")?.state.sidebar === "CLOSED" ? 0 : "70%",
+								inject<Game>('game')?.state.sidebar === 'CLOSED' ? 0 : '70%',
 							padding:
-								inject<Game>("game")?.state.sidebar === "CLOSED" ? 1 : 20,
+								inject<Game>('game')?.state.sidebar === 'CLOSED' ? 1 : 20
 						};
 						break;
 					}
 				}
-			},
+			}
 		);
 
-		inject<State>("state")?.on("sidebar", (newState) =>
-			this.handleState(newState),
+		inject<State>('state')?.on('sidebar', (newState) =>
+			this.handleState(newState)
 		);
 	}
 
 	handleState(state: SidebarState) {
 		const direction =
-			inject<ResponsiveHandler>("responsiveHandler")?.direction ?? "landscape";
+			inject<ResponsiveHandler>('responsiveHandler')?.direction ?? 'landscape';
 
 		const ANIMATION_DURATION = 200;
 
 		switch (state) {
-			case "OPENED": {
-				if (direction === "landscape") {
+			case 'OPENED': {
+				if (direction === 'landscape') {
 					this.container.triggerAnimation(
-						"width",
+						'width',
 						this.container.layout?.computedLayout.width ?? 0,
 						400,
 						(val) => {
 							this.container.layout = { width: val };
 						},
-						ANIMATION_DURATION,
+						ANIMATION_DURATION
 					);
 				}
 
-				if (direction === "portrait") {
+				if (direction === 'portrait') {
 					this.container.triggerAnimation(
-						"height",
+						'height',
 						0,
 						70,
 						(val) => {
 							this.container.layout = { height: `${val}%` };
 						},
-						ANIMATION_DURATION,
+						ANIMATION_DURATION
 					);
 					this.container.triggerAnimation(
-						"paddingAll",
+						'paddingAll',
 						0,
 						20,
 						(val) => {
 							this.container.layout = { padding: val };
 						},
-						ANIMATION_DURATION,
+						ANIMATION_DURATION
 					);
 				}
 
 				this.container.triggerAnimation(
-					"padding",
+					'padding',
 					0,
 					20,
 					(val) => {
 						this.container.layout = { paddingInline: val };
 					},
-					ANIMATION_DURATION,
+					ANIMATION_DURATION
 				);
 
 				this.container.triggerAnimation(
-					"opacity",
+					'opacity',
 					this.container.alpha,
 					1,
 					(val) => {
 						this.container.alpha = val;
 					},
-					ANIMATION_DURATION,
+					ANIMATION_DURATION
 				);
 
 				break;
 			}
-			case "CLOSED": {
-				if (direction === "landscape") {
+			case 'CLOSED': {
+				if (direction === 'landscape') {
 					this.container.triggerAnimation(
-						"width",
+						'width',
 						this.container.layout?.computedLayout.width ?? 400,
 						0,
 						(val) => {
 							this.container.layout = { width: val };
 						},
-						ANIMATION_DURATION,
+						ANIMATION_DURATION
 					);
 				}
 
-				if (direction === "portrait") {
+				if (direction === 'portrait') {
 					this.container.triggerAnimation(
-						"height",
+						'height',
 						70,
 						0,
 						(val) => {
 							this.container.layout = { height: `${val}%` };
 						},
-						ANIMATION_DURATION,
+						ANIMATION_DURATION
 					);
 					this.container.triggerAnimation(
-						"paddingAll",
+						'paddingAll',
 						20,
 						0,
 						(val) => {
 							this.container.layout = { padding: val };
 						},
-						ANIMATION_DURATION,
+						ANIMATION_DURATION
 					);
 				}
 
 				this.container.triggerAnimation(
-					"padding",
+					'padding',
 					20,
 					0,
 					(val) => {
 						this.container.layout = { paddingInline: val };
 					},
-					ANIMATION_DURATION,
+					ANIMATION_DURATION
 				);
 
 				this.container.triggerAnimation(
-					"opacity",
+					'opacity',
 					this.container.alpha,
 					0,
 					(val) => {
 						this.container.alpha = val;
 					},
-					ANIMATION_DURATION,
+					ANIMATION_DURATION
 				);
 
 				break;
@@ -329,21 +330,20 @@ export default class SidePanel {
 	}
 
 	closeSidePanel() {
-		const game = inject<Game>("game");
-		game?.state.toggleSidebar("CLOSED");
+		const game = inject<Game>('game');
+		game?.state.toggleSidebar('CLOSED');
 	}
 
-	private index: number;
 	switchTab(index: number) {
 		this.container.removeChild(this.tabs[this.index].content.container);
 		this.headers[this.index].layout = {
-			backgroundColor: inject<ColorConfig>("config/color")?.color.base,
+			backgroundColor: inject<ColorConfig>('config/color')?.color.base
 		};
 		this.index = index;
 
 		this.container.addChild(this.tabs[this.index].content.container);
 		this.headers[this.index].layout = {
-			backgroundColor: inject<ColorConfig>("config/color")?.color.surface1,
+			backgroundColor: inject<ColorConfig>('config/color')?.color.surface1
 		};
 	}
 }

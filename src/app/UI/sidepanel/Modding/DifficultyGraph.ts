@@ -1,7 +1,7 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import { Graphics, GraphicsContext } from "pixi.js";
-import type ColorConfig from "@/Config/ColorConfig";
-import { inject } from "@/Context";
+import { LayoutContainer } from '@pixi/layout/components';
+import { Graphics, GraphicsContext } from 'pixi.js';
+import type ColorConfig from '@/Config/ColorConfig';
+import { inject } from '@/Context';
 
 export type StrainPoint = {
 	time: number;
@@ -14,6 +14,39 @@ export default class DifficultyGraph {
 	context = new GraphicsContext();
 	maxTime = 0;
 
+	constructor() {
+		this.container = new LayoutContainer({
+			layout: {
+				width: '100%',
+				aspectRatio: 2,
+				backgroundColor: inject<ColorConfig>('config/color')?.color.crust,
+				borderRadius: 10,
+				overflow: 'hidden',
+				flexShrink: 0
+			}
+		});
+
+		this.container.addChild(this.graph);
+
+		this.container?.on('layout', (layout) => {
+			const { width, height } = layout.computedLayout;
+			this.drawGraph(width, height);
+		});
+
+		this.graph.tint =
+			inject<ColorConfig>('config/color')?.color.subtext0 ?? 0xffffff;
+
+		inject<ColorConfig>('config/color')?.onChange(
+			'color',
+			({ crust, subtext0 }) => {
+				this.container.layout = {
+					backgroundColor: crust
+				};
+				this.graph.tint = subtext0;
+			}
+		);
+	}
+
 	_data: StrainPoint[] = [];
 
 	get data() {
@@ -24,39 +57,6 @@ export default class DifficultyGraph {
 		this._data = data;
 		this.maxTime = audioDuration;
 		this.drawGraph();
-	}
-
-	constructor() {
-		this.container = new LayoutContainer({
-			layout: {
-				width: "100%",
-				aspectRatio: 2,
-				backgroundColor: inject<ColorConfig>("config/color")?.color.crust,
-				borderRadius: 10,
-				overflow: "hidden",
-				flexShrink: 0,
-			},
-		});
-
-		this.container.addChild(this.graph);
-
-		this.container?.on("layout", (layout) => {
-			const { width, height } = layout.computedLayout;
-			this.drawGraph(width, height);
-		});
-
-		this.graph.tint =
-			inject<ColorConfig>("config/color")?.color.subtext0 ?? 0xffffff;
-
-		inject<ColorConfig>("config/color")?.onChange(
-			"color",
-			({ crust, subtext0 }) => {
-				this.container.layout = {
-					backgroundColor: crust,
-				};
-				this.graph.tint = subtext0;
-			},
-		);
 	}
 
 	drawGraph(width = 360, height = 180) {
@@ -71,7 +71,7 @@ export default class DifficultyGraph {
 			newContext.moveTo(i * (width / 5), height);
 			newContext.lineTo(i * (width / 5), 0).stroke({
 				color: 0xffffff,
-				alpha: 0.2,
+				alpha: 0.2
 			});
 		}
 
@@ -81,7 +81,7 @@ export default class DifficultyGraph {
 			newContext.moveTo(0, i * (height / 3));
 			newContext.lineTo(width, i * (height / 3)).stroke({
 				color: 0xffffff,
-				alpha: 0.2,
+				alpha: 0.2
 			});
 		}
 
@@ -91,7 +91,7 @@ export default class DifficultyGraph {
 		for (const { time, strain } of this.data) {
 			newContext.lineTo(
 				lastX = (time / maxTime) * width,
-				Math.min(-(strain / maxStrain) * height + height, height - 1),
+				Math.min(-(strain / maxStrain) * height + height, height - 1)
 			);
 		}
 

@@ -1,13 +1,13 @@
-import type { SliderRepeat } from "osu-standard-stable";
-import { Graphics, GraphicsContext, Sprite } from "pixi.js";
-import type Skin from "@/Skinning/Skin";
-import TimelineSliderTail from "./TimelineSliderTail";
+import type { SliderRepeat } from 'osu-standard-stable';
+import { Graphics, GraphicsContext, Sprite } from 'pixi.js';
+import type Skin from '@/Skinning/Skin';
+import TimelineSliderTail from './TimelineSliderTail';
 
 const ctx = new GraphicsContext().circle(0, 0, 15).fill([0, 0, 0, 0.3]);
 
 export default class TimelineSliderRepeat extends TimelineSliderTail {
 	sprite = new Sprite({
-		anchor: 0.5,
+		anchor: 0.5
 	});
 	graphics = new Graphics({ context: ctx });
 
@@ -26,8 +26,8 @@ export default class TimelineSliderRepeat extends TimelineSliderTail {
 		if (!skin) return;
 
 		const reverseArrow = skin.getTexture(
-			"reversearrow",
-			this.context.consume<Skin>("beatmapSkin"),
+			'reversearrow',
+			this.context.consume<Skin>('beatmapSkin')
 		);
 
 		if (reverseArrow && this.sprite) this.sprite.texture = reverseArrow;

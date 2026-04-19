@@ -1,32 +1,32 @@
-import type Beatmap from "@/BeatmapSet/Beatmap";
-import type DrawableHitCircle from "@/BeatmapSet/Beatmap/HitObjects/DrawableHitCircle";
-import ExperimentalConfig from "@/Config/ExperimentalConfig";
-import type SkinningConfig from "@/Config/SkinningConfig";
-import { inject } from "@/Context";
-import type Skin from "../Skin";
-import Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
+import type Beatmap from '@/BeatmapSet/Beatmap';
+import type DrawableHitCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableHitCircle';
+import ExperimentalConfig from '@/Config/ExperimentalConfig';
+import type SkinningConfig from '@/Config/SkinningConfig';
+import { inject } from '@/Context';
+import type Skin from '../Skin';
+import Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
 
 export const sharedRefreshSprite = (drawable: DrawableHitCircle) => {
 	const skin = drawable.skinManager?.getCurrentSkin();
 	if (!skin) return;
 
 	const hitCircle = skin.getTexture(
-		"hitcircle",
+		'hitcircle',
 		!skin.config.General.Argon
-			? drawable.context.consume<Skin>("beatmapSkin")
-			: undefined,
+			? drawable.context.consume<Skin>('beatmapSkin')
+			: undefined
 	);
 	const hitCircleOverlay = skin.getTexture(
-		"hitcircleoverlay",
+		'hitcircleoverlay',
 		!skin.config.General.Argon
-			? drawable.context.consume<Skin>("beatmapSkin")
-			: undefined,
+			? drawable.context.consume<Skin>('beatmapSkin')
+			: undefined
 	);
 	const hitCircleSelect = skin.getTexture(
-		"hitcircleselect",
+		'hitcircleselect',
 		!skin.config.General.Argon
-			? drawable.context.consume<Skin>("beatmapSkin")
-			: undefined,
+			? drawable.context.consume<Skin>('beatmapSkin')
+			: undefined
 	);
 
 	if (hitCircle) drawable.hitCircleSprite.texture = hitCircle;
@@ -45,10 +45,10 @@ export const sharedRefreshColor = (drawable: DrawableHitCircle) => {
 	const skin = drawable.skinManager?.getCurrentSkin();
 	if (!skin) return;
 
-	const beatmap = drawable.context.consume<Beatmap>("beatmapObject");
+	const beatmap = drawable.context.consume<Beatmap>('beatmapObject');
 	const tintByDiff =
-		(inject<Gameplays>("ui/main/viewer/gameplays")?.gameplays.size ?? 1) - 1  &&
-		inject<ExperimentalConfig>("config/experimental")?.overlapGameplays &&
+		(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+		inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 		beatmap?.randomColor;
 
 	if (tintByDiff) {
@@ -60,7 +60,7 @@ export const sharedRefreshColor = (drawable: DrawableHitCircle) => {
 
 	if (
 		beatmap?.data?.colors.comboColors.length &&
-		!inject<SkinningConfig>("config/skinning")?.disableBeatmapSkin
+		!inject<SkinningConfig>('config/skinning')?.disableBeatmapSkin
 	) {
 		const colors = beatmap.data.colors.comboColors;
 		const comboIndex = drawable.object.comboIndexWithOffsets % colors.length;
@@ -77,7 +77,7 @@ export const sharedRefreshColor = (drawable: DrawableHitCircle) => {
 	// biome-ignore lint/suspicious/noExplicitAny: It is complicated
 	const color = (skin.config.Colours as any)[
 		`Combo${comboIndex + 1}`
-	] as string;
+		] as string;
 
 	drawable.color = `rgb(${color})`;
 	drawable.hitCircleSprite.tint = `rgb(${color})`;

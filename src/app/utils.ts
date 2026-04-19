@@ -1,14 +1,14 @@
-import * as d3 from "d3";
-import { Vibrant } from "node-vibrant/browser";
-import type ColorConfig from "./Config/ColorConfig";
-import type { ColorPalette } from "./Config/ColorConfig";
-import { inject } from "./Context";
-import type { Vector2 } from "osu-classes";
-import { Color, type ColorSource } from "pixi.js";
+import * as d3 from 'd3';
+import { Vibrant } from 'node-vibrant/browser';
+import type ColorConfig from './Config/ColorConfig';
+import type { ColorPalette } from './Config/ColorConfig';
+import { inject } from './Context';
+import type { Vector2 } from 'osu-classes';
+import { Color, type ColorSource } from 'pixi.js';
 
 export function lighten(
 	color: ColorSource,
-	amount: number,
+	amount: number
 ) {
 	const a = amount * 0.5;
 	const col = new Color(color);
@@ -23,10 +23,10 @@ export function lighten(
 
 export function darken(
 	color: ColorSource,
-	amount: number,
+	amount: number
 ) {
 	const col = new Color(color);
-	
+
 	const scalar = Math.max(1.0, 1.0 + amount);
 	const ret = [];
 	ret[0] = col.red / scalar;
@@ -49,7 +49,7 @@ export function debounce(fn: (...args: any) => void, timeout = 100) {
 export function binarySearch<T>(
 	value: number,
 	list: T[],
-	compareFn: (mid: T, value: number) => number,
+	compareFn: (mid: T, value: number) => number
 ) {
 	let start = 0;
 	let end = list.length - 1;
@@ -71,7 +71,7 @@ export function millisecondsToMinutesString(timestamp: number) {
 	const seconds = Math.floor((timestamp % 60000) / 1000) % 60;
 	const milliseconds = Math.floor(timestamp % 1000);
 
-	return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}:${milliseconds.toString().padStart(3, "0")}`;
+	return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${milliseconds.toString().padStart(3, '0')}`;
 }
 
 export function gcd(m: number, n: number) {
@@ -82,27 +82,27 @@ export function gcd(m: number, n: number) {
 }
 
 const difficultyColourSpectrum = d3
-	.scaleLinear<string>()
-	.domain([0.1, 1.25, 2, 2.5, 3.3, 4.2, 4.9, 5.8, 6.7, 7.7, 9])
-	.clamp(true)
-	.range([
-		"#4290FB",
-		"#4FC0FF",
-		"#4FFFD5",
-		"#7CFF4F",
-		"#F6F05C",
-		"#FF8068",
-		"#FF4E6F",
-		"#C645B8",
-		"#6563DE",
-		"#18158E",
-		"#000000",
-	])
-	.interpolate(d3.interpolateRgb.gamma(2.2));
+.scaleLinear<string>()
+.domain([0.1, 1.25, 2, 2.5, 3.3, 4.2, 4.9, 5.8, 6.7, 7.7, 9])
+.clamp(true)
+.range([
+	'#4290FB',
+	'#4FC0FF',
+	'#4FFFD5',
+	'#7CFF4F',
+	'#F6F05C',
+	'#FF8068',
+	'#FF4E6F',
+	'#C645B8',
+	'#6563DE',
+	'#18158E',
+	'#000000'
+])
+.interpolate(d3.interpolateRgb.gamma(2.2));
 
 export function getDiffColour(rating: number) {
-	if (rating < 0.1) return "#AAAAAA";
-	if (rating >= 9) return "#000000";
+	if (rating < 0.1) return '#AAAAAA';
+	if (rating >= 9) return '#000000';
 	return d3.rgb(difficultyColourSpectrum(rating)).formatHex();
 }
 
@@ -137,7 +137,7 @@ export async function loadColorPalette(url: string) {
 				surface2: Number.parseInt(color.brighter(0.5).formatHex().slice(1), 16),
 				overlay0: Number.parseInt(color.brighter(1.0).formatHex().slice(1), 16),
 				overlay1: Number.parseInt(color.brighter(1.5).formatHex().slice(1), 16),
-				overlay2: Number.parseInt(color.brighter(2).formatHex().slice(1), 16),
+				overlay2: Number.parseInt(color.brighter(2).formatHex().slice(1), 16)
 			};
 		}
 	}
@@ -150,12 +150,12 @@ export async function loadColorPalette(url: string) {
 				...palette,
 				subtext0: Number.parseInt(color.formatHex().slice(1), 16),
 				subtext1: Number.parseInt(color.brighter(0.5).formatHex().slice(1), 16),
-				text: Number.parseInt(color.brighter(1.0).formatHex().slice(1), 16),
+				text: Number.parseInt(color.brighter(1.0).formatHex().slice(1), 16)
 			};
 		}
 	}
 
-	const colorConfig = inject<ColorConfig>("config/color");
+	const colorConfig = inject<ColorConfig>('config/color');
 	if (!colorConfig) return;
 	colorConfig.color = palette;
 }
@@ -168,7 +168,7 @@ export const difficultyRange = (
 	val: number,
 	min: number,
 	mid: number,
-	max: number,
+	max: number
 ) => {
 	if (val > 5) return mid + ((max - mid) * (val - 5)) / 5;
 	if (val < 5) return mid - ((mid - min) * (5 - val)) / 5;
@@ -187,4 +187,4 @@ const closestPointTo = (p: Vector2, start: Vector2, end: Vector2): Vector2 => {
 
 	const b = c1 / c2;
 	return start.add(v.scale(b));
-}
+};

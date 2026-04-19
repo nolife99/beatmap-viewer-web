@@ -1,22 +1,17 @@
-import {
-	HitResult,
-	type LegacyReplayFrame,
-	type HitSample as Sample,
-	Vector2,
-} from "osu-classes";
-import type { Slider, SliderTick } from "osu-standard-stable";
-import { Sprite } from "pixi.js";
-import type BeatmapSet from "@/BeatmapSet";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import { inject } from "@/Context";
-import { update } from "@/Skinning/Legacy/LegacySliderTick";
-import type Skin from "@/Skinning/Skin";
-import type ProgressBar from "@/UI/main/controls/ProgressBar";
-import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
-import HitSample from "../../../Audio/HitSample";
-import type Beatmap from "..";
-import DrawableHitObject from "./DrawableHitObject";
-import type DrawableSlider from "./DrawableSlider";
+import { HitResult, type HitSample as Sample, type LegacyReplayFrame, Vector2 } from 'osu-classes';
+import type { Slider, SliderTick } from 'osu-standard-stable';
+import { Sprite } from 'pixi.js';
+import type BeatmapSet from '@/BeatmapSet';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import { inject } from '@/Context';
+import { update } from '@/Skinning/Legacy/LegacySliderTick';
+import type Skin from '@/Skinning/Skin';
+import type ProgressBar from '@/UI/main/controls/ProgressBar';
+import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import HitSample from '../../../Audio/HitSample';
+import type Beatmap from '..';
+import DrawableHitObject from './DrawableHitObject';
+import type DrawableSlider from './DrawableSlider';
 
 export default class DrawableSliderTick extends DrawableHitObject {
 	container: Sprite;
@@ -25,13 +20,13 @@ export default class DrawableSliderTick extends DrawableHitObject {
 	constructor(
 		public object: SliderTick,
 		parent: Slider,
-		sample: Sample,
+		sample: Sample
 	) {
 		super(object);
 		this.object = object;
 
 		this.container = new Sprite(
-			this.skinManager?.getCurrentSkin().getTexture("sliderscorepoint"),
+			this.skinManager?.getCurrentSkin().getTexture('sliderscorepoint')
 		);
 		this.container.x = object.startX + object.stackedOffset.x;
 		this.container.y = object.startY + object.stackedOffset.x;
@@ -40,7 +35,7 @@ export default class DrawableSliderTick extends DrawableHitObject {
 
 		this.container.interactive = false;
 		this.container.interactiveChildren = false;
-		this.container.eventMode = "none";
+		this.container.eventMode = 'none';
 
 		const distFromStart = object.startPosition.distance(parent.startPosition);
 		const distFromEnd = object.endPosition.distance(parent.endPosition);
@@ -49,18 +44,18 @@ export default class DrawableSliderTick extends DrawableHitObject {
 			this.container.visible = false;
 
 		const clonedSample = sample.clone();
-		clonedSample.hitSound = "slidertick";
+		clonedSample.hitSound = 'slidertick';
 		this.hitSound = new HitSample([clonedSample]).hook(this.context);
 
 		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
-			this.refreshSprite(),
+			this.refreshSprite()
 		);
 		this.gameplaysEventCallback = inject<Gameplays>(
-			"ui/main/viewer/gameplays",
-		)?.on("change", () => this.refreshColor());
-		inject<ExperimentalConfig>("config/experimental")?.onChange(
-			"overlapGameplays",
-			() => this.refreshColor(),
+			'ui/main/viewer/gameplays'
+		)?.on('change', () => this.refreshColor());
+		inject<ExperimentalConfig>('config/experimental')?.onChange(
+			'overlapGameplays',
+			() => this.refreshColor()
 		);
 	}
 
@@ -80,7 +75,7 @@ export default class DrawableSliderTick extends DrawableHitObject {
 
 		if (this.hitSound) {
 			const clonedSample = sample.clone();
-			clonedSample.hitSound = "slidertick";
+			clonedSample.hitSound = 'slidertick';
 			this.hitSound.hitSamples = [clonedSample];
 		}
 	}
@@ -90,10 +85,10 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		if (!skin) return;
 
 		const sliderTick = skin.getTexture(
-			"sliderscorepoint",
+			'sliderscorepoint',
 			!skin.config.General.Argon
-				? this.context.consume<Skin>("beatmapSkin")
-				: undefined,
+				? this.context.consume<Skin>('beatmapSkin')
+				: undefined
 		);
 
 		if (!sliderTick) return;
@@ -106,26 +101,26 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
 
-		const beatmap = this.context.consume<Beatmap>("beatmapObject");
+		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 
 		const tintByDiff =
-			(inject<Gameplays>("ui/main/viewer/gameplays")?.gameplays.size ?? 1) - 1 &&
-			inject<ExperimentalConfig>("config/experimental")?.overlapGameplays &&
+			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+			inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 			beatmap?.randomColor;
 
 		this.container.tint = tintByDiff
 			? beatmap.randomColor
 			: skin.config.General.Argon
-				? (this.context.consume<DrawableSlider>("slider")?.getColor(skin) ??
+				? (this.context.consume<DrawableSlider>('slider')?.getColor(skin) ??
 					0xffffff)
 				: 0xffffff;
 	}
 
 	playHitSound(time: number): void {
-		const beatmap = this.context.consume<Beatmap>("beatmapObject");
+		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const isSeeking =
-			inject<ProgressBar>("ui/main/controls/progress")?.isSeeking ||
-			inject<BeatmapSet>("beatmapset")?.isSeeking;
+			inject<ProgressBar>('ui/main/controls/progress')?.isSeeking ||
+			inject<BeatmapSet>('beatmapset')?.isSeeking;
 		if (!beatmap || isSeeking) return;
 		if (
 			!(
@@ -137,7 +132,7 @@ export default class DrawableSliderTick extends DrawableHitObject {
 			return;
 
 		const currentSamplePoint = beatmap.getNearestSamplePoint(
-			this.object.startTime,
+			this.object.startTime
 		);
 		this.hitSound?.play(currentSamplePoint);
 	}
@@ -145,7 +140,7 @@ export default class DrawableSliderTick extends DrawableHitObject {
 	getTimeRange(): { start: number; end: number } {
 		return {
 			start: this.object.startTime - this.object.timePreempt,
-			end: this.object.startTime + 800,
+			end: this.object.startTime + 800
 		};
 	}
 
@@ -155,18 +150,18 @@ export default class DrawableSliderTick extends DrawableHitObject {
 
 	override eval(frames: LegacyReplayFrame[]) {
 		const frame = frames.findLast(
-			(frames) => frames.startTime <= this.object.startTime,
+			(frames) => frames.startTime <= this.object.startTime
 		);
 
 		if (!frame || !(frame.mouseLeft || frame.mouseRight))
 			return {
 				value: HitResult.SmallTickMiss,
-				hitTime: Infinity,
+				hitTime: Infinity
 			};
 
 		const position = new Vector2(
 			this.object.startX + this.object.stackedOffset.x,
-			this.object.startY + this.object.stackedOffset.y,
+			this.object.startY + this.object.stackedOffset.y
 		);
 
 		const x = frame.position.x;
@@ -179,12 +174,12 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		if (dist > radius)
 			return {
 				value: HitResult.SmallTickMiss,
-				hitTime: Infinity,
+				hitTime: Infinity
 			};
 
 		return {
 			value: HitResult.SmallTickHit,
-			hitTime: this.object.startTime,
+			hitTime: this.object.startTime
 		};
 	}
 
@@ -193,9 +188,9 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		if (this.skinEventCallback)
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
 		if (this.gameplaysEventCallback)
-			inject<Gameplays>("ui/main/viewer/gameplays")?.remove(
-				"change",
-				this.gameplaysEventCallback,
+			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
+				'change',
+				this.gameplaysEventCallback
 			);
 	}
 }

@@ -1,67 +1,67 @@
-import { BlurFilter, Container, Sprite, Texture } from "pixi.js";
-import type BackgroundConfig from "@/Config/BackgroundConfig";
-import type FullscreenConfig from "@/Config/FullscreenConfig";
-import { inject } from "@/Context";
+import { BlurFilter, Container, Sprite, Texture } from 'pixi.js';
+import type BackgroundConfig from '@/Config/BackgroundConfig';
+import type FullscreenConfig from '@/Config/FullscreenConfig';
+import { inject } from '@/Context';
 
 export default class Background {
 	blurFilter = new BlurFilter({
 		strength:
-			((inject<BackgroundConfig>("config/background")?.backgroundBlur ?? 0) /
+			((inject<BackgroundConfig>('config/background')?.backgroundBlur ?? 0) /
 				100) *
 			50,
-		quality: 4,
+		quality: 4
 	});
 
 	container = new Container({
-		label: "background",
+		label: 'background',
 		layout: {
-			position: "absolute",
+			position: 'absolute',
 			top: 0,
 			left: 0,
-			width: "100%",
-			height: "100%",
+			width: '100%',
+			height: '100%'
 		},
-		eventMode: "none",
+		eventMode: 'none',
 		interactive: false,
-		interactiveChildren: false,
+		interactiveChildren: false
 	});
-
+	init = false;
+	timer?: number;
+	lastFrame?: VideoFrame;
 	private sprite = new Sprite({
 		layout: {
-			position: "absolute",
+			position: 'absolute',
 			top: 0,
 			left: 0,
-			width: "100%",
-			height: "100%",
-			objectPosition: "center",
-			objectFit: "cover",
+			width: '100%',
+			height: '100%',
+			objectPosition: 'center',
+			objectFit: 'cover'
 		},
-		filters: [this.blurFilter],
+		filters: [this.blurFilter]
 	});
-
 	private video = new Sprite({
 		layout: {
-			position: "absolute",
+			position: 'absolute',
 			top: 0,
 			left: 0,
-			width: "100%",
-			height: "100%",
-			objectPosition: "center",
-			objectFit: "cover",
-		},
+			width: '100%',
+			height: '100%',
+			objectPosition: 'center',
+			objectFit: 'cover'
+		}
 	});
-
 	private storyboardContainer = new Container();
 
 	constructor() {
 		this.container.addChild(this.sprite, this.video, this.storyboardContainer);
 
-		this.container.on("layout", (layout) => {
+		this.container.on('layout', (layout) => {
 			const { width, height } = layout.computedLayout;
 			const timelineHeight = 80;
 
 			const isFullscreen =
-				inject<FullscreenConfig>("config/fullscreen")?.fullscreen;
+				inject<FullscreenConfig>('config/fullscreen')?.fullscreen;
 
 			const _timelineHeight = isFullscreen ? 0 : timelineHeight;
 
@@ -76,15 +76,15 @@ export default class Background {
 				_timelineHeight + (height - _timelineHeight - _h) / 2;
 		});
 
-		inject<BackgroundConfig>("config/background")?.onChange("video", (val) => {
+		inject<BackgroundConfig>('config/background')?.onChange('video', (val) => {
 			this.video.visible = val;
 		});
 
-		inject<BackgroundConfig>("config/background")?.onChange(
-			"backgroundBlur",
+		inject<BackgroundConfig>('config/background')?.onChange(
+			'backgroundBlur',
 			(value: number) => {
 				this.blurFilter.strength = (value / 100) * 50;
-			},
+			}
 		);
 	}
 
@@ -95,33 +95,27 @@ export default class Background {
 		this.container.addChild(this.sprite, this.video, this.storyboardContainer);
 	}
 
-	init = false;
-
-	timer?: number;
-
-	lastFrame?: VideoFrame;
-
 	updateFrame(frame?: VideoFrame) {
 		if (!frame) {
 			this.lastFrame?.close();
 
 			this.video = new Sprite({
 				layout: {
-					position: "absolute",
+					position: 'absolute',
 					top: 0,
 					left: 0,
-					width: "100%",
-					height: "100%",
-					objectPosition: "center",
-					objectFit: "cover",
-				},
+					width: '100%',
+					height: '100%',
+					objectPosition: 'center',
+					objectFit: 'cover'
+				}
 			});
 
 			this.container.removeChild(this.video);
 			this.container.addChild(
 				this.sprite,
 				this.video,
-				this.storyboardContainer,
+				this.storyboardContainer
 			);
 			return;
 		}
@@ -134,7 +128,7 @@ export default class Background {
 			this.container.addChild(
 				this.sprite,
 				this.video,
-				this.storyboardContainer,
+				this.storyboardContainer
 			);
 			this.init = true;
 

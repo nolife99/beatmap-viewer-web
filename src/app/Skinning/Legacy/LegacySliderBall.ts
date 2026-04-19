@@ -1,14 +1,14 @@
-import type DrawableSliderBall from "@/BeatmapSet/Beatmap/HitObjects/DrawableSliderBall";
+import type DrawableSliderBall from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderBall';
 
 export const update = (drawable: DrawableSliderBall, time: number) => {
 	const completionProgress = Math.min(
 		1,
-		Math.max(0, (time - drawable.object.startTime) / drawable.object.duration),
+		Math.max(0, (time - drawable.object.startTime) / drawable.object.duration)
 	);
 
 	const position = drawable.object.path.curvePositionAt(
 		completionProgress,
-		drawable.object.spans,
+		drawable.object.spans
 	);
 
 	drawable.container.x =

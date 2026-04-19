@@ -1,24 +1,24 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import { BitmapText, Color } from "pixi.js";
-import type ColorConfig from "@/Config/ColorConfig";
-import { inject } from "@/Context";
-import type ResponsiveHandler from "@/ResponsiveHandler";
+import { LayoutContainer } from '@pixi/layout/components';
+import { BitmapText, Color } from 'pixi.js';
+import type ColorConfig from '@/Config/ColorConfig';
+import { inject } from '@/Context';
+import type ResponsiveHandler from '@/ResponsiveHandler';
 
 export default class Timestamp {
 	container = new LayoutContainer({
-		label: "timestamp",
+		label: 'timestamp',
 		layout: {
 			width: 150,
-			height: "100%",
+			height: '100%',
 			backgroundColor: new Color(
-				inject<ColorConfig>("config/color")?.color.base,
+				inject<ColorConfig>('config/color')?.color.base
 			).setAlpha(0.7),
 			flexShrink: 0,
-			flexDirection: "column",
-			alignItems: "center",
-			justifyContent: "center",
-			gap: 2,
-		},
+			flexDirection: 'column',
+			alignItems: 'center',
+			justifyContent: 'center',
+			gap: 2
+		}
 	});
 
 	digitsContainer = new LayoutContainer();
@@ -27,58 +27,58 @@ export default class Timestamp {
 	timingContainer = new LayoutContainer({
 		layout: {
 			gap: 5,
-			alignItems: "baseline",
-		},
+			alignItems: 'baseline'
+		}
 	});
 	bpm = new BitmapText({
-		text: "0BPM",
+		text: '0BPM',
 		style: {
-			fontFamily: "Rubik",
+			fontFamily: 'Rubik',
 			fontSize: 12,
-			fontWeight: "500",
-			fill: inject<ColorConfig>("config/color")?.color.text,
-			align: "center",
+			fontWeight: '500',
+			fill: inject<ColorConfig>('config/color')?.color.text,
+			align: 'center'
 		},
 		layout: {
-			objectFit: "none",
-			objectPosition: "center",
-		},
+			objectFit: 'none',
+			objectPosition: 'center'
+		}
 	});
 	sliderVelocity = new BitmapText({
-		text: "x0.00",
+		text: 'x0.00',
 		style: {
-			fontFamily: "Rubik",
+			fontFamily: 'Rubik',
 			fontSize: 10,
-			fontWeight: "400",
-			fill: inject<ColorConfig>("config/color")?.color.text,
-			align: "center",
+			fontWeight: '400',
+			fill: inject<ColorConfig>('config/color')?.color.text,
+			align: 'center'
 		},
 		layout: {
-			objectFit: "none",
-			objectPosition: "center",
-		},
+			objectFit: 'none',
+			objectPosition: 'center'
+		}
 	});
 
 	constructor() {
 		this.digits.push(
-			this.createDigit("0"),
-			this.createDigit("0"),
-			this.createDigit(":", 4),
-			this.createDigit("0"),
-			this.createDigit("0"),
-			this.createDigit(":", 4),
-			this.createDigit("0"),
-			this.createDigit("0"),
-			this.createDigit("0"),
+			this.createDigit('0'),
+			this.createDigit('0'),
+			this.createDigit(':', 4),
+			this.createDigit('0'),
+			this.createDigit('0'),
+			this.createDigit(':', 4),
+			this.createDigit('0'),
+			this.createDigit('0'),
+			this.createDigit('0')
 		);
 
 		this.digitsContainer.addChild(...this.digits);
 		this.timingContainer.addChild(this.bpm, this.sliderVelocity);
 		this.container.addChild(this.digitsContainer, this.timingContainer);
 
-		inject<ColorConfig>("config/color")?.onChange("color", ({ base, text }) => {
+		inject<ColorConfig>('config/color')?.onChange('color', ({ base, text }) => {
 			this.container.layout = {
-				backgroundColor: new Color(base).setAlpha(0.7),
+				backgroundColor: new Color(base).setAlpha(0.7)
 			};
 			this.bpm.style.fill = text;
 			this.sliderVelocity.style.fill = text;
@@ -88,20 +88,20 @@ export default class Timestamp {
 			}
 		});
 
-		inject<ResponsiveHandler>("responsiveHandler")?.on(
-			"layout",
+		inject<ResponsiveHandler>('responsiveHandler')?.on(
+			'layout',
 			(direction) => {
 				switch (direction) {
-					case "landscape": {
-						this.container.layout = { width: 150, height: "100%" };
+					case 'landscape': {
+						this.container.layout = { width: 150, height: '100%' };
 						break;
 					}
-					case "portrait": {
-						this.container.layout = { width: "100%", height: 60 };
+					case 'portrait': {
+						this.container.layout = { width: '100%', height: 60 };
 						break;
 					}
 				}
-			},
+			}
 		);
 	}
 
@@ -109,17 +109,17 @@ export default class Timestamp {
 		return new BitmapText({
 			text: text,
 			style: {
-				fontFamily: "Rubik",
+				fontFamily: 'Rubik',
 				fontSize: 15,
-				fontWeight: "400",
-				fill: inject<ColorConfig>("config/color")?.color.text,
-				align: "center",
+				fontWeight: '400',
+				fill: inject<ColorConfig>('config/color')?.color.text,
+				align: 'center'
 			},
 			layout: {
 				width,
-				objectFit: "none",
-				objectPosition: "center",
-			},
+				objectFit: 'none',
+				objectPosition: 'center'
+			}
 		});
 	}
 

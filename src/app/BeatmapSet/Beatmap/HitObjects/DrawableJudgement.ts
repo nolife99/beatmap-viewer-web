@@ -1,21 +1,22 @@
-import { HitResult } from "osu-classes";
-import type { Slider, Spinner } from "osu-standard-stable";
-import { Container, Sprite } from "pixi.js";
-import { inject } from "@/Context";
-import { update as argonUpdate } from "@/Skinning/Argon/ArgonJudgement";
-import { update as legacyUpdate } from "@/Skinning/Legacy/LegacyJudgement";
-import { BLANK_TEXTURE } from "@/Skinning/Skin";
-import type SkinManager from "@/Skinning/SkinManager";
-import { Clamp } from "@/utils";
-import type { BaseObjectEvaluation } from "../Replay";
-import AnimatedSkinnableElement from "./AnimatedSkinnableElement";
-import type DrawableHitObject from "./DrawableHitObject";
+import { HitResult } from 'osu-classes';
+import type { Slider, Spinner } from 'osu-standard-stable';
+import { Container, Sprite } from 'pixi.js';
+import { inject } from '@/Context';
+import { update as argonUpdate } from '@/Skinning/Argon/ArgonJudgement';
+import { update as legacyUpdate } from '@/Skinning/Legacy/LegacyJudgement';
+import { BLANK_TEXTURE } from '@/Skinning/Skin';
+import type SkinManager from '@/Skinning/SkinManager';
+import { Clamp } from '@/utils';
+import type { BaseObjectEvaluation } from '../Replay';
+import AnimatedSkinnableElement from './AnimatedSkinnableElement';
+import type DrawableHitObject from './DrawableHitObject';
 
 export default class DrawableJudgement extends AnimatedSkinnableElement {
 	container: Container;
 	text: Sprite;
 
 	legacyRotation: number = 0;
+	updateFn?: (drawable: DrawableJudgement, timestamp: number) => void;
 
 	constructor(public drawable: DrawableHitObject) {
 		super();
@@ -24,41 +25,41 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 
 		this.container = new Container({
 			interactive: false,
-			eventMode: "none",
+			eventMode: 'none'
 		});
 		this.container.addChild(this.text);
 
 		this.container.visible = false;
 
 		this.updateFn =
-			inject<SkinManager>("skinManager")?.getCurrentSkin().metadata?.type ===
-			"ARGON"
+			inject<SkinManager>('skinManager')?.getCurrentSkin().metadata?.type ===
+			'ARGON'
 				? argonUpdate
 				: legacyUpdate;
 
 		this.texturesList = [BLANK_TEXTURE];
 
-		inject<SkinManager>("skinManager")?.addSkinChangeListener((skin) => {
+		inject<SkinManager>('skinManager')?.addSkinChangeListener((skin) => {
 			this.updateFn =
-				skin.metadata?.type === "ARGON" ? argonUpdate : legacyUpdate;
+				skin.metadata?.type === 'ARGON' ? argonUpdate : legacyUpdate;
 
 			if (!this.evaluation) return;
 
 			switch (this.evaluation.value) {
 				case HitResult.Great: {
-					this.texturesList = skin.getAnimatedTexture("hit300");
+					this.texturesList = skin.getAnimatedTexture('hit300');
 					break;
 				}
 				case HitResult.Ok: {
-					this.texturesList = skin.getAnimatedTexture("hit100");
+					this.texturesList = skin.getAnimatedTexture('hit100');
 					break;
 				}
 				case HitResult.Meh: {
-					this.texturesList = skin.getAnimatedTexture("hit50");
+					this.texturesList = skin.getAnimatedTexture('hit50');
 					break;
 				}
 				case HitResult.Miss: {
-					this.texturesList = skin.getAnimatedTexture("hit0");
+					this.texturesList = skin.getAnimatedTexture('hit0');
 					break;
 				}
 				default: {
@@ -71,9 +72,11 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 	}
 
 	_evaluation?: BaseObjectEvaluation;
+
 	get evaluation() {
 		return this._evaluation;
 	}
+
 	set evaluation(value: BaseObjectEvaluation | undefined) {
 		this._evaluation = value;
 
@@ -87,27 +90,27 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 		this.container.visible = true;
 		switch (value.value) {
 			case HitResult.Great: {
-				this.texturesList = inject<SkinManager>("skinManager")
-					?.getCurrentSkin()
-					.getAnimatedTexture("hit300") ?? [BLANK_TEXTURE];
+				this.texturesList = inject<SkinManager>('skinManager')
+				?.getCurrentSkin()
+				.getAnimatedTexture('hit300') ?? [BLANK_TEXTURE];
 				break;
 			}
 			case HitResult.Ok: {
-				this.texturesList = inject<SkinManager>("skinManager")
-					?.getCurrentSkin()
-					.getAnimatedTexture("hit100") ?? [BLANK_TEXTURE];
+				this.texturesList = inject<SkinManager>('skinManager')
+				?.getCurrentSkin()
+				.getAnimatedTexture('hit100') ?? [BLANK_TEXTURE];
 				break;
 			}
 			case HitResult.Meh: {
-				this.texturesList = inject<SkinManager>("skinManager")
-					?.getCurrentSkin()
-					.getAnimatedTexture("hit50") ?? [BLANK_TEXTURE];
+				this.texturesList = inject<SkinManager>('skinManager')
+				?.getCurrentSkin()
+				.getAnimatedTexture('hit50') ?? [BLANK_TEXTURE];
 				break;
 			}
 			case HitResult.Miss: {
-				this.texturesList = inject<SkinManager>("skinManager")
-					?.getCurrentSkin()
-					.getAnimatedTexture("hit0") ?? [BLANK_TEXTURE];
+				this.texturesList = inject<SkinManager>('skinManager')
+				?.getCurrentSkin()
+				.getAnimatedTexture('hit0') ?? [BLANK_TEXTURE];
 				break;
 			}
 			default: {
@@ -115,8 +118,6 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 			}
 		}
 	}
-
-	updateFn?: (drawable: DrawableJudgement, timestamp: number) => void;
 
 	frame(timestamp: number) {
 		this.updateFn?.(this, timestamp);
@@ -128,8 +129,8 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 			Math.min(
 				this.evaluation.hitTime,
 				this.drawable.object.startTime +
-					this.drawable.object.hitWindows.windowFor(HitResult.Meh) +
-					1,
+				this.drawable.object.hitWindows.windowFor(HitResult.Meh) +
+				1
 			);
 
 		const frameLength = 1000 / 60;
@@ -137,7 +138,7 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 		const frameIndex = Clamp(
 			Math.floor((timestamp - startTime) / frameLength),
 			0,
-			this.texturesList.length - 1,
+			this.texturesList.length - 1
 		);
 
 		this.text.texture = this.texturesList[frameIndex];

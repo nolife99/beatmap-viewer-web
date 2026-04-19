@@ -1,4 +1,4 @@
-import IntervalTree, { IntervalBase, Node, type IntervalInput } from "@flatten-js/interval-tree";
+import IntervalTree, { type IntervalInput, Node } from '@flatten-js/interval-tree';
 
 type HitObjectMini = {
 	startTime: number;
@@ -29,16 +29,16 @@ function loop() {
 
 	const currentTime = getCurrentTime();
 	const interval = [currentTime - 800, currentTime + preempt] as IntervalInput;
-	
+
 	const _objects = findRange(objectsTree, interval);
 	const _connectors = findRange(connectorsTree, interval);
 
 	postMessage({
-		type: "update",
+		type: 'update',
 		objects: _objects,
 		connectors: _connectors,
 		currentTime,
-		previousTime,
+		previousTime
 	});
 
 	previousTime = currentTime;
@@ -98,7 +98,7 @@ export function findRange(tree: IntervalTree<number>, interval: IntervalInput) {
 
 	nodeStack.length = 0;
 	stateStack.length = 0;
-	
+
 	return res;
 }
 
@@ -112,7 +112,7 @@ function initTree(tree: IntervalTree, objects: HitObjectMini[]) {
 // biome-ignore lint/suspicious/noGlobalAssign: Shut!
 onmessage = (event) => {
 	switch (event.data.type) {
-		case "init": {
+		case 'init': {
 			objects = event.data.objects;
 			connectors = event.data.connectors;
 
@@ -122,35 +122,35 @@ onmessage = (event) => {
 			loop();
 			break;
 		}
-		case "preempt": {
+		case 'preempt': {
 			preempt = event.data.preempt;
 			break;
 		}
-		case "start": {
+		case 'start': {
 			startTime = performance.now();
 
 			interval = setInterval(loop);
 			break;
 		}
-		case "stop": {
+		case 'stop': {
 			currentTime += (performance.now() - startTime) * playbackRate;
 
 			clearInterval(interval);
 			break;
 		}
-		case "seek": {
+		case 'seek': {
 			currentTime = event.data.time;
 			startTime = performance.now();
 
 			loop();
 			break;
 		}
-		case "destroy": {
+		case 'destroy': {
 			clearInterval(interval);
 			close();
 			break;
 		}
-		case "playbackRate": {
+		case 'playbackRate': {
 			playbackRate = event.data.playbackRate;
 			break;
 		}

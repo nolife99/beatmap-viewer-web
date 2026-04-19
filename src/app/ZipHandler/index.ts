@@ -1,27 +1,28 @@
-import { BlobReader, BlobWriter, ZipReader } from "@zip.js/zip.js"
+import { BlobReader, BlobWriter, ZipReader } from '@zip.js/zip.js';
+
 export type Resource = Blob | undefined;
 
 async function extract(zipFile: Blob) {
-    const blobReader = new BlobReader(zipFile);
-    const zipReader = new ZipReader(blobReader);
+	const blobReader = new BlobReader(zipFile);
+	const zipReader = new ZipReader(blobReader);
 
-    const entries = await zipReader.getEntries();
-    const resources: Map<string, Resource> = new Map();
+	const entries = await zipReader.getEntries();
+	const resources: Map<string, Resource> = new Map();
 
-    for (const file of entries) {
-        const writer = new BlobWriter();
+	for (const file of entries) {
+		const writer = new BlobWriter();
 
-        const blob = await file.getData?.(writer);
-        resources.set(file.filename.toLowerCase(), blob);
-    }
-    
-    await zipReader.close();
+		const blob = await file.getData?.(writer);
+		resources.set(file.filename.toLowerCase(), blob);
+	}
 
-    return resources;
+	await zipReader.close();
+
+	return resources;
 }
 
 const ZipHandler = {
-    extract
-}
+	extract
+};
 
-export default ZipHandler
+export default ZipHandler;

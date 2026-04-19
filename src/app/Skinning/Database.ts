@@ -3,15 +3,15 @@ export default class Database {
 
 	init() {
 		return new Promise((resolve, reject) => {
-			const request = window.indexedDB.open("josuDB", 1);
+			const request = window.indexedDB.open('josuDB', 1);
 
 			request.onupgradeneeded = (event) => {
 				this.db = (event.target as IDBOpenDBRequest).result;
-				this.db.createObjectStore("skins", { autoIncrement: true });
+				this.db.createObjectStore('skins', { autoIncrement: true });
 			};
 
 			request.onerror = () => {
-				console.error("Request open database error!");
+				console.error('Request open database error!');
 				reject(request.error);
 			};
 
@@ -24,15 +24,15 @@ export default class Database {
 
 	getAll() {
 		return new Promise((resolve, reject) => {
-			const transaction = this.db.transaction("skins", "readonly");
-			const store = transaction.objectStore("skins");
+			const transaction = this.db.transaction('skins', 'readonly');
+			const store = transaction.objectStore('skins');
 
 			store.getAll().onsuccess = (event) => {
 				resolve((event.target as IDBOpenDBRequest).result);
 			};
 
 			store.getAll().onerror = (event) => {
-				console.error("Get all skins from database error!");
+				console.error('Get all skins from database error!');
 				reject(event);
 			};
 		});
@@ -40,15 +40,15 @@ export default class Database {
 
 	get(key: string) {
 		return new Promise((resolve, reject) => {
-			const transaction = this.db.transaction("skins", "readonly");
-			const store = transaction.objectStore("skins");
+			const transaction = this.db.transaction('skins', 'readonly');
+			const store = transaction.objectStore('skins');
 
 			store.get(key).onsuccess = (event) => {
 				resolve((event.target as IDBOpenDBRequest).result);
 			};
 
 			store.get(key).onerror = (event) => {
-				console.error("Get all from database error!");
+				console.error('Get all from database error!');
 				reject(event);
 			};
 		});
@@ -56,8 +56,8 @@ export default class Database {
 
 	add(value: unknown, key?: string) {
 		return new Promise((resolve, reject) => {
-			const transaction = this.db.transaction("skins", "readwrite");
-			const store = transaction.objectStore("skins");
+			const transaction = this.db.transaction('skins', 'readwrite');
+			const store = transaction.objectStore('skins');
 			const request = store.put(value, key);
 
 			request.onsuccess = (event) => {
@@ -73,8 +73,8 @@ export default class Database {
 
 	remove(key: string) {
 		return new Promise((resolve, reject) => {
-			const transaction = this.db.transaction("skins", "readwrite");
-			const store = transaction.objectStore("skins");
+			const transaction = this.db.transaction('skins', 'readwrite');
+			const store = transaction.objectStore('skins');
 			const request = store.delete(key);
 
 			request.onsuccess = (event) => {
@@ -82,7 +82,7 @@ export default class Database {
 			};
 
 			request.onerror = (event) => {
-				console.error("Remove from database error!");
+				console.error('Remove from database error!');
 				reject(event);
 			};
 		});
@@ -90,15 +90,15 @@ export default class Database {
 
 	getAllKeys() {
 		return new Promise((resolve, reject) => {
-			const transaction = this.db.transaction("skins", "readonly");
-			const store = transaction.objectStore("skins");
+			const transaction = this.db.transaction('skins', 'readonly');
+			const store = transaction.objectStore('skins');
 
 			store.getAllKeys().onsuccess = (event) => {
 				resolve((event.target as IDBOpenDBRequest).result);
 			};
 
 			store.getAllKeys().onerror = (event) => {
-				console.error("Get all skins from database error!");
+				console.error('Get all skins from database error!');
 				reject(event);
 			};
 		});

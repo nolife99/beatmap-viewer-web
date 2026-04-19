@@ -1,18 +1,18 @@
-import type DrawableApproachCircle from "@/BeatmapSet/Beatmap/HitObjects/DrawableApproachCircle";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import { inject } from "@/Context";
+import type DrawableApproachCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableApproachCircle';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import { inject } from '@/Context';
 
 export const sharedUpdate = (
 	drawable: DrawableApproachCircle,
-	time: number,
+	time: number
 ) => {
-	const isHD = inject<ExperimentalConfig>("config/experimental")?.hidden;
+	const isHD = inject<ExperimentalConfig>('config/experimental')?.hidden;
 
 	const startFadeInTime =
 		drawable.object.startTime - drawable.object.timePreempt;
 	const fadeInDuration = Math.min(
 		drawable.object.timeFadeIn * 2,
-		drawable.object.timePreempt,
+		drawable.object.timePreempt
 	);
 	const fadeOutDuration = 50;
 
@@ -34,12 +34,12 @@ export const sharedUpdate = (
 	if (time < drawable.object.startTime) {
 		const opacity = Math.min(
 			1,
-			Math.max(0, (time - startFadeInTime) / fadeInDuration),
+			Math.max(0, (time - startFadeInTime) / fadeInDuration)
 		);
 		const scale =
 			Math.min(
 				1,
-				Math.max(0, (time - startFadeInTime) / drawable.object.timePreempt),
+				Math.max(0, (time - startFadeInTime) / drawable.object.timePreempt)
 			) * 3;
 
 		drawable.container.alpha = opacity * 0.9;
@@ -50,7 +50,7 @@ export const sharedUpdate = (
 	if (time >= drawable.object.startTime) {
 		const opacity = Math.min(
 			1,
-			Math.max(0, (time - drawable.object.startTime) / fadeOutDuration),
+			Math.max(0, (time - drawable.object.startTime) / fadeOutDuration)
 		);
 
 		drawable.container.alpha = (1 - opacity) * 0.9;

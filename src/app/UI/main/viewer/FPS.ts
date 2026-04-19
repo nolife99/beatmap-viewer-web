@@ -1,23 +1,23 @@
-import { LayoutContainer } from "@pixi/layout/components";
-import { inject } from "@/Context";
-import { Application, BitmapText, type Renderer } from "pixi.js";
-import pool from "@stdlib/array-pool";
-import {debugPoolMemory} from "@/BeatmapSet/Beatmap/HitObjects/Rendering/CalculateSliderProgress.ts";
+import { LayoutContainer } from '@pixi/layout/components';
+import { inject } from '@/Context';
+import { Application, BitmapText, type Renderer } from 'pixi.js';
+import pool from '@stdlib/array-pool';
+import { debugPoolMemory } from '@/BeatmapSet/Beatmap/HitObjects/Rendering/CalculateSliderProgress.ts';
 
 export default class FPS {
 	public container = new LayoutContainer({
 		layout: {
-			position: "absolute",
+			position: 'absolute',
 			bottom: 10,
 			right: 10,
 			padding: 8,
 			width: 70,
 			backgroundColor: [0, 0, 0, 0.7],
 			borderRadius: 10,
-			display: "flex",
-			flexDirection: "column",
-			alignItems: "flex-end",
-		},
+			display: 'flex',
+			flexDirection: 'column',
+			alignItems: 'flex-end'
+		}
 	});
 
 	private readonly fpsText: BitmapText;
@@ -32,49 +32,49 @@ export default class FPS {
 	private frameData = { fps: 0, deltaMS: 0 };
 
 	constructor() {
-		this.renderer = inject<Application>("ui/app")!.renderer;
+		this.renderer = inject<Application>('ui/app')!.renderer;
 		this.fpsText = new BitmapText({
-			text: "0 fps",
+			text: '0 fps',
 			style: {
-				fontFamily: "Rubik",
-				fontWeight: "400",
+				fontFamily: 'Rubik',
+				fontWeight: '400',
 				fill: 0xffffff,
 				fontSize: 12,
-				align: "right",
+				align: 'right'
 			},
 			layout: {
-				objectFit: "none",
-				objectPosition: "center right",
-			},
+				objectFit: 'none',
+				objectPosition: 'center right'
+			}
 		});
 
 		this.frameTimeText = new BitmapText({
-			text: "0 ms",
+			text: '0 ms',
 			style: {
-				fontFamily: "Rubik",
-				fontWeight: "400",
+				fontFamily: 'Rubik',
+				fontWeight: '400',
 				fill: 0xffffff,
 				fontSize: 12,
-				align: "right",
+				align: 'right'
 			},
 			layout: {
-				objectFit: "none",
-				objectPosition: "center right",
-			},
+				objectFit: 'none',
+				objectPosition: 'center right'
+			}
 		});
 
 		this.poolMemoryText = new BitmapText({
-			text: "0 MB",
+			text: '0 MB',
 			style: {
-				fontFamily: "Rubik",
-				fontWeight: "400",
+				fontFamily: 'Rubik',
+				fontWeight: '400',
 				fill: 0xffffff,
 				fontSize: 12,
-				align: "right",
+				align: 'right'
 			},
 			layout: {
-				objectFit: "none",
-				objectPosition: "center right",
+				objectFit: 'none',
+				objectPosition: 'center right'
 			}
 		});
 
@@ -124,7 +124,7 @@ export default class FPS {
 	destroy(): void {
 		this.renderer.runners.prerender.remove(this);
 		this.renderer.runners.postrender.remove(this);
-		
+
 		this.container.destroy({ children: true });
 	}
 }

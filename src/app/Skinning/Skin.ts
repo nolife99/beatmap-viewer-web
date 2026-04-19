@@ -1,17 +1,17 @@
-import { parse } from "js-ini";
-import { Rectangle, Texture } from "pixi.js";
-import type SkinningConfig from "@/Config/SkinningConfig";
-import { inject } from "@/Context";
-import type { Resource } from "@/ZipHandler";
-import type SkinManager from "./SkinManager";
-import type { SkinMetadata } from "./SkinManager";
+import { parse } from 'js-ini';
+import { Rectangle, Texture } from 'pixi.js';
+import type SkinningConfig from '@/Config/SkinningConfig';
+import { inject } from '@/Context';
+import type { Resource } from '@/ZipHandler';
+import type SkinManager from './SkinManager';
+import type { SkinMetadata } from './SkinManager';
 
 const sanitizeINI = (str: string) =>
 	str
-		.split("\n")
-		.filter((line) => /(^\[.*\])|(^(\s|\t)*[a-zA-Z0-9]+\s*:.*)/g.test(line))
-		.join("\n")
-		.replaceAll(/((\/\/)|(;)|(==)).*/g, "");
+	.split('\n')
+	.filter((line) => /(^\[.*\])|(^(\s|\t)*[a-zA-Z0-9]+\s*:.*)/g.test(line))
+	.join('\n')
+	.replaceAll(/((\/\/)|(;)|(==)).*/g, '');
 
 export type SkinConfig = {
 	General: {
@@ -74,55 +74,28 @@ function clampAtlasSize(v: number): number {
 }
 
 function createAtlasCanvas(width: number, height: number) {
-	if (typeof OffscreenCanvas !== "undefined") {
+	if (typeof OffscreenCanvas !== 'undefined') {
 		return new OffscreenCanvas(width, height);
 	}
 
-	const canvas = document.createElement("canvas");
+	const canvas = document.createElement('canvas');
 	canvas.width = width;
 	canvas.height = height;
 	return canvas;
 }
 
 function getContext2D(
-	canvas: OffscreenCanvas | HTMLCanvasElement,
+	canvas: OffscreenCanvas | HTMLCanvasElement
 ): OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D {
-	const ctx = canvas.getContext("2d", { alpha: true });
-	if (!ctx) throw new Error("Unable to create 2D canvas context.");
+	const ctx = canvas.getContext('2d', { alpha: true });
+	if (!ctx) throw new Error('Unable to create 2D canvas context.');
 	return ctx as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
-}
-
-async function decodeImage(resource: Resource): Promise<ImageBitmap | HTMLImageElement> {
-	const blob = resource instanceof Blob ? resource : new Blob([await resource!.arrayBuffer()]);
-
-	if (typeof createImageBitmap !== "undefined") {
-		return await createImageBitmap(blob);
-	}
-
-	const url = URL.createObjectURL(blob);
-	try {
-		const img = new Image();
-		img.decoding = "async";
-		img.src = url;
-		await img.decode();
-		return img;
-	} finally {
-		URL.revokeObjectURL(url);
-	}
-}
-
-function sortAtlasItems(items: AtlasItem[]): AtlasItem[] {
-	return items.toSorted((a, b) => {
-		if (b.height !== a.height) return b.height - a.height;
-		if (b.width !== a.width) return b.width - a.width;
-		return a.key.localeCompare(b.key);
-	});
 }
 
 function tryPackShelf(
 	items: AtlasItem[],
 	atlasWidth: number,
-	padding: number,
+	padding: number
 ): { width: number; height: number; items: AtlasItem[] } | null {
 	let x = 0;
 	let y = 0;
@@ -155,7 +128,7 @@ function tryPackShelf(
 	return {
 		width: usedWidth,
 		height: usedHeight,
-		items,
+		items
 	};
 }
 
@@ -164,10 +137,14 @@ function packAtlas(items: AtlasItem[], padding: number): { width: number; height
 		return { width: 1, height: 1, items };
 	}
 
-	const sorted = sortAtlasItems(items);
+	const sorted = items.toSorted((a, b) => {
+		if (b.height !== a.height) return b.height - a.height;
+		if (b.width !== a.width) return b.width - a.width;
+		return a.key.localeCompare(b.key);
+	});
 	const totalArea = sorted.reduce(
 		(acc, item) => acc + (item.width + padding * 2) * (item.height + padding * 2),
-		0,
+		0
 	);
 
 	const maxItemWidth = Math.max(...sorted.map((item) => item.width + padding * 2));
@@ -184,7 +161,7 @@ function packAtlas(items: AtlasItem[], padding: number): { width: number; height
 		trialWidth <<= 1;
 	}
 
-	throw new Error("Unable to pack skin atlas within maximum size.");
+	throw new Error('Unable to pack skin atlas within maximum size.');
 }
 
 function extrudeAndDraw(
@@ -194,7 +171,7 @@ function extrudeAndDraw(
 	y: number,
 	w: number,
 	h: number,
-	padding: number,
+	padding: number
 ) {
 	ctx.drawImage(image, x, y, w, h);
 
@@ -215,23 +192,13 @@ function extrudeAndDraw(
 	ctx.drawImage(image, w - 1, h - 1, 1, 1, x + w, y + h, padding, padding);
 }
 
-function createAtlasTexture(
-	canvas: OffscreenCanvas | HTMLCanvasElement,
-	resolution: 1 | 2,
-): Texture {
-	const texture = Texture.from(canvas);
-	texture.source.resolution = resolution;
-	texture.source.update();
-	return texture;
-}
-
 function createFrameTexture(
 	atlasTexture: Texture,
 	x: number,
 	y: number,
 	pixelWidth: number,
 	pixelHeight: number,
-	resolution: 1 | 2,
+	resolution: 1 | 2
 ): Texture {
 	const fx = x / resolution;
 	const fy = y / resolution;
@@ -241,7 +208,7 @@ function createFrameTexture(
 	return new Texture({
 		source: atlasTexture.source,
 		frame: new Rectangle(fx, fy, fw, fh),
-		orig: new Rectangle(0, 0, fw, fh),
+		orig: new Rectangle(0, 0, fw, fh)
 	});
 }
 
@@ -260,11 +227,14 @@ async function buildAtlas(items: AtlasItem[], resolution: 1 | 2): Promise<Packed
 			item.y!,
 			item.width,
 			item.height,
-			ATLAS_PADDING,
+			ATLAS_PADDING
 		);
 	}
 
-	const atlasTexture = createAtlasTexture(canvas, resolution);
+	const atlasTexture = Texture.from(canvas);
+	atlasTexture.source.resolution = resolution;
+	atlasTexture.source.update();
+
 	const frames = new Map<string, Texture>();
 
 	for (const item of packed.items) {
@@ -276,36 +246,36 @@ async function buildAtlas(items: AtlasItem[], resolution: 1 | 2): Promise<Packed
 				item.y!,
 				item.width,
 				item.height,
-				resolution,
-			),
+				resolution
+			)
 		);
 	}
 
 	return {
 		texture: atlasTexture,
-		frames,
+		frames
 	};
 }
 
 export default class Skin {
 	config: SkinConfig = {
 		General: {
-			Name: "Skin",
-			Version: "latest",
+			Name: 'Skin',
+			Version: 'latest',
 			HitCircleOverlayAboveNumber: 1,
-			SliderBallFlip: 1,
+			SliderBallFlip: 1
 		},
 		Colours: {
-			Combo1: "255,192,0",
-			Combo2: "0,202,0",
-			Combo3: "18,124,255",
-			Combo4: "242,24,57",
-			SliderBorder: "255,255,255",
+			Combo1: '255,192,0',
+			Combo2: '0,202,0',
+			Combo3: '18,124,255',
+			Combo4: '242,24,57',
+			SliderBorder: '255,255,255'
 		},
 		Fonts: {
-			HitCirclePrefix: "default",
-			HitCircleOverlap: -2,
-		},
+			HitCirclePrefix: 'default',
+			HitCircleOverlap: -2
+		}
 	};
 
 	textures = new Map<string, Texture>();
@@ -317,8 +287,9 @@ export default class Skin {
 
 	constructor(
 		private resources?: Map<string, Resource>,
-		public metadata?: SkinMetadata,
-	) {}
+		public metadata?: SkinMetadata
+	) {
+	}
 
 	async init() {
 		await this.loadConfig();
@@ -346,81 +317,129 @@ export default class Skin {
 		this.atlasTextures.length = 0;
 	}
 
+	getTexture(filename: string, beatmapSkin?: Skin): Texture | undefined {
+		const disableBeatmapSkin =
+			inject<SkinningConfig>('config/skinning')?.disableBeatmapSkin;
+
+		if (disableBeatmapSkin || this.config.General.Argon)
+			return (
+				this.textures.get(filename) ??
+				inject<SkinManager>('skinManager')?.defaultSkin?.textures.get(filename)
+			);
+		return (
+			beatmapSkin?.textures.get(filename) ??
+			this.textures.get(filename) ??
+			inject<SkinManager>('skinManager')?.defaultSkin?.textures.get(filename)
+		);
+	}
+
+	getAnimatedTexture(filename: string, beatmapSkin?: Skin): Texture[] {
+		const disableBeatmapSkin =
+			inject<SkinningConfig>('config/skinning')?.disableBeatmapSkin;
+
+		const beatmapTexture = beatmapSkin?.textures.get(filename);
+		const beatmapTextures =
+			beatmapSkin?.animatedTextures.get(filename) ??
+			(beatmapTexture ? [beatmapTexture] : undefined);
+
+		const skinTexture = this.textures.get(filename);
+		const skinTextures =
+			this.animatedTextures.get(filename) ??
+			(skinTexture ? [skinTexture] : undefined);
+
+		const defaultTexture =
+			inject<SkinManager>('skinManager')?.defaultSkin?.textures.get(filename);
+		const defaultTextures =
+			inject<SkinManager>('skinManager')?.defaultSkin?.animatedTextures.get(
+				filename
+			) ?? (defaultTexture ? [defaultTexture] : undefined);
+
+		if (disableBeatmapSkin || this.config.General.Argon) {
+			return skinTextures ?? defaultTextures ?? [BLANK_TEXTURE];
+		}
+
+		return beatmapTextures ?? skinTextures ?? defaultTextures ?? [BLANK_TEXTURE];
+	}
+
+	getHitsound(filename: string) {
+		return this.hitsounds.get(filename);
+	}
+
 	private async loadConfig() {
 		if (!this.resources?.get) return;
 
-		const configFile = this.resources?.get("skin.ini")?.text();
+		const configFile = this.resources?.get('skin.ini')?.text();
 		if (!configFile) return;
 
 		const config = parse(sanitizeINI(await configFile), {
-			comment: ["//", "--", ";", "=="],
-			delimiter: ":",
+			comment: ['//', '--', ';', '=='],
+			delimiter: ':'
 		});
 
 		this.config = {
 			General: {
 				...this.config.General,
-				...(config as SkinConfig).General,
+				...(config as SkinConfig).General
 			},
 			Colours: {
 				...this.config.Colours,
-				...(config as SkinConfig).Colours,
+				...(config as SkinConfig).Colours
 			},
 			Fonts: {
 				...this.config.Fonts,
-				...(config as SkinConfig).Fonts,
-			},
+				...(config as SkinConfig).Fonts
+			}
 		};
 
 		this.colorsLength = Object.keys(this.config.Colours).filter((key) =>
-			/Combo[1-8]/g.test(key),
+			/Combo[1-8]/g.test(key)
 		).length;
 	}
 
 	private async loadTextures() {
 		const defaults = [...Array(10)].map(
-			(_, idx) => `${this.config.Fonts.HitCirclePrefix}-${idx}`.toLowerCase(),
+			(_, idx) => `${this.config.Fonts.HitCirclePrefix}-${idx}`.toLowerCase()
 		);
 
 		const filenames = [
-			"approachcircle",
+			'approachcircle',
 			...defaults,
-			"cursor",
-			"cursortrail",
-			"timelinehitcircle",
-			"followpoint",
-			"hit300",
-			"hit100",
-			"hit50",
-			"hit0",
-			"hitcircle",
-			"hitcircleoverlay",
-			"hitcircleflash",
-			"hitcircleglow",
-			"hitcircleselect",
-			"sliderb",
-			"sliderb-nd",
-			"sliderb-spec",
-			"sliderstartcircle",
-			"sliderstartcircleoverlay",
-			"sliderendcircle",
-			"sliderendcircleoverlay",
-			"sliderfollowcircle",
-			"sliderscorepoint",
-			"spinner-approachcircle",
-			"spinner-bottom",
-			"reversearrow",
-			"repeat-edge-piece",
+			'cursor',
+			'cursortrail',
+			'timelinehitcircle',
+			'followpoint',
+			'hit300',
+			'hit100',
+			'hit50',
+			'hit0',
+			'hitcircle',
+			'hitcircleoverlay',
+			'hitcircleflash',
+			'hitcircleglow',
+			'hitcircleselect',
+			'sliderb',
+			'sliderb-nd',
+			'sliderb-spec',
+			'sliderstartcircle',
+			'sliderstartcircleoverlay',
+			'sliderendcircle',
+			'sliderendcircleoverlay',
+			'sliderfollowcircle',
+			'sliderscorepoint',
+			'spinner-approachcircle',
+			'spinner-bottom',
+			'reversearrow',
+			'repeat-edge-piece'
 		];
 
 		const animatedFilenames = [
-			"followpoint",
-			"hit300",
-			"hit100",
-			"hit50",
-			"hit0",
-			"sliderb",
-			"sliderfollowcircle",
+			'followpoint',
+			'hit300',
+			'hit100',
+			'hit50',
+			'hit0',
+			'sliderb',
+			'sliderfollowcircle'
 		];
 
 		const staticItems1x: AtlasItem[] = [];
@@ -435,9 +454,9 @@ export default class Skin {
 
 			if (!resource) return;
 
-			const image = await decodeImage(resource);
-			const width = "width" in image ? image.width : 0;
-			const height = "height" in image ? image.height : 0;
+			const image = await createImageBitmap(resource);
+			const width = 'width' in image ? image.width : 0;
+			const height = 'height' in image ? image.height : 0;
 			const scale: 1 | 2 = has2x ? 2 : 1;
 
 			const item: AtlasItem = {
@@ -446,7 +465,7 @@ export default class Skin {
 				width,
 				height,
 				scale,
-				order,
+				order
 			};
 
 			if (animatedGroups.has(mapKey)) {
@@ -460,27 +479,27 @@ export default class Skin {
 
 		await Promise.all(
 			filenames.map(async (filename) => {
-				const extracted = filename.split("/").at(-1);
+				const extracted = filename.split('/').at(-1);
 				const isDefault = extracted ? /default-[0-9]+/g.test(extracted) : false;
 				const mapKey = isDefault ? (extracted as string) : filename;
 
 				await addAtlasItem(mapKey, filename);
-			}),
+			})
 		);
 
 		for (const filenameBase of animatedFilenames) {
 			const regex =
-				filenameBase === "sliderb"
+				filenameBase === 'sliderb'
 					? new RegExp(`^${filenameBase}[0-9]+(?:@2x)?\\.png$`)
 					: new RegExp(`^${filenameBase}-[0-9]+(?:@2x)?\\.png$`);
 
 			const entries = new Set(
 				this.resources
-					?.keys()
-					.filter((filename) => regex.test(filename))
-					.map((filename) =>
-						filename.replaceAll("@2x", "").replaceAll(".png", ""),
-					),
+				?.keys()
+				.filter((filename) => regex.test(filename))
+				.map((filename) =>
+					filename.replaceAll('@2x', '').replaceAll('.png', '')
+				)
 			);
 
 			if (entries.size === 0) continue;
@@ -490,10 +509,10 @@ export default class Skin {
 			await Promise.all(
 				[...entries].map(async (entry) => {
 					let order: number;
-					if (filenameBase === "sliderb") {
-						order = +(entry.replaceAll("sliderb", "") ?? 0);
+					if (filenameBase === 'sliderb') {
+						order = +(entry.replaceAll('sliderb', '') ?? 0);
 					} else {
-						order = +(entry.split("-").at(-1) ?? 0);
+						order = +(entry.split('-').at(-1) ?? 0);
 					}
 
 					const has2x = this.resources?.has(`${entry}@2x.png`) ?? false;
@@ -503,9 +522,9 @@ export default class Skin {
 
 					if (!resource) return;
 
-					const image = await decodeImage(resource);
-					const width = "width" in image ? image.width : 0;
-					const height = "height" in image ? image.height : 0;
+					const image = await createImageBitmap(resource);
+					const width = 'width' in image ? image.width : 0;
+					const height = 'height' in image ? image.height : 0;
 					const scale: 1 | 2 = has2x ? 2 : 1;
 
 					animatedGroups.get(filenameBase)!.push({
@@ -514,9 +533,9 @@ export default class Skin {
 						width,
 						height,
 						scale,
-						order,
+						order
 					});
-				}),
+				})
 			);
 		}
 
@@ -554,8 +573,8 @@ export default class Skin {
 		for (const [filenameBase, items] of animatedGroups) {
 			const sorted = items.toSorted((a, b) => (a.order ?? 0) - (b.order ?? 0));
 			const textures = sorted
-				.map((item) => resolveFrame(item.key, item.scale))
-				.filter((texture): texture is Texture => texture !== undefined);
+			.map((item) => resolveFrame(item.key, item.scale))
+			.filter((texture): texture is Texture => texture !== undefined);
 
 			if (textures.length > 0) {
 				this.animatedTextures.set(filenameBase, textures);
@@ -565,22 +584,22 @@ export default class Skin {
 
 	private async loadHitsounds() {
 		const audioContext = new AudioContext();
-		const hitSounds = ["drum", "normal", "soft"]
-			.map((hitSample) =>
-				[
-					"hitclap",
-					"hitfinish",
-					"hitnormal",
-					"hitwhistle",
-					"sliderslide",
-					"slidertick",
-					"sliderwhistle",
-				].map((hitSound) => `${hitSample}-${hitSound}`),
-			)
-			.reduce<string[]>((accm, curr) => {
-				accm.push(...curr);
-				return accm;
-			}, []);
+		const hitSounds = ['drum', 'normal', 'soft']
+		.map((hitSample) =>
+			[
+				'hitclap',
+				'hitfinish',
+				'hitnormal',
+				'hitwhistle',
+				'sliderslide',
+				'slidertick',
+				'sliderwhistle'
+			].map((hitSound) => `${hitSample}-${hitSound}`)
+		)
+		.reduce<string[]>((accm, curr) => {
+			accm.push(...curr);
+			return accm;
+		}, []);
 
 		await Promise.all(
 			hitSounds.map(async (filename) => {
@@ -593,66 +612,18 @@ export default class Skin {
 				let audioBuffer: AudioBuffer;
 				try {
 					audioBuffer = await audioContext.decodeAudioData(
-						await resource.arrayBuffer(),
+						await resource.arrayBuffer()
 					);
 				} catch {
 					audioBuffer = audioContext.createBuffer(
 						1,
 						1,
-						audioContext.sampleRate,
+						audioContext.sampleRate
 					);
 					return;
 				}
 				this.hitsounds.set(filename, audioBuffer);
-			}),
+			})
 		);
-	}
-
-	getTexture(filename: string, beatmapSkin?: Skin): Texture | undefined {
-		const disableBeatmapSkin =
-			inject<SkinningConfig>("config/skinning")?.disableBeatmapSkin;
-
-		if (disableBeatmapSkin || this.config.General.Argon)
-			return (
-				this.textures.get(filename) ??
-				inject<SkinManager>("skinManager")?.defaultSkin?.textures.get(filename)
-			);
-		return (
-			beatmapSkin?.textures.get(filename) ??
-			this.textures.get(filename) ??
-			inject<SkinManager>("skinManager")?.defaultSkin?.textures.get(filename)
-		);
-	}
-
-	getAnimatedTexture(filename: string, beatmapSkin?: Skin): Texture[] {
-		const disableBeatmapSkin =
-			inject<SkinningConfig>("config/skinning")?.disableBeatmapSkin;
-
-		const beatmapTexture = beatmapSkin?.textures.get(filename);
-		const beatmapTextures =
-			beatmapSkin?.animatedTextures.get(filename) ??
-			(beatmapTexture ? [beatmapTexture] : undefined);
-
-		const skinTexture = this.textures.get(filename);
-		const skinTextures =
-			this.animatedTextures.get(filename) ??
-			(skinTexture ? [skinTexture] : undefined);
-
-		const defaultTexture =
-			inject<SkinManager>("skinManager")?.defaultSkin?.textures.get(filename);
-		const defaultTextures =
-			inject<SkinManager>("skinManager")?.defaultSkin?.animatedTextures.get(
-				filename,
-			) ?? (defaultTexture ? [defaultTexture] : undefined);
-
-		if (disableBeatmapSkin || this.config.General.Argon) {
-			return skinTextures ?? defaultTextures ?? [BLANK_TEXTURE];
-		}
-
-		return beatmapTextures ?? skinTextures ?? defaultTextures ?? [BLANK_TEXTURE];
-	}
-
-	getHitsound(filename: string) {
-		return this.hitsounds.get(filename);
 	}
 }

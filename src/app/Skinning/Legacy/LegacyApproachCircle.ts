@@ -1,5 +1,5 @@
-import type DrawableApproachCircle from "@/BeatmapSet/Beatmap/HitObjects/DrawableApproachCircle";
-import { sharedUpdate } from "../Shared/ApproachCircle";
+import type DrawableApproachCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableApproachCircle';
+import { sharedUpdate } from '../Shared/ApproachCircle';
 
 export const update = (drawable: DrawableApproachCircle, time: number) => {
 	const scale = sharedUpdate(drawable, time);

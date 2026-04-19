@@ -1,42 +1,28 @@
-import {
-	HitResult,
-	type LegacyReplayFrame,
-	type SamplePoint,
-	Vector2,
-} from "osu-classes";
-import type { StandardHitObject } from "osu-standard-stable";
-import { type ColorSource, Container, RenderLayer, Sprite } from "pixi.js";
-import HitSample from "@/Audio/HitSample";
-import type BeatmapSet from "@/BeatmapSet";
-import type ExperimentalConfig from "@/Config/ExperimentalConfig";
-import type GameplayConfig from "@/Config/GameplayConfig";
-import { type Context, inject } from "@/Context";
-import {
-	refreshSprite as argonRefreshSprite,
-	update as argonUpdate,
-} from "@/Skinning/Argon/ArgonHitCircle";
-import {
-	refreshSprite as legacyRefreshSprite,
-	update as legacyUpdate,
-} from "@/Skinning/Legacy/LegacyHitCircle";
-import { sharedRefreshColor } from "@/Skinning/Shared/HitCircle";
-import type SkinManager from "@/Skinning/SkinManager";
-import type ProgressBar from "@/UI/main/controls/ProgressBar";
-import type Gameplays from "@/UI/main/viewer/Gameplay/Gameplays";
-import type Beatmap from "..";
-import type { BaseObjectEvaluation } from "../Replay";
-import TimelineHitCircle from "../Timeline/TimelineHitCircle";
-import DrawableApproachCircle from "./DrawableApproachCircle";
-import DrawableDefaults from "./DrawableDefaults";
-import DrawableHitObject, {
-	type IHasApproachCircle,
-} from "./DrawableHitObject";
-import DrawableJudgement from "./DrawableJudgement";
+import { HitResult, type LegacyReplayFrame, Vector2 } from 'osu-classes';
+import type { StandardHitObject } from 'osu-standard-stable';
+import { type ColorSource, Container, RenderLayer, Sprite } from 'pixi.js';
+import HitSample from '@/Audio/HitSample';
+import type BeatmapSet from '@/BeatmapSet';
+import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import type GameplayConfig from '@/Config/GameplayConfig';
+import { type Context, inject } from '@/Context';
+import { refreshSprite as argonRefreshSprite, update as argonUpdate } from '@/Skinning/Argon/ArgonHitCircle';
+import { refreshSprite as legacyRefreshSprite, update as legacyUpdate } from '@/Skinning/Legacy/LegacyHitCircle';
+import { sharedRefreshColor } from '@/Skinning/Shared/HitCircle';
+import type SkinManager from '@/Skinning/SkinManager';
+import type ProgressBar from '@/UI/main/controls/ProgressBar';
+import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import type Beatmap from '..';
+import type { BaseObjectEvaluation } from '../Replay';
+import TimelineHitCircle from '../Timeline/TimelineHitCircle';
+import DrawableApproachCircle from './DrawableApproachCircle';
+import DrawableDefaults from './DrawableDefaults';
+import DrawableHitObject, { type IHasApproachCircle } from './DrawableHitObject';
+import DrawableJudgement from './DrawableJudgement';
 
 export default class DrawableHitCircle
 	extends DrawableHitObject
-	implements IHasApproachCircle
-{
+	implements IHasApproachCircle {
 	container = new Container();
 
 	hitCircleSprite: Sprite;
@@ -56,13 +42,14 @@ export default class DrawableHitCircle
 	updateFn = legacyUpdate;
 
 	judgement: DrawableJudgement;
+	color: ColorSource = 'rgb(0, 0, 0)';
 
 	constructor(
 		object: StandardHitObject,
-		protected hasNumber = true,
+		protected hasNumber = true
 	) {
 		super(object);
-		this.context.provide<DrawableHitCircle>("drawable", this);
+		this.context.provide<DrawableHitCircle>('drawable', this);
 
 		this.wrapper.visible = false;
 
@@ -89,12 +76,12 @@ export default class DrawableHitCircle
 
 		this.refreshSprite();
 		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
-			this.refreshSprite(),
+			this.refreshSprite()
 		);
 		this.gameplaysEventCallback = inject<Gameplays>(
-			"ui/main/viewer/gameplays",
-		)?.on("change", () => this.refreshColor());
-		inject<ExperimentalConfig>("config/experimental")?.onChange("overlapGameplays", () => this.refreshColor());
+			'ui/main/viewer/gameplays'
+		)?.on('change', () => this.refreshColor());
+		inject<ExperimentalConfig>('config/experimental')?.onChange('overlapGameplays', () => this.refreshColor());
 
 		this.timelineObject = new TimelineHitCircle(object).hook(this.context);
 
@@ -102,23 +89,66 @@ export default class DrawableHitCircle
 		judgementLayer.attach(this.judgement.container);
 		this.container.addChild(this.judgement.container);
 
-		inject<GameplayConfig>("config/gameplay")?.onChange(
-			"hitAnimation",
+		inject<GameplayConfig>('config/gameplay')?.onChange(
+			'hitAnimation',
 			(val) => {
 				if (!val) return;
 
 				this.hitCircleSprite.tint = this.color;
-			},
+			}
 		);
 	}
 
 	private _isSelected = false;
+
 	get isSelected() {
 		return this._isSelected;
 	}
+
 	set isSelected(val: boolean) {
 		this._isSelected = val;
 		this.select.visible = val;
+	}
+
+	protected _object!: StandardHitObject;
+	get object() {
+		return this._object;
+	}
+
+	set object(val: StandardHitObject) {
+		this._object = val;
+		this.container.x = val.startX + val.stackedOffset.x;
+		this.container.y = val.startY + val.stackedOffset.y;
+		this.container.scale.set(
+			val.scale *
+			(inject<SkinManager>('skinManager')?.getCurrentSkin()?.config.General
+				.Argon
+				? 0.95
+				: 1)
+		);
+		this.select.x = val.startX + val.stackedOffset.x;
+		this.select.y = val.startY + val.stackedOffset.y;
+		this.select.scale.set(
+			val.scale *
+			(inject<SkinManager>('skinManager')?.getCurrentSkin()?.config.General
+				.Argon
+				? 0.95
+				: 1)
+		);
+
+		if (this.approachCircle) this.approachCircle.object = val;
+		if (this.defaults) this.defaults.object = val;
+		if (this.hitSound) this.hitSound.hitSamples = val.samples;
+		if (this.timelineObject) this.timelineObject.object = val;
+	}
+
+	get evaluation(): BaseObjectEvaluation | undefined {
+		return this._evaluation;
+	}
+
+	set evaluation(value: BaseObjectEvaluation | undefined) {
+		this._evaluation = value;
+		this.judgement.evaluation = value;
 	}
 
 	checkCollide(x: number, y: number, time: number) {
@@ -133,44 +163,12 @@ export default class DrawableHitCircle
 		const radius = 64 * this.object.scale * (256 / 236);
 		const objectPosition = new Vector2(
 			this.object.startX + this.object.stackedOffset.x,
-			this.object.startY + this.object.stackedOffset.y,
+			this.object.startY + this.object.stackedOffset.y
 		);
 		const pointer = new Vector2(x, y);
 
 		const dist = pointer.distance(objectPosition);
 		return dist < radius && this.wrapper.visible;
-	}
-
-	protected _object!: StandardHitObject;
-	get object() {
-		return this._object;
-	}
-
-	set object(val: StandardHitObject) {
-		this._object = val;
-		this.container.x = val.startX + val.stackedOffset.x;
-		this.container.y = val.startY + val.stackedOffset.y;
-		this.container.scale.set(
-			val.scale *
-				(inject<SkinManager>("skinManager")?.getCurrentSkin()?.config.General
-					.Argon
-					? 0.95
-					: 1),
-		);
-		this.select.x = val.startX + val.stackedOffset.x;
-		this.select.y = val.startY + val.stackedOffset.y;
-		this.select.scale.set(
-			val.scale *
-				(inject<SkinManager>("skinManager")?.getCurrentSkin()?.config.General
-					.Argon
-					? 0.95
-					: 1),
-		);
-
-		if (this.approachCircle) this.approachCircle.object = val;
-		if (this.defaults) this.defaults.object = val;
-		if (this.hitSound) this.hitSound.hitSamples = val.samples;
-		if (this.timelineObject) this.timelineObject.object = val;
 	}
 
 	hook(context: Context) {
@@ -183,7 +181,6 @@ export default class DrawableHitCircle
 		return this;
 	}
 
-	color: ColorSource = "rgb(0, 0, 0)";
 	refreshSprite() {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
@@ -202,10 +199,10 @@ export default class DrawableHitCircle
 	}
 
 	playHitSound(time: number, _?: number): void {
-		const beatmap = this.context.consume<Beatmap>("beatmapObject");
+		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const isSeeking =
-			inject<ProgressBar>("ui/main/controls/progress")?.isSeeking ||
-			inject<BeatmapSet>("beatmapset")?.isSeeking;
+			inject<ProgressBar>('ui/main/controls/progress')?.isSeeking ||
+			inject<BeatmapSet>('beatmapset')?.isSeeking;
 		if (!beatmap || isSeeking) return;
 
 		const startTime = this.evaluation?.hitTime ?? this.object.startTime;
@@ -219,7 +216,7 @@ export default class DrawableHitCircle
 			return;
 
 		const currentSamplePoint = beatmap.getNearestSamplePoint(
-			this.object.startTime,
+			this.object.startTime
 		);
 		this.hitSound?.play(currentSamplePoint);
 	}
@@ -227,7 +224,7 @@ export default class DrawableHitCircle
 	getTimeRange(): { start: number; end: number } {
 		return {
 			start: this.object.startTime - this.object.timePreempt,
-			end: this.object.startTime + 800,
+			end: this.object.startTime + 800
 		};
 	}
 
@@ -237,15 +234,6 @@ export default class DrawableHitCircle
 		this.updateFn(this, time);
 
 		this.judgement.frame(time);
-	}
-
-	get evaluation(): BaseObjectEvaluation | undefined {
-		return this._evaluation;
-	}
-
-	set evaluation(value: BaseObjectEvaluation | undefined) {
-		this._evaluation = value;
-		this.judgement.evaluation = value;
 	}
 
 	override eval(frames: LegacyReplayFrame[]) {
@@ -269,7 +257,7 @@ export default class DrawableHitCircle
 			const radius = 64 * this.object.scale;
 			const objectPosition = new Vector2(
 				this.object.startX + this.object.stackedOffset.x,
-				this.object.startY + this.object.stackedOffset.y,
+				this.object.startY + this.object.stackedOffset.y
 			);
 			const pointer = new Vector2(x, y);
 
@@ -281,7 +269,7 @@ export default class DrawableHitCircle
 		if (!hitInstance)
 			return {
 				value: HitResult.Miss,
-				hitTime: Infinity,
+				hitTime: Infinity
 			};
 
 		const resultFor = (timeOffset: number): HitResult => {
@@ -301,7 +289,7 @@ export default class DrawableHitCircle
 
 		return {
 			value: resultFor(hitInstance.startTime - this.object.startTime),
-			hitTime: hitInstance.startTime,
+			hitTime: hitInstance.startTime
 		};
 	}
 
@@ -320,9 +308,9 @@ export default class DrawableHitCircle
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
 
 		if (this.gameplaysEventCallback)
-			inject<Gameplays>("ui/main/viewer/gameplays")?.remove(
-				"change",
-				this.gameplaysEventCallback,
+			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
+				'change',
+				this.gameplaysEventCallback
 			);
 	}
 }

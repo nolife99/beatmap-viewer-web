@@ -25,7 +25,7 @@ void main() {
 
     // Properly union overlaps
     gl_FragDepth = dist;
-    
+
     float blurRate = fwidth(dist);
     float innerWidth = 1.0 - borderWidth;
 

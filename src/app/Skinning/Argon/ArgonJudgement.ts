@@ -1,8 +1,8 @@
-import { HitResult } from "osu-classes";
-import type { Slider, Spinner } from "osu-standard-stable";
-import type DrawableJudgement from "@/BeatmapSet/Beatmap/HitObjects/DrawableJudgement";
-import Easings from "@/UI/Easings";
-import { Clamp } from "@/utils";
+import { HitResult } from 'osu-classes';
+import type { Slider, Spinner } from 'osu-standard-stable';
+import type DrawableJudgement from '@/BeatmapSet/Beatmap/HitObjects/DrawableJudgement';
+import Easings from '@/UI/Easings';
+import { Clamp } from '@/utils';
 
 export const update = (drawable: DrawableJudgement, timestamp: number) => {
 	if (!drawable.drawable.evaluation) {
@@ -15,8 +15,8 @@ export const update = (drawable: DrawableJudgement, timestamp: number) => {
 		Math.min(
 			drawable.drawable.evaluation.hitTime,
 			drawable.drawable.object.startTime +
-				drawable.drawable.object.hitWindows.windowFor(HitResult.Meh) +
-				1,
+			drawable.drawable.object.hitWindows.windowFor(HitResult.Meh) +
+			1
 		);
 
 	const animationDuration = 800;
