@@ -1,8 +1,8 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { BitmapText, Color } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject } from '@/Context';
-import type ResponsiveHandler from '@/ResponsiveHandler';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import { inject } from '../../../Context.ts';
+import type ResponsiveHandler from '../../../ResponsiveHandler.ts';
 
 export default class Timestamp {
 	container = new LayoutContainer({

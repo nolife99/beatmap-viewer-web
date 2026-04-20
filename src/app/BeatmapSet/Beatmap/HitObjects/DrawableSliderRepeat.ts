@@ -1,11 +1,11 @@
 import type { HitSample as Sample } from 'osu-classes';
 import type { Slider, SliderHead, SliderRepeat, StandardHitObject } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
-import { update as argonUpdate } from '@/Skinning/Argon/ArgonReverseArrow';
-import { update as legacyUpdate } from '@/Skinning/Legacy/LegacyReverseArrow';
-import type Skin from '@/Skinning/Skin';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import DrawableSliderTail from './DrawableSliderTail';
+import { update as argonUpdate } from '../../../Skinning/Argon/ArgonReverseArrow.ts';
+import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacyReverseArrow.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import DrawableSliderTail from './DrawableSliderTail.ts';
 
 export default class DrawableSliderRepeat extends DrawableSliderTail {
 	reverseArrow = new Sprite({
@@ -23,7 +23,7 @@ export default class DrawableSliderRepeat extends DrawableSliderTail {
 
 	constructor(
 		object: SliderRepeat,
-		public parent: Slider,
+		public override parent: Slider,
 		samples: Sample[]
 	) {
 		super(object, parent, samples);
@@ -38,21 +38,21 @@ export default class DrawableSliderRepeat extends DrawableSliderTail {
 		this.updateRotation();
 	}
 
-	get object(): SliderRepeat {
+	override get object(): SliderRepeat {
 		return super.object as SliderRepeat;
 	}
 
-	set object(val: StandardHitObject) {
+	override set object(val: StandardHitObject) {
 		super.object = val;
 	}
 
-	updateObjects(object: SliderHead, parent: Slider, samples: Sample[]): void {
+	override updateObjects(object: SliderHead, parent: Slider, samples: Sample[]): void {
 		super.updateObjects(object, parent, samples);
 		this.parent = parent;
 		this.updateRotation();
 	}
 
-	refreshSprite(): void {
+	override refreshSprite(): void {
 		super.refreshSprite();
 
 		if (!this.reverseArrow) return;
@@ -106,7 +106,7 @@ export default class DrawableSliderRepeat extends DrawableSliderTail {
 		this.arrowContainer.rotation = rotation;
 	}
 
-	update(time: number) {
+	override update(time: number) {
 		super.update(time);
 		this.arrowUpdateFn(this, time);
 	}

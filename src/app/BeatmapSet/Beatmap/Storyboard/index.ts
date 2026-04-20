@@ -7,12 +7,12 @@ import {
 	StoryboardSprite as StoryboardSpriteData
 } from '@rian8337/osu-base';
 import { Assets, Container, Graphics, GraphicsContext, Rectangle, type Texture } from 'pixi.js';
-import type BeatmapSet from '@/BeatmapSet';
-import type BackgroundConfig from '@/Config/BackgroundConfig';
-import { inject, ScopedClass } from '@/Context';
-import type { Resource } from '@/ZipHandler';
-import { StoryboardAnimation } from './StoryboardAnimation';
-import StoryboardSprite from './StoryboardSprite';
+import type BeatmapSet from '../../index.ts';
+import type BackgroundConfig from '../../../Config/BackgroundConfig.ts';
+import { inject, ScopedClass } from '../../../Context.ts';
+import type { Resource } from '../../../ZipHandler/index.ts';
+import { StoryboardAnimation } from './StoryboardAnimation.ts';
+import StoryboardSprite from './StoryboardSprite.ts';
 
 export default class Storyboard extends ScopedClass {
 	container: Container = new Container({

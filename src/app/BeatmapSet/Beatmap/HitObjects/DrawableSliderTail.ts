@@ -1,24 +1,24 @@
 import { HitResult, type HitSample as Sample, type LegacyReplayFrame, Vector2 } from 'osu-classes';
 import type { Slider, SliderTail } from 'osu-standard-stable';
-import type BeatmapSet from '@/BeatmapSet';
-import { inject } from '@/Context';
-import { update } from '@/Skinning/Argon/ArgonSliderTail';
-import type Skin from '@/Skinning/Skin';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import type ProgressBar from '@/UI/main/controls/ProgressBar';
-import HitSample from '../../../Audio/HitSample';
+import type BeatmapSet from '../../index.ts';
+import { inject } from '../../../Context.ts';
+import { update } from '../../../Skinning/Argon/ArgonSliderTail.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
+import HitSample from '../../../Audio/HitSample.ts';
 import type Beatmap from '..';
-import DrawableSliderHead from './DrawableSliderHead';
-import { Clamp } from '@/utils';
+import DrawableSliderHead from './DrawableSliderHead.ts';
+import { Clamp } from '../../../utils.ts';
 
 export const TAIL_LENIENCY = 36;
 export default class DrawableSliderTail extends DrawableSliderHead {
-	hitSound?: HitSample;
+	override hitSound?: HitSample;
 	tailUpdateFn: null | typeof update = null;
 
 	constructor(
 		object: SliderTail,
-		public parent: Slider,
+		public override parent: Slider,
 		samples: Sample[]
 	) {
 		super(object, parent, samples, false);
@@ -26,7 +26,7 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 		this.refreshSprite();
 	}
 
-	refreshSprite() {
+	override refreshSprite() {
 		super.refreshSprite();
 		this.flashPiece.texture = BLANK_TEXTURE;
 
@@ -75,7 +75,7 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 		if (hitCircleOverlay) this.hitCircleOverlay.texture = hitCircleOverlay;
 	}
 
-	playHitSound(time: number, offset: number): void {
+	override playHitSound(time: number, offset: number): void {
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const isSeeking =
 			inject<ProgressBar>('ui/main/controls/progress')?.isSeeking ||
@@ -138,7 +138,7 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 		};
 	}
 
-	update(time: number): void {
+	override update(time: number): void {
 		super.update(time);
 		this.tailUpdateFn?.(this, time);
 	}

@@ -1,9 +1,9 @@
 import type { Circle, StandardHitObject } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
-import { update } from '@/Skinning/Legacy/LegacyDefaults';
-import type Skin from '@/Skinning/Skin';
-import SkinnableElement from './SkinnableElement';
-import type { Context } from '@/Context';
+import { update } from '../../../Skinning/Legacy/LegacyDefaults.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import SkinnableElement from './SkinnableElement.ts';
+import type { Context } from '../../../Context.ts';
 
 export default class DrawableDefaults extends SkinnableElement {
 	container: Container;
@@ -67,7 +67,7 @@ export default class DrawableDefaults extends SkinnableElement {
 		this.container.y = 0;
 	}
 
-	hook(context: Context) {
+	override hook(context: Context) {
 		super.hook(context);
 		this.refreshSprites();
 		return this;

@@ -2,13 +2,13 @@ import { HitResult, type LegacyReplayFrame, type Score } from 'osu-classes';
 import { ScoreDecoder } from 'osu-parsers';
 import { Slider, Spinner } from 'osu-standard-stable';
 import { Sprite } from 'pixi.js';
-import SkinningConfig from '@/Config/SkinningConfig';
-import { inject } from '@/Context';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import type SkinManager from '@/Skinning/SkinManager';
-import { binarySearch, Clamp } from '@/utils';
+import SkinningConfig from '../../Config/SkinningConfig.ts';
+import { inject } from '../../Context.ts';
+import { BLANK_TEXTURE } from '../../Skinning/Skin.ts';
+import type SkinManager from '../../Skinning/SkinManager.ts';
+import { binarySearch, Clamp } from '../../utils.ts';
 import type Beatmap from '.';
-import DrawableSlider from './HitObjects/DrawableSlider';
+import DrawableSlider from './HitObjects/DrawableSlider.ts';
 
 export type BaseObjectEvaluation = {
 	value: number;

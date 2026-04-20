@@ -1,19 +1,19 @@
 import { HitResult, type HitSample as Sample, type LegacyReplayFrame } from 'osu-classes';
 import type { Slider, SliderHead } from 'osu-standard-stable';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import { inject } from '@/Context';
-import { update as argonUpdate } from '@/Skinning/Argon/ArgonSliderHead';
-import type Skin from '@/Skinning/Skin';
-import HitSample from '../../../Audio/HitSample';
+import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import { inject } from '../../../Context.ts';
+import { update as argonUpdate } from '../../../Skinning/Argon/ArgonSliderHead.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import HitSample from '../../../Audio/HitSample.ts';
 import type Beatmap from '..';
-import DrawableApproachCircle from './DrawableApproachCircle';
-import DrawableDefaults from './DrawableDefaults';
-import DrawableHitCircle from './DrawableHitCircle';
-import type DrawableSlider from './DrawableSlider';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import DrawableApproachCircle from './DrawableApproachCircle.ts';
+import DrawableDefaults from './DrawableDefaults.ts';
+import DrawableHitCircle from './DrawableHitCircle.ts';
+import type DrawableSlider from './DrawableSlider.ts';
+import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
 
 export default class DrawableSliderHead extends DrawableHitCircle {
-	hitSound?: HitSample;
+	override hitSound?: HitSample;
 
 	headUpdateFn: ((_: DrawableSliderHead, __: number) => void) | null = null;
 
@@ -53,7 +53,7 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 		if (this.hitSound) this.hitSound.hitSamples = samples;
 	}
 
-	refreshSprite() {
+	override refreshSprite() {
 		super.refreshSprite();
 		this.approachCircle.refreshSprite();
 		this.defaults?.refreshSprites();
@@ -95,7 +95,7 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 		this.timelineObject?.refreshSprite();
 	}
 
-	refreshColor() {
+	override refreshColor() {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
 
@@ -114,7 +114,7 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 		this.color = color;
 	}
 
-	update(time: number) {
+	override update(time: number) {
 		super.update(time);
 		this.headUpdateFn?.(this, time);
 	}

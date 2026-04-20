@@ -83,6 +83,7 @@ function calculateFrequencies(audioChannels: Float32Array[], options: WorkerMess
 
 	// Initialize FFT (reuse if possible for performance)
 	if (!fft || fft.bufferSize !== fftSamples) {
+		// deno-lint-ignore no-explicit-any
 		fft = new (FFT as any)(fftSamples, sampleRate, windowFunc, alpha || 0.16);
 	}
 

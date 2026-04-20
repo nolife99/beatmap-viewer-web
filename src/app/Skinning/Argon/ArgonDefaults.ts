@@ -1,7 +1,7 @@
-import type DrawableDefaults from '@/BeatmapSet/Beatmap/HitObjects/DrawableDefaults';
-import type DrawableHitObject from '@/BeatmapSet/Beatmap/HitObjects/DrawableHitObject';
-import type GameplayConfig from '@/Config/GameplayConfig';
-import { inject } from '@/Context';
+import type DrawableDefaults from '../../BeatmapSet/Beatmap/HitObjects/DrawableDefaults.ts';
+import type DrawableHitObject from '../../BeatmapSet/Beatmap/HitObjects/DrawableHitObject.ts';
+import type GameplayConfig from '../../Config/GameplayConfig.ts';
+import { inject } from '../../Context.ts';
 
 export const update = (drawable: DrawableDefaults, time: number) => {
 	const fadeOutDuration = 60;

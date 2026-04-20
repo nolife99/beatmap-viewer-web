@@ -1,5 +1,5 @@
-import type DrawableSliderTail from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderTail';
-import type Skin from '../Skin';
+import type DrawableSliderTail from '../../BeatmapSet/Beatmap/HitObjects/DrawableSliderTail.ts';
+import type Skin from '../Skin.ts';
 
 export const update = (drawable: DrawableSliderTail, _: number) => {
 	const baseTexture = drawable.skinManager

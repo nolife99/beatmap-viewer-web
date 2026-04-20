@@ -1,5 +1,5 @@
 import type Config from '.';
-import ConfigSection from './ConfigSection';
+import ConfigSection from './ConfigSection.ts';
 
 export type GameplayProps = {
 	showGrid?: boolean;
@@ -143,7 +143,7 @@ export default class GameplayConfig extends ConfigSection {
 		});
 	}
 
-	jsonify(): GameplayProps {
+	override jsonify(): GameplayProps {
 		return {
 			showGrid: this.showGrid,
 			hitAnimation: this.hitAnimation,

@@ -1,7 +1,7 @@
 import type { Application } from 'pixi.js';
-import { inject } from './Context';
-import type { Game } from './Game';
-import type SidePanel from './UI/sidepanel';
+import { inject } from './Context.ts';
+import type { Game } from './Game.ts';
+import type SidePanel from './UI/sidepanel/index.ts';
 
 export type SidebarState = 'OPENED' | 'CLOSED';
 

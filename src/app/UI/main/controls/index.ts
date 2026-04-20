@@ -1,15 +1,15 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { Color } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import type FullscreenConfig from '@/Config/FullscreenConfig';
-import { inject, provide } from '@/Context';
-import type ResponsiveHandler from '@/ResponsiveHandler';
-import Fullscreen from './Fullscreen';
-import Metadata from './Metadata';
-import Play from './Play';
-import ProgressBar from './ProgressBar';
-import Timestamp from './Timestamp';
-import ZContainer from '@/UI/core/ZContainer.ts';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import type FullscreenConfig from '../../../Config/FullscreenConfig.ts';
+import { inject, provide } from '../../../Context.ts';
+import type ResponsiveHandler from '../../../ResponsiveHandler.ts';
+import Fullscreen from './Fullscreen.ts';
+import Metadata from './Metadata.ts';
+import Play from './Play.ts';
+import ProgressBar from './ProgressBar.ts';
+import Timestamp from './Timestamp.ts';
+import ZContainer from '../../../UI/core/ZContainer.ts';
 
 export default class Controls {
 	container = new ZContainer({

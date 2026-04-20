@@ -1,11 +1,12 @@
-import type Audio from '@/Audio';
-import type BeatmapSet from '@/BeatmapSet';
-import type BackgroundConfig from '@/Config/BackgroundConfig';
-import { inject } from '@/Context';
-import type Background from '@/UI/main/viewer/Background';
-import { MessageType, type WorkerPayload } from './types';
+import type Audio from '../Audio/index.ts';
+import type BeatmapSet from '../BeatmapSet/index.ts';
+import type BackgroundConfig from '../Config/BackgroundConfig.ts';
+import { inject } from '../Context.ts';
+import type Background from '../UI/main/viewer/Background.ts';
+import { MessageType, type WorkerPayload } from './types.ts';
 
-import VideoWorker from './Worker.ts?worker';
+// @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix
+import VideoWorker from './Worker.ts?worker&inline';
 
 export default class Video {
 	worker = new VideoWorker();
@@ -13,7 +14,7 @@ export default class Video {
 	constructor() {
 		this.worker.postMessage({
 			type: MessageType.Init,
-			data: window.location.origin
+			data: globalThis.location.origin
 		});
 
 		this.worker.addEventListener(
@@ -46,7 +47,7 @@ export default class Video {
 		});
 	}
 
-	async load(blob: Blob, offset: number) {
+	load(blob: Blob, offset: number) {
 		this.worker.postMessage({
 			type: MessageType.Load,
 			data: blob,

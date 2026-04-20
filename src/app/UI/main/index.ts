@@ -1,12 +1,12 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import type BeatmapSet from '@/BeatmapSet';
-import type FullscreenConfig from '@/Config/FullscreenConfig';
-import type TimelineConfig from '@/Config/TimelineConfig';
-import { inject, provide } from '@/Context';
-import type ResponsiveHandler from '@/ResponsiveHandler';
-import Easings from '../Easings';
-import Controls from './controls';
-import Viewer from './viewer';
+import type BeatmapSet from '../../BeatmapSet/index.ts';
+import type FullscreenConfig from '../../Config/FullscreenConfig.ts';
+import type TimelineConfig from '../../Config/TimelineConfig.ts';
+import { inject, provide } from '../../Context.ts';
+import type ResponsiveHandler from '../../ResponsiveHandler.ts';
+import Easings from '../Easings.ts';
+import Controls from './controls/index.ts';
+import Viewer from './viewer/index.ts';
 
 export default class Main {
 	container = new LayoutContainer({

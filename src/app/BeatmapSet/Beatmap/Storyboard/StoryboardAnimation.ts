@@ -1,5 +1,5 @@
 import type { Texture } from 'pixi.js';
-import StoryboardSprite from './StoryboardSprite';
+import StoryboardSprite from './StoryboardSprite.ts';
 import {
 	AnimationLoopType,
 	type StoryboardAnimation as StoryboardAnimationData,
@@ -10,13 +10,13 @@ export class StoryboardAnimation extends StoryboardSprite {
 	private _textureArr: Texture[] = [];
 
 	constructor(
-		public data: StoryboardAnimationData,
-		public layerType: StoryboardLayerType
+		public override data: StoryboardAnimationData,
+		public override layerType: StoryboardLayerType
 	) {
 		super(data, layerType);
 	}
 
-	loadTexture(): void {
+	override loadTexture(): void {
 		const textures = this.context.consume<Map<string, Texture>>('textures');
 		if (!textures) return;
 
@@ -32,7 +32,7 @@ export class StoryboardAnimation extends StoryboardSprite {
 		}
 	}
 
-	update(timestamp: number) {
+	override update(timestamp: number) {
 		const f = Math.floor(
 			(timestamp - this.data.startTime) / this.data.frameDelay
 		);

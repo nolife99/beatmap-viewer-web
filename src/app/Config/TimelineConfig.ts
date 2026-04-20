@@ -1,6 +1,6 @@
 import type { FederatedWheelEvent } from 'pixi.js';
-import { Clamp } from '@/utils';
-import ConfigSection from './ConfigSection';
+import { Clamp } from '../utils.ts';
+import ConfigSection from './ConfigSection.ts';
 import type Config from '.';
 
 type TimelineConfigEvents = 'scale' | 'divisor';
@@ -40,8 +40,7 @@ export default class TimelineConfig extends ConfigSection {
 		this.emitChange('divisor', val);
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: It could be any yah
-	onChange(key: TimelineConfigEvents, callback: (newValue: any) => void): void {
+	override onChange(key: TimelineConfigEvents, callback: (newValue: any) => void): void {
 		super.onChange(key, callback);
 	}
 
@@ -61,7 +60,7 @@ export default class TimelineConfig extends ConfigSection {
 		}
 	}
 
-	jsonify(): TimelineProps {
+	override jsonify(): TimelineProps {
 		return {
 			scale: this.scale,
 			divisor: this.divisor

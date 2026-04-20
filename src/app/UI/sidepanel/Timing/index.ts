@@ -1,14 +1,14 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import type { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
 import { Container, type FederatedPointerEvent, Rectangle } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import { inject } from '@/Context';
-import type ResponsiveHandler from '@/ResponsiveHandler';
-import type State from '@/State';
-import AnimationController from '@/UI/animation/AnimationController';
-import Easings from '@/UI/Easings';
-import Point from './Point';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import { inject } from '../../../Context.ts';
+import type ResponsiveHandler from '../../../ResponsiveHandler.ts';
+import type State from '../../../State.ts';
+import AnimationController from '../../animation/AnimationController.ts';
+import Easings from '../../Easings.ts';
+import Point from './Point.ts';
 
 export default class Timing {
 	container: LayoutContainer;

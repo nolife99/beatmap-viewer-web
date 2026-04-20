@@ -1,8 +1,8 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { Color, Sprite, Texture } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject } from '@/Context';
-import type { Game } from '@/Game';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import { inject } from '../../../Context.ts';
+import type { Game } from '../../../Game.ts';
 
 export default class Metadata {
 	container = new LayoutContainer({
@@ -22,19 +22,12 @@ export default class Metadata {
 	sprite = new Sprite();
 
 	constructor() {
-		(async () => {
-			this.sprite.texture = Texture.from('metadata.png');
-			this.sprite.width = 20;
-			this.sprite.height = 20;
-			this.sprite.layout = {
-				width: 20,
-				height: 20
-			};
-			this.sprite.tint =
-				inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
-
-			this.container.addChild(this.sprite);
-		})();
+		this.sprite.texture = Texture.from('metadata.png');
+		this.sprite.width = 20;
+		this.sprite.height = 20;
+		this.sprite.layout = { width: 20, height: 20 };
+		this.sprite.tint = inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
+		this.container.addChild(this.sprite);
 
 		inject<ColorConfig>('config/color')?.onChange(
 			'color',

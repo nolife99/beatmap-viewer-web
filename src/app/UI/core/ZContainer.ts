@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import AnimationController from '../animation/AnimationController';
+import AnimationController from '../animation/AnimationController.ts';
 
 export default class ZContainer extends LayoutContainer {
 	animationController = new AnimationController();

@@ -1,15 +1,15 @@
 import { HitResult } from 'osu-classes';
 import type { Slider, Spinner } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
-import { inject } from '@/Context';
-import { update as argonUpdate } from '@/Skinning/Argon/ArgonJudgement';
-import { update as legacyUpdate } from '@/Skinning/Legacy/LegacyJudgement';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import type SkinManager from '@/Skinning/SkinManager';
-import { Clamp } from '@/utils';
-import type { BaseObjectEvaluation } from '../Replay';
-import AnimatedSkinnableElement from './AnimatedSkinnableElement';
-import type DrawableHitObject from './DrawableHitObject';
+import { inject } from '../../../Context.ts';
+import { update as argonUpdate } from '../../../Skinning/Argon/ArgonJudgement.ts';
+import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacyJudgement.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import type SkinManager from '../../../Skinning/SkinManager.ts';
+import { Clamp } from '../../../utils.ts';
+import type { BaseObjectEvaluation } from '../Replay.ts';
+import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
+import type DrawableHitObject from './DrawableHitObject.ts';
 
 export default class DrawableJudgement extends AnimatedSkinnableElement {
 	container: Container;

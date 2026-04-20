@@ -1,14 +1,14 @@
 import type { Circle } from 'osu-standard-stable';
 import { Sprite } from 'pixi.js';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type SkinningConfig from '@/Config/SkinningConfig';
-import { inject } from '@/Context';
-import { update as argonUpdate } from '@/Skinning/Argon/ArgonApproachCircle';
-import { update as legacyUpdate } from '@/Skinning/Legacy/LegacyApproachCircle';
-import type Skin from '@/Skinning/Skin';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import type SkinningConfig from '../../../Config/SkinningConfig.ts';
+import { inject } from '../../../Context.ts';
+import { update as argonUpdate } from '../../../Skinning/Argon/ArgonApproachCircle.ts';
+import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacyApproachCircle.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
 import type Beatmap from '..';
-import SkinnableElement from './SkinnableElement';
+import SkinnableElement from './SkinnableElement.ts';
 
 export default class DrawableApproachCircle extends SkinnableElement {
 	container = new Sprite();
@@ -94,10 +94,8 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		}
 
 		const comboIndex = this.object.comboIndexWithOffsets % skin.colorsLength;
-		// biome-ignore lint/suspicious/noExplicitAny: It is complicated
-		const color = (skin.config.Colours as any)[
-			`Combo${comboIndex + 1}`
-			] as string;
+		const key = `Combo${comboIndex + 1}` as keyof typeof skin.config.Colours;
+		const color = skin.config.Colours[key] ?? skin.config.Colours.Combo1;
 		this.container.tint = `rgb(${color})`;
 	}
 

@@ -15,7 +15,7 @@ let connectors: HitObjectMini[] = [];
 let currentTime = 0;
 let startTime = 0;
 let previousTime = 0;
-let interval: NodeJS.Timeout;
+let interval: number;
 
 let preempt = 1200;
 let playbackRate = 1;

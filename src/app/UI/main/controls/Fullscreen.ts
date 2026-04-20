@@ -1,8 +1,8 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { Color, Sprite, Texture } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import type FullscreenConfig from '@/Config/FullscreenConfig';
-import { inject } from '@/Context';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import type FullscreenConfig from '../../../Config/FullscreenConfig.ts';
+import { inject } from '../../../Context.ts';
 
 export default class Fullscreen {
 	container = new LayoutContainer({
@@ -19,19 +19,14 @@ export default class Fullscreen {
 	sprite = new Sprite();
 
 	constructor() {
-		(async () => {
-			this.sprite.texture = Texture.from('maximize.png');
-			this.sprite.width = 20;
-			this.sprite.height = 20;
-			this.sprite.layout = {
-				width: 20,
-				height: 20
-			};
-			this.sprite.tint =
-				inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
+		this.sprite.texture = Texture.from('maximize.png');
+		this.sprite.width = 20;
+		this.sprite.height = 20;
+		this.sprite.layout = { width: 20, height: 20 };
+		this.sprite.tint =
+			inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
 
-			this.container.addChild(this.sprite);
-		})();
+		this.container.addChild(this.sprite);
 
 		inject<ColorConfig>('config/color')?.onChange(
 			'color',

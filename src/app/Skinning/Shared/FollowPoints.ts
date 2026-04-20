@@ -1,6 +1,6 @@
 import { Spinner } from 'osu-standard-stable';
-import type DrawableFollowPoints from '@/BeatmapSet/Beatmap/HitObjects/DrawableFollowPoints';
-import Easings from '@/UI/Easings';
+import type DrawableFollowPoints from '../../BeatmapSet/Beatmap/HitObjects/DrawableFollowPoints.ts';
+import Easings from '../../UI/Easings.ts';
 
 export const update = (drawable: DrawableFollowPoints, time: number) => {
 	const timeFadeIn = drawable.startObject.timeFadeIn;

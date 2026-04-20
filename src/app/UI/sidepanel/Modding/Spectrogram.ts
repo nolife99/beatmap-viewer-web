@@ -1,9 +1,9 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { BitmapText, Container, FillGradient, Graphics, Sprite, type Texture } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject } from '@/Context';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import { defaultStyle } from '../Metadata';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import { inject } from '../../../Context.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import { defaultStyle } from '../Metadata.ts';
 
 export default class Spectrogram {
 	container = new Container();

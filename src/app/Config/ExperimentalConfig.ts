@@ -1,5 +1,5 @@
 import type Config from '.';
-import ConfigSection from './ConfigSection';
+import ConfigSection from './ConfigSection.ts';
 
 export type ExperimentalProps = {
 	asyncLoading?: boolean;
@@ -24,7 +24,7 @@ export default class ExperimentalConfig extends ConfigSection {
 		this.asyncLoading = asyncLoading ?? true;
 		this.overlapGameplays = overlapGameplays ?? false;
 
-		const searchParams = new URLSearchParams(window.location.search).get('m');
+		const searchParams = new URLSearchParams(globalThis.location.search).get('m');
 		const modMap: [string, Mods][] = [
 			['HD', 'hidden'],
 			['HR', 'hardRock'],
@@ -196,7 +196,7 @@ export default class ExperimentalConfig extends ConfigSection {
 		});
 	}
 
-	jsonify(): ExperimentalProps {
+	override jsonify(): ExperimentalProps {
 		return {
 			asyncLoading: this.asyncLoading,
 			overlapGameplays: this.overlapGameplays

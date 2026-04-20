@@ -1,9 +1,9 @@
-import type SkinningConfig from '@/Config/SkinningConfig';
-import type { Resource } from '@/ZipHandler';
-import { inject } from '../Context';
-import { getArgon, getDefaultLegacy, getYugen } from '../Initiator';
-import Database from './Database';
-import Skin from './Skin';
+import type SkinningConfig from '../Config/SkinningConfig.ts';
+import type { Resource } from '../ZipHandler/index.ts';
+import { inject } from '../Context.ts';
+import { getArgon, getDefaultLegacy, getYugen } from '../Initiator.ts';
+import Database from './Database.ts';
+import Skin from './Skin.ts';
 
 export type SkinEventCallback = (skin: Skin) => void;
 
@@ -71,7 +71,7 @@ export default class SkinManager {
 
 		inject<SkinningConfig>('config/skinning')?.onChange(
 			'disableBeatmapSkin',
-			async () => {
+			() => {
 				this.emitSkinChange();
 			}
 		);

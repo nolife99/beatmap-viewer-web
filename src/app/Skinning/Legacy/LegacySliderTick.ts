@@ -1,5 +1,5 @@
 import { HitResult } from 'osu-classes';
-import type DrawableSliderTick from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderTick';
+import type DrawableSliderTick from '../../BeatmapSet/Beatmap/HitObjects/DrawableSliderTick.ts';
 
 export const update = (drawable: DrawableSliderTick, time: number) => {
 	const startFadeInTime =

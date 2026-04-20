@@ -1,5 +1,5 @@
 import type Config from '.';
-import ConfigSection from './ConfigSection';
+import ConfigSection from './ConfigSection.ts';
 
 export type Mirror = {
 	name: string;
@@ -62,7 +62,7 @@ export default class MirrorConfig extends ConfigSection {
 		}
 	}
 
-	jsonify(): MirrorProps {
+	override jsonify(): MirrorProps {
 		return {
 			mirror: this.mirror
 		};

@@ -1,23 +1,26 @@
-import { Application, Assets, GpuBlendModesToPixi, RenderTarget, UPDATE_PRIORITY } from 'pixi.js';
-import State from './State';
-import AnimationController, { tweenGroup } from './UI/animation/AnimationController';
-import BeatmapSet from './BeatmapSet';
-import Replay from './BeatmapSet/Beatmap/Replay';
+import { Application, Assets, GpuBlendModesToPixi, RenderTarget, Spritesheet, Texture, UPDATE_PRIORITY } from 'pixi.js';
+import State from './State.ts';
+import AnimationController, { tweenGroup } from './UI/animation/AnimationController.ts';
+import BeatmapSet from './BeatmapSet/index.ts';
+import Replay from './BeatmapSet/Beatmap/Replay.ts';
 import {
 	getBeatmapFromExternalUrl,
 	getBeatmapFromHash,
 	getBeatmapFromId,
 	IDType,
 	processID
-} from './BeatmapSet/BeatmapDownloader';
-import Config from './Config';
-import { inject, provide } from './Context';
-import ResponsiveHandler from './ResponsiveHandler';
-import SkinManager from './Skinning/SkinManager';
-import Loading from './UI/loading';
-import Main from './UI/main';
-import SidePanel from './UI/sidepanel';
-import ZipHandler from './ZipHandler';
+} from './BeatmapSet/BeatmapDownloader.ts';
+import Config from './Config/index.ts';
+import { inject, provide } from './Context.ts';
+import ResponsiveHandler from './ResponsiveHandler.ts';
+import SkinManager from './Skinning/SkinManager.ts';
+import Loading from './UI/loading/index.ts';
+import Main from './UI/main/index.ts';
+import SidePanel from './UI/sidepanel/index.ts';
+import ZipHandler from './ZipHandler/index.ts';
+
+import uiImageAtlas from '../assets/atlas/ui.png';
+import uiJsonData from '../assets/atlas/ui.json' with { type: 'json' };
 
 export class Game {
 	app?: Application;
@@ -34,7 +37,7 @@ export class Game {
 		this.config.experimental.onChange(
 			'mods',
 			({ mods: modsString }: { mods: string }) => {
-				const url = window.location;
+				const url = globalThis.location;
 				const params = new URLSearchParams(url.search);
 
 				if (modsString === '') {
@@ -43,12 +46,12 @@ export class Game {
 					params.set('m', modsString);
 				}
 
-				window.history.replaceState(null, '', `?${params.toString()}`);
+				globalThis.history.replaceState(null, '', `?${params.toString()}`);
 			}
 		);
 
 		this.config.fullscreen.onChange('fullscreen', (isFullscreen) => {
-			const url = new URL(window.location.href);
+			const url = new URL(globalThis.location.href);
 			const params = url.searchParams;
 
 			if (isFullscreen) {
@@ -59,7 +62,7 @@ export class Game {
 				document.body.classList.remove('fullscreen');
 			}
 
-			window.history.replaceState(null, '', url);
+			globalThis.history.replaceState(null, '', url);
 		});
 	}
 
@@ -86,7 +89,10 @@ export class Game {
 			sharedTicker: true,
 			preference: this.config.renderer.renderer
 		});
-		window.__PIXI_APP__ = app;
+
+		(globalThis as typeof globalThis & {
+  			__PIXI_APP__: typeof app;
+		}).__PIXI_APP__ = app;
 
 		app.stage.layout = {
 			width: app.screen.width,
@@ -132,7 +138,10 @@ export class Game {
 	}
 
 	async init() {
-		await Assets.load(['./atlas/ui.json', './atlas/mods.json']);
+		const sheet = new Spritesheet({ texture: await Assets.load(uiImageAtlas), data: uiJsonData });
+		await sheet.parse();
+
+		Assets.cache.set('', sheet);
 
 		const app = provide('ui/app', await this.initApplication());
 		app.ticker.add(() => {
@@ -141,7 +150,7 @@ export class Game {
 		}, undefined, UPDATE_PRIORITY.INTERACTION);
 
 		this.config.fullscreen.fullscreen =
-			new URLSearchParams(window.location.search).get('fullscreen') === 'true';
+			new URLSearchParams(globalThis.location.search).get('fullscreen') === 'true';
 
 		provide('ui/loading', new Loading);
 
@@ -220,8 +229,8 @@ export class Game {
 			this.processFile((e.target as HTMLInputElement)?.files?.[0] as File);
 		});
 
-		this.config.renderer.onChange('antialiasing', () => window.location.reload());
-		this.config.renderer.onChange('renderer', () => window.location.reload());
+		this.config.renderer.onChange('antialiasing', () => globalThis.location.reload());
+		this.config.renderer.onChange('renderer', () => globalThis.location.reload());
 
 		await inject<SkinManager>('skinManager')?.loadSkins();
 		if (await this.loadFromHash() || await this.loadFromQuery()) return;
@@ -432,7 +441,7 @@ export class Game {
 	}
 
 	private async loadFromHash() {
-		const url = new URL(window.location.href).hash.slice(1);
+		const url = new URL(globalThis.location.href).hash.slice(1);
 		if (!url) return false;
 
 		inject<Loading>('ui/loading')?.on();
@@ -462,7 +471,7 @@ export class Game {
 	}
 
 	private async loadFromQuery() {
-		const searchParams = new URLSearchParams(window.location.search);
+		const searchParams = new URLSearchParams(globalThis.location.search);
 
 		const queries = searchParams.getAll('b');
 		const IDs = queries.length !== 0 ? queries : [];

@@ -2,13 +2,7 @@ import { Group, Tween } from '@tweenjs/tween.js';
 import bezier from 'bezier-easing';
 
 export const tweenGroup = new Group();
-
 export const defaultEasing = bezier(0, 0.4, 0, 1.0);
-
-type AnimationOptions = {
-	easing?: (t: number) => number;
-	duration: number;
-};
 
 export default class AnimationController {
 	animations: Map<string, Tween> = new Map();

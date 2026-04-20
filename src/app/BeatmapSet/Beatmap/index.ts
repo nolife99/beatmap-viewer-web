@@ -9,30 +9,33 @@ import {
 	type StandardBeatmap,
 	type StandardDifficultyAttributes,
 	type StandardDifficultyCalculator,
+	StandardDifficultyHitObject,
 	StandardRuleset,
 	type StandardStrainSkill
 } from 'osu-standard-stable';
 import { Color, type ColorSource } from 'pixi.js';
-import type Audio from '@/Audio';
-import type BackgroundConfig from '@/Config/BackgroundConfig';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type ProgressBar from '@/UI/main/controls/ProgressBar';
-import Gameplay from '@/UI/main/viewer/Gameplay';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
-import type Timeline from '@/UI/main/viewer/Timeline';
-import type { StrainPoint } from '@/UI/sidepanel/Modding/DifficultyGraph';
-import type Timing from '@/UI/sidepanel/Timing';
-import { difficultyRange, getDiffColour } from '@/utils';
-import { inject, ScopedClass } from '@/Context.ts';
+import type Audio from '../../Audio/index.ts';
+import type BackgroundConfig from '../../Config/BackgroundConfig.ts';
+import type ExperimentalConfig from '../../Config/ExperimentalConfig.ts';
+import type ProgressBar from '../../UI/main/controls/ProgressBar.ts';
+import Gameplay from '../../UI/main/viewer/Gameplay/index.ts';
+import type Gameplays from '../../UI/main/viewer/Gameplay/Gameplays.ts';
+import type Timeline from '../../UI/main/viewer/Timeline/index.ts';
+import type { StrainPoint } from '../../UI/sidepanel/Modding/DifficultyGraph.ts';
+import type Timing from '../../UI/sidepanel/Timing/index.ts';
+import { difficultyRange, getDiffColour } from '../../utils.ts';
+import { inject, ScopedClass } from '../../Context.ts';
 import type BeatmapSet from '..';
-import DrawableFollowPoints from './HitObjects/DrawableFollowPoints';
-import DrawableHitCircle from './HitObjects/DrawableHitCircle';
-import type DrawableHitObject from './HitObjects/DrawableHitObject';
-import type { IHasApproachCircle } from './HitObjects/DrawableHitObject';
-import DrawableSlider from './HitObjects/DrawableSlider';
-import DrawableSpinner from './HitObjects/DrawableSpinner';
-import type Replay from './Replay';
-import ObjectsWorker from './Worker/Objects.ts?worker';
+import DrawableFollowPoints from './HitObjects/DrawableFollowPoints.ts';
+import DrawableHitCircle from './HitObjects/DrawableHitCircle.ts';
+import type DrawableHitObject from './HitObjects/DrawableHitObject.ts';
+import type { IHasApproachCircle } from './HitObjects/DrawableHitObject.ts';
+import DrawableSlider from './HitObjects/DrawableSlider.ts';
+import DrawableSpinner from './HitObjects/DrawableSpinner.ts';
+import type Replay from './Replay.ts';
+
+// @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix
+import ObjectsWorker from './Worker/Objects.ts?worker&inline';
 
 const decoder = new BeatmapDecoder();
 const ruleset = new StandardRuleset();
@@ -59,7 +62,7 @@ export default class Beatmap extends ScopedClass {
 	replay?: Replay;
 	private loaded = false;
 	private previousConnectors = new Set<number>();
-	private workerUpdate: ((this: Worker, ev: MessageEvent<any>) => any) | null = null;
+	private workerUpdate: ((this: Worker, ev: MessageEvent) => void) | null = null;
 
 	constructor(public raw: string) {
 		super();
@@ -269,7 +272,7 @@ export default class Beatmap extends ScopedClass {
 		});
 
 		// biome-ignore lint/suspicious/noExplicitAny: Can't specify event type
-		this.worker.addEventListener('message', this.workerUpdate = (event: any) => {
+		this.worker.addEventListener('message', this.workerUpdate = event => {
 			switch (event.data.type) {
 				case 'update': {
 					const { objects, connectors, currentTime, previousTime } = event.data;
@@ -521,7 +524,6 @@ export default class Beatmap extends ScopedClass {
 	private calculateStrainGraph(mods: string) {
 		const modsCombination = ruleset.createModCombination(mods);
 		const beatmap: StandardBeatmap =
-			// biome-ignore lint/complexity/useLiteralKeys: Access Private
 			this.difficultyCalculator['_getWorkingBeatmap'](modsCombination);
 
 		if (!beatmap.hitObjects.length) return;
@@ -534,22 +536,18 @@ export default class Beatmap extends ScopedClass {
 		const clockRate = beatmap.difficulty.clockRate ?? 1;
 
 		const skills: StandardStrainSkill[] = this.difficultyCalculator[
-			// biome-ignore lint/complexity/useLiteralKeys: Access Private
 			'_createSkills'
 			](beatmap, modsCombination).filter(
 			(skill): skill is StandardStrainSkill => 'difficultyValue' in skill
 		);
 
-		// biome-ignore lint/complexity/useLiteralKeys: Access Private
 		const aimStrainPeaks = skills[1]['_strainPeaks'];
-		// biome-ignore lint/complexity/useLiteralKeys: Access Private
 		const speedStrainPeaks = skills[1]['_strainPeaks'];
 
-		// @ts-ignore
-		for (const hitObject of this.difficultyCalculator._getDifficultyHitObjects(
-			beatmap,
-			clockRate
-		)) {
+		const objs: StandardDifficultyHitObject[] = 
+			this.difficultyCalculator["_getDifficultyHitObjects"](beatmap, clockRate);
+			
+		for (const hitObject of objs) {
 			for (const skill of skills) {
 				skill.process(hitObject);
 			}

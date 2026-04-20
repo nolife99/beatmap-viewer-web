@@ -1,11 +1,11 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { BitmapText, Container } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject, provide } from '@/Context';
-import type ResponsiveHandler from '@/ResponsiveHandler';
-import { defaultStyle } from '../Metadata';
-import DifficultyGraph from './DifficultyGraph';
-import Spectrogram from './Spectrogram';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import { inject, provide } from '../../../Context.ts';
+import type ResponsiveHandler from '../../../ResponsiveHandler.ts';
+import { defaultStyle } from '../Metadata.ts';
+import DifficultyGraph from './DifficultyGraph.ts';
+import Spectrogram from './Spectrogram.ts';
 
 export default class Modding {
 	container: LayoutContainer;

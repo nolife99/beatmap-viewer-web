@@ -1,0 +1,13 @@
+{
+  "forwardPorts": [5173],
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers-community/features/deno:1": {}
+  },
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite HMR"
+    }
+  },
+  "postAttachCommand": "gh codespace ports visibility 5173:public -c $CODESPACE_NAME"
+}

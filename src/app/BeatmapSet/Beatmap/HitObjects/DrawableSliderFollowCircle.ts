@@ -1,16 +1,16 @@
 import type { Slider } from 'osu-standard-stable';
 import { Sprite } from 'pixi.js';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import { inject } from '@/Context';
-import { update as argonUpdate } from '@/Skinning/Argon/ArgonSliderFollowCircle';
-import { update as legacyUpdate } from '@/Skinning/Legacy/LegacySliderFollowCircle';
-import type Skin from '@/Skinning/Skin';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
-import { Clamp } from '../../../utils';
+import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import { inject } from '../../../Context.ts';
+import { update as argonUpdate } from '../../../Skinning/Argon/ArgonSliderFollowCircle.ts';
+import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacySliderFollowCircle.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
+import { Clamp } from '../../../utils.ts';
 import type Beatmap from '..';
-import AnimatedSkinnableElement from './AnimatedSkinnableElement';
-import type DrawableSlider from './DrawableSlider';
+import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
+import type DrawableSlider from './DrawableSlider.ts';
 
 export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement {
 	container;

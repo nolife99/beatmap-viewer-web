@@ -9,17 +9,17 @@ import {
 	type StandardHitObject
 } from 'osu-standard-stable';
 import { BitmapText, FillGradient, Graphics } from 'pixi.js';
-import type TimelineConfig from '@/Config/TimelineConfig';
-import { type Context, inject } from '@/Context';
-import { DEFAULT_SCALE } from '@/UI/main/viewer/Timeline';
-import { darken } from '@/utils';
+import type TimelineConfig from '../../../Config/TimelineConfig.ts';
+import { type Context, inject } from '../../../Context.ts';
+import { DEFAULT_SCALE } from '../../../UI/main/viewer/Timeline/index.ts';
+import { darken } from '../../../utils.ts';
 import type Beatmap from '..';
-import type DrawableSlider from '../HitObjects/DrawableSlider';
-import type TimelineHitCircle from './TimelineHitCircle';
-import TimelineHitObject from './TimelineHitObject';
-import TimelineSliderHead from './TimelineSliderHead';
-import TimelineSliderRepeat from './TimelineSliderRepeat';
-import TimelineSliderTail from './TimelineSliderTail';
+import type DrawableSlider from '../HitObjects/DrawableSlider.ts';
+import type TimelineHitCircle from './TimelineHitCircle.ts';
+import TimelineHitObject from './TimelineHitObject.ts';
+import TimelineSliderHead from './TimelineSliderHead.ts';
+import TimelineSliderRepeat from './TimelineSliderRepeat.ts';
+import TimelineSliderTail from './TimelineSliderTail.ts';
 
 const innerColor = darken([1, 1, 1, 1], 0.1);
 
@@ -135,13 +135,12 @@ export default class TimelineSlider extends TimelineHitObject {
 		});
 	}
 
-	get object() {
-		return this._object as Slider;
+	override get object() {
+		return super.object as Slider;
 	}
 
-	set object(val: Slider) {
+	override set object(val: Slider) {
 		super.object = val;
-		this._object = val;
 		this.length =
 			val.duration /
 			(DEFAULT_SCALE / (inject<TimelineConfig>('config/timeline')?.scale ?? 1));
@@ -171,12 +170,8 @@ export default class TimelineSlider extends TimelineHitObject {
 		this.refreshSprite();
 	}
 
-	get isSelected() {
-		return this._isSelected;
-	}
-
-	set isSelected(val: boolean) {
-		this._isSelected = val;
+	override set isSelected(val: boolean) {
+		super.isSelected = val;
 		for (const circle of this.circles) {
 			circle.isSelected = val;
 		}
@@ -276,7 +271,7 @@ export default class TimelineSlider extends TimelineHitObject {
 		}
 	}
 
-	hook(context: Context) {
+	override hook(context: Context) {
 		super.hook(context);
 
 		for (const object of this.circles) {
@@ -299,13 +294,18 @@ export default class TimelineSlider extends TimelineHitObject {
 		for (const object of this.circles.filter(
 			(object) => object instanceof TimelineSliderTail || TimelineSliderRepeat
 		)) {
-			object.container.x =
-				(object.object.startTime +
-					(object instanceof TimelineSliderTail &&
-					!(object instanceof TimelineSliderRepeat)
-						? 36
-						: 0)) /
-				(DEFAULT_SCALE / scale);
+			try
+			{
+				object.container.x =
+					(object.object.startTime +
+						(object instanceof TimelineSliderTail &&
+						!(object instanceof TimelineSliderRepeat)
+							? 36
+							: 0)) /
+					(DEFAULT_SCALE / scale);
+			} catch {
+				console.log(object.object);
+			}
 		}
 	}
 }

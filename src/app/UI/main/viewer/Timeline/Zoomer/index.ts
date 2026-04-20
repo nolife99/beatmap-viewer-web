@@ -1,8 +1,8 @@
-import type FullscreenConfig from '@/Config/FullscreenConfig';
-import type TimelineConfig from '@/Config/TimelineConfig';
-import { inject } from '@/Context';
-import ZContainer from '@/UI/core/ZContainer';
-import Button from './Button';
+import type FullscreenConfig from '../../../../../Config/FullscreenConfig.ts';
+import type TimelineConfig from '../../../../../Config/TimelineConfig.ts';
+import { inject } from '../../../../../Context.ts';
+import ZContainer from '../../../../core/ZContainer.ts';
+import Button from './Button.ts';
 
 export default class Zoomer {
 	container = new ZContainer({

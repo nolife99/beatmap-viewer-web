@@ -1,10 +1,8 @@
-import type { Resource } from './ZipHandler';
+import type { Resource } from './ZipHandler/index.ts';
 
 async function tryFetchBlob(url: string): Promise<Blob | null> {
 	try {
 		const res = await fetch(url);
-
-		// ky throws on non-2xx — replicate behavior
 		if (!res.ok) return null;
 
 		return await res.blob();
@@ -48,8 +46,7 @@ function buildDefaults(): string[] {
 	return [...defaults, ...hitSounds];
 }
 
-export async function getArgon() {
-
+export function getArgon() {
 	const filenames = [
 		...buildDefaults(),
 		'followpoint.png',
@@ -79,8 +76,7 @@ export async function getArgon() {
 	return loadSkinResources('./skinning/argon', filenames);
 }
 
-export async function getDefaultLegacy() {
-
+export function getDefaultLegacy() {
 	const filenames = [
 		'approachcircle@2x.png',
 		...buildDefaults(),
@@ -117,8 +113,7 @@ export async function getDefaultLegacy() {
 	return loadSkinResources('./skinning/legacy', filenames);
 }
 
-export async function getYugen() {
-
+export function getYugen() {
 	const filenames = [
 		'approachcircle.png',
 		'cursor@2x.png',

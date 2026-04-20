@@ -1,6 +1,6 @@
-import type DrawableSliderHead from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderHead';
-import type GameplayConfig from '@/Config/GameplayConfig';
-import { inject } from '@/Context';
+import type DrawableSliderHead from '../../BeatmapSet/Beatmap/HitObjects/DrawableSliderHead.ts';
+import type GameplayConfig from '../../Config/GameplayConfig.ts';
+import { inject } from '../../Context.ts';
 
 export const update = (drawable: DrawableSliderHead, time: number) => {
 	const startTime = drawable.evaluation?.hitTime ?? drawable.object.startTime;

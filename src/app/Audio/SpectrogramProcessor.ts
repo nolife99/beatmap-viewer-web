@@ -1,8 +1,8 @@
 import { Texture } from 'pixi.js';
 import WaveSurfer from 'wavesurfer.js';
-import { inject } from '@/Context';
-import type SpectrogramContainer from '@/UI/sidepanel/Modding/Spectrogram';
-import SpectrogramPlugin from '@/Audio/spectrogram/spectrogram.js';
+import { inject } from '../Context.ts';
+import type SpectrogramContainer from '../UI/sidepanel/Modding/Spectrogram.ts';
+import SpectrogramPlugin from './spectrogram/spectrogram.ts';
 
 const sampleRate = 40000;
 const emptyWavBlob = createEmptyWavBlob();
@@ -86,7 +86,7 @@ export default class SpectrogramProcessor {
 
 			if (!canvas) return;
 
-			setTimeout(async () => {
+			setTimeout(() => {
 				console.timeEnd('Spectrogram ready');
 				waveSurfer.destroy();
 

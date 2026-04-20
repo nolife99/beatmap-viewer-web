@@ -1,9 +1,9 @@
 import type { StandardHitObject } from 'osu-standard-stable';
 import type { Container } from 'pixi.js';
-import type DrawableApproachCircle from './DrawableApproachCircle';
-import SkinnableElement from './SkinnableElement';
+import type DrawableApproachCircle from './DrawableApproachCircle.ts';
+import SkinnableElement from './SkinnableElement.ts';
 import { HitResult, type LegacyReplayFrame } from 'osu-classes';
-import type { BaseObjectEvaluation } from '../Replay';
+import type { BaseObjectEvaluation } from '../Replay.ts';
 
 export interface IHasApproachCircle {
 	approachCircle: DrawableApproachCircle;

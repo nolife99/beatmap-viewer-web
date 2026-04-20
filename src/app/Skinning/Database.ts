@@ -3,7 +3,7 @@ export default class Database {
 
 	init() {
 		return new Promise((resolve, reject) => {
-			const request = window.indexedDB.open('josuDB', 1);
+			const request = globalThis.indexedDB.open('josuDB', 1);
 
 			request.onupgradeneeded = (event) => {
 				this.db = (event.target as IDBOpenDBRequest).result;

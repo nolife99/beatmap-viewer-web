@@ -1,7 +1,7 @@
 import type { SliderRepeat } from 'osu-standard-stable';
 import { Graphics, GraphicsContext, Sprite } from 'pixi.js';
-import type Skin from '@/Skinning/Skin';
-import TimelineSliderTail from './TimelineSliderTail';
+import type Skin from '../../../Skinning/Skin.ts';
+import TimelineSliderTail from './TimelineSliderTail.ts';
 
 const ctx = new GraphicsContext().circle(0, 0, 15).fill([0, 0, 0, 0.3]);
 
@@ -18,7 +18,7 @@ export default class TimelineSliderRepeat extends TimelineSliderTail {
 		this.refreshSprite();
 	}
 
-	refreshSprite() {
+	override refreshSprite() {
 		if (!this.sprite || !this.graphics) return;
 		super.refreshSprite();
 

@@ -1,12 +1,12 @@
-import type BeatmapSet from '@/BeatmapSet';
-import type AudioConfig from '@/Config/AudioConfig';
-import { inject, ScopedClass } from '../Context';
-import SpectrogramProcessor from './SpectrogramProcessor';
-
+import type BeatmapSet from '../BeatmapSet/index.ts';
+import type AudioConfig from '../Config/AudioConfig.ts';
+import { inject, ScopedClass } from '../Context.ts';
+import SpectrogramProcessor from './SpectrogramProcessor.ts';
 import { SoundTouchNode } from '@soundtouchjs/audio-worklet';
+import soundTouchProcessor from '../../assets/soundtouch-processor.js?url';
 
 const audioContext = new AudioContext;
-await SoundTouchNode.register(audioContext, '/soundtouch-processor.js');
+audioContext.audioWorklet.addModule(soundTouchProcessor);
 
 export function getAudioContext() {
 	return audioContext;
@@ -130,7 +130,7 @@ export default class Audio extends ScopedClass {
 		this.sourceNode.buffer = this.audioBuffer;
 		this.sourceNode.loop = false;
 
-		let offsetSec = this._currentTime / 1000;
+		const offsetSec = this._currentTime / 1000;
 
 		if (this.playbackRate !== 1) {
 			this.soundTouchNode = new SoundTouchNode(ctx);

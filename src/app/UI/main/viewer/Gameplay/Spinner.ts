@@ -1,5 +1,5 @@
-import { tweenGroup } from '@/UI/animation/AnimationController';
-import Easings from '@/UI/Easings';
+import { tweenGroup } from '../../../animation/AnimationController.ts';
+import Easings from '../../../Easings.ts';
 import { Tween } from '@tweenjs/tween.js';
 import { Graphics } from 'pixi.js';
 import type Gameplay from '.';

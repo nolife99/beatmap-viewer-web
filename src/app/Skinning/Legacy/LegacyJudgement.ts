@@ -1,8 +1,8 @@
 import { HitResult } from 'osu-classes';
 import type { Slider, Spinner } from 'osu-standard-stable';
-import type DrawableJudgement from '@/BeatmapSet/Beatmap/HitObjects/DrawableJudgement';
-import Easings from '@/UI/Easings';
-import { Clamp } from '@/utils';
+import type DrawableJudgement from '../../BeatmapSet/Beatmap/HitObjects/DrawableJudgement.ts';
+import Easings from '../../UI/Easings.ts';
+import { Clamp } from '../../utils.ts';
 
 export const update = (drawable: DrawableJudgement, timestamp: number) => {
 	if (!drawable.evaluation) {

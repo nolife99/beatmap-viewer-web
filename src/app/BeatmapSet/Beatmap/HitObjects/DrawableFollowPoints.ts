@@ -1,12 +1,12 @@
 import type { Vector2 } from 'osu-classes';
 import type { Slider, StandardHitObject } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
-import { update } from '@/Skinning/Shared/FollowPoints';
-import type Skin from '@/Skinning/Skin';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import { Clamp } from '@/utils';
-import AnimatedSkinnableElement from './AnimatedSkinnableElement';
-import type { Context } from '@/Context';
+import { update } from '../../../Skinning/Shared/FollowPoints.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import { Clamp } from '../../../utils.ts';
+import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
+import type { Context } from '../../../Context.ts';
 
 export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 	container: Container = new Container();
@@ -86,7 +86,7 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		) ?? [BLANK_TEXTURE];
 	}
 
-	hook(context: Context) {
+	override hook(context: Context) {
 		super.hook(context);
 		this.updateObjects(this.startObject, this.endObject);
 		return this;

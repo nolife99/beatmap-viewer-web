@@ -1,16 +1,16 @@
-import type { Slider, Spinner, StandardHitObject } from 'osu-standard-stable';
-import type BeatmapSet from '@/BeatmapSet';
-import { inject } from '@/Context';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import type ProgressBar from '@/UI/main/controls/ProgressBar';
+import type { Slider, Spinner } from 'osu-standard-stable';
+import type BeatmapSet from '../../index.ts';
+import { inject } from '../../../Context.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
 import type Beatmap from '..';
-import type TimelineHitCircle from '../Timeline/TimelineHitCircle';
-import TimelineSlider from '../Timeline/TimelineSlider';
-import DrawableHitCircle from './DrawableHitCircle';
-import { TAIL_LENIENCY } from './DrawableSliderTail';
-import DrawableSpinnerApproachCircle from './DrawableSpinnerApproachCircle';
+import type TimelineHitCircle from '../Timeline/TimelineHitCircle.ts';
+import TimelineSlider from '../Timeline/TimelineSlider.ts';
+import DrawableHitCircle from './DrawableHitCircle.ts';
+import { TAIL_LENIENCY } from './DrawableSliderTail.ts';
+import DrawableSpinnerApproachCircle from './DrawableSpinnerApproachCircle.ts';
 import { HitResult, type LegacyReplayFrame } from 'osu-classes';
-import { Clamp } from '@/utils';
+import { Clamp } from '../../../utils.ts';
 
 export default class DrawableSpinner extends DrawableHitCircle {
 	constructor(object: Spinner) {
@@ -37,22 +37,14 @@ export default class DrawableSpinner extends DrawableHitCircle {
 		) as unknown as TimelineHitCircle;
 	}
 
-	get object() {
-		return super.object;
-	}
-
-	set object(val: StandardHitObject) {
-		super.object = val;
-	}
-
-	getTimeRange(): { start: number; end: number } {
+	override getTimeRange(): { start: number; end: number } {
 		return {
 			start: this.object.startTime - this.object.timePreempt,
 			end: (this.object as Spinner).endTime + 800
 		};
 	}
 
-	refreshSprite(): void {
+	override refreshSprite(): void {
 		super.refreshSprite();
 
 		this.hitCircleOverlay.texture =
@@ -64,7 +56,7 @@ export default class DrawableSpinner extends DrawableHitCircle {
 		this.container.tint = 0xffffff;
 	}
 
-	update(time: number) {
+	override update(time: number) {
 		this.approachCircle.update(time);
 		this.judgement.frame(time);
 
@@ -96,7 +88,7 @@ export default class DrawableSpinner extends DrawableHitCircle {
 		this.wrapper.alpha = 1;
 	}
 
-	playHitSound(time: number, _?: number): void {
+	override playHitSound(time: number, _?: number): void {
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const endTime = (this.object as Spinner).endTime;
 		const isSeeking =

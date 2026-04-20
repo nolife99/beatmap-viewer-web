@@ -1,6 +1,6 @@
 import { AVSeekFlag, WebDemuxer } from 'web-demuxer';
-import { debounce } from '@/utils';
-import { MessageType, type WorkerPayload } from './types';
+import { debounce } from '../utils.ts';
+import { MessageType, type WorkerPayload } from './types.ts';
 
 let engine: VideoEngine | undefined;
 
@@ -56,7 +56,7 @@ function avcoti_to_str(s: string) {
 	};
 }
 
-function h264avc_to_string(s: string) {
+function _h264avc_to_string(s: string) {
 	const REGEX = /(avc1|avc2|svc1|mvc1|mvc2)\.([0-9a-f]{6})/i;
 
 	if (false === REGEX.test(s)) return null;
@@ -91,7 +91,7 @@ class VideoEngine {
 	seek: (timestamp: number) => void;
 	pauseResolver?: (value: unknown) => void;
 
-	timer?: NodeJS.Timeout;
+	timer?: number;
 	currentFrame?: VideoFrame;
 
 	offset = 0;
@@ -242,7 +242,9 @@ class VideoEngine {
 		if (currentChunk.type === 'key') return index;
 
 		let i = index;
-		for (; i > 0 && this.encodedChunks[i].type !== "key"; i--) {}
+		for (; i > 0 && this.encodedChunks[i].type !== "key"; i--) {
+			//
+		}
 
 		return i;
 	}
@@ -268,7 +270,7 @@ class VideoEngine {
 		}
 	}
 
-	async play(timestamp: number) {
+	play(timestamp: number) {
 		this.status = 'PLAY';
 
 		this.absStartTime = performance.now();

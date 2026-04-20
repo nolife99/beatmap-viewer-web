@@ -1,9 +1,9 @@
 import { HitResult } from 'osu-classes';
-import type DrawableSlider from '@/BeatmapSet/Beatmap/HitObjects/DrawableSlider';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type GameplayConfig from '@/Config/GameplayConfig';
-import { inject } from '@/Context';
-import { Clamp } from '@/utils';
+import type DrawableSlider from '../../BeatmapSet/Beatmap/HitObjects/DrawableSlider.ts';
+import type ExperimentalConfig from '../../Config/ExperimentalConfig.ts';
+import type GameplayConfig from '../../Config/GameplayConfig.ts';
+import { inject } from '../../Context.ts';
+import { Clamp } from '../../utils.ts';
 
 export const sharedUpdate = (drawable: DrawableSlider, time: number) => {
 	const isHD = inject<ExperimentalConfig>('config/experimental')?.hidden;

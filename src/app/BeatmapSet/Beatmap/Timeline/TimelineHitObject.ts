@@ -1,9 +1,9 @@
 import type { StandardHitObject } from 'osu-standard-stable';
 import { Container } from 'pixi.js';
-import type TimelineConfig from '@/Config/TimelineConfig';
-import { inject } from '@/Context';
-import { DEFAULT_SCALE } from '@/UI/main/viewer/Timeline';
-import SkinnableElement from '../HitObjects/SkinnableElement';
+import type TimelineConfig from '../../../Config/TimelineConfig.ts';
+import { inject } from '../../../Context.ts';
+import { DEFAULT_SCALE } from '../../../UI/main/viewer/Timeline/index.ts';
+import SkinnableElement from '../HitObjects/SkinnableElement.ts';
 
 export default abstract class TimelineHitObject extends SkinnableElement {
 	container: Container = new Container({

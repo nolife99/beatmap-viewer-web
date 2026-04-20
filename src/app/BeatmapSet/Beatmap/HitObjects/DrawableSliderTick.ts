@@ -1,17 +1,17 @@
 import { HitResult, type HitSample as Sample, type LegacyReplayFrame, Vector2 } from 'osu-classes';
 import type { Slider, SliderTick } from 'osu-standard-stable';
 import { Sprite } from 'pixi.js';
-import type BeatmapSet from '@/BeatmapSet';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import { inject } from '@/Context';
-import { update } from '@/Skinning/Legacy/LegacySliderTick';
-import type Skin from '@/Skinning/Skin';
-import type ProgressBar from '@/UI/main/controls/ProgressBar';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
-import HitSample from '../../../Audio/HitSample';
+import type BeatmapSet from '../../index.ts';
+import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import { inject } from '../../../Context.ts';
+import { update } from '../../../Skinning/Legacy/LegacySliderTick.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
+import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
+import HitSample from '../../../Audio/HitSample.ts';
 import type Beatmap from '..';
-import DrawableHitObject from './DrawableHitObject';
-import type DrawableSlider from './DrawableSlider';
+import DrawableHitObject from './DrawableHitObject.ts';
+import type DrawableSlider from './DrawableSlider.ts';
 
 export default class DrawableSliderTick extends DrawableHitObject {
 	container: Sprite;
@@ -116,7 +116,7 @@ export default class DrawableSliderTick extends DrawableHitObject {
 				: 0xffffff;
 	}
 
-	playHitSound(time: number): void {
+	override playHitSound(time: number): void {
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const isSeeking =
 			inject<ProgressBar>('ui/main/controls/progress')?.isSeeking ||

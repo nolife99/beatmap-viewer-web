@@ -14,11 +14,11 @@
 	UniformGroup,
 	UPDATE_PRIORITY
 } from 'pixi.js';
-import type RendererConfig from '@/Config/RendererConfig';
-import { inject } from '@/Context';
-import { darken, lighten } from '@/utils.ts';
 import pool from '@stdlib/array-pool';
-import type { SliderProgressResult } from './CalculateSliderProgress';
+import type RendererConfig from '../../../../Config/RendererConfig.ts';
+import { inject } from '../../../../Context.ts';
+import { darken, lighten } from '../../../../utils.ts';
+import type { SliderProgressResult } from './CalculateSliderProgress.ts';
 import fragment from './Shaders/sliderShader.frag?raw';
 import vertex from './Shaders/sliderShader.vert?raw';
 import gpuSrc from './Shaders/sliderShader.wgsl?raw';

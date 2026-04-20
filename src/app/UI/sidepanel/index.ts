@@ -1,15 +1,15 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { BitmapText, Sprite, Texture } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject, provide } from '@/Context';
-import type { Game } from '@/Game';
-import type ResponsiveHandler from '@/ResponsiveHandler';
-import type State from '@/State';
-import type { SidebarState } from '@/State';
-import ZContainer from '../core/ZContainer';
-import Metadata from './Metadata';
-import Modding from './Modding';
-import Timing from './Timing';
+import type ColorConfig from '../../Config/ColorConfig.ts';
+import { inject, provide } from '../../Context.ts';
+import type { Game } from '../../Game.ts';
+import type ResponsiveHandler from '../../ResponsiveHandler.ts';
+import type State from '../../State.ts';
+import type { SidebarState } from '../../State.ts';
+import ZContainer from '../core/ZContainer.ts';
+import Metadata from './Metadata.ts';
+import Modding from './Modding/index.ts';
+import Timing from './Timing/index.ts';
 
 export default class SidePanel {
 	tabs = [
@@ -129,13 +129,9 @@ export default class SidePanel {
 				height: 20
 			}
 		});
-
-		(async () => {
-			closeButton.texture = Texture.from('x.png');
-
-			closeButton.tint =
-				inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
-		})();
+	
+		closeButton.texture = Texture.from('x.png');
+		closeButton.tint = inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
 
 		inject<ColorConfig>('config/color')?.onChange('color', ({ text }) => {
 			closeButton.tint = text;

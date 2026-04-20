@@ -1,8 +1,8 @@
 import type { TimingPoint } from 'osu-classes';
 import { Container, Graphics, Text } from 'pixi.js';
-import type TimelineConfig from '@/Config/TimelineConfig';
-import { inject } from '@/Context';
-import { DEFAULT_SCALE } from '@/UI/main/viewer/Timeline';
+import type TimelineConfig from '../../../Config/TimelineConfig.ts';
+import { inject } from '../../../Context.ts';
+import { DEFAULT_SCALE } from '../../../UI/main/viewer/Timeline/index.ts';
 
 export default class TimelineTimingPoint {
 	container: Container = new Container();

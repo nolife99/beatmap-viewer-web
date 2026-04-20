@@ -1,12 +1,12 @@
 import * as d3 from 'd3';
 import type { Circle } from 'osu-standard-stable';
 import { Sprite } from 'pixi.js';
-import type { Context } from '@/Context';
-import type Skin from '@/Skinning/Skin';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import DrawableDefaults from '../HitObjects/DrawableDefaults';
-import type DrawableHitCircle from '../HitObjects/DrawableHitCircle';
-import TimelineHitObject from './TimelineHitObject';
+import type { Context } from '../../../Context.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import DrawableDefaults from '../HitObjects/DrawableDefaults.ts';
+import type DrawableHitCircle from '../HitObjects/DrawableHitCircle.ts';
+import TimelineHitObject from './TimelineHitObject.ts';
 
 export default class TimelineHitCircle extends TimelineHitObject {
 	hitCircle: Sprite;
@@ -39,22 +39,17 @@ export default class TimelineHitCircle extends TimelineHitObject {
 		this.refreshSprite();
 	}
 
-	get object() {
-		return this._object;
+	override get object() {
+		return super.object as Circle;
 	}
 
-	set object(val: Circle) {
+	override set object(val: Circle) {
 		super.object = val;
-		this._object = val;
 		if (this.defaults) this.defaults.object = val;
 	}
 
-	get isSelected() {
-		return this._isSelected;
-	}
-
-	set isSelected(val: boolean) {
-		this._isSelected = val;
+	override set isSelected(val: boolean) {
+		super.isSelected = val;
 		this.select.visible = val;
 	}
 
@@ -112,7 +107,7 @@ export default class TimelineHitCircle extends TimelineHitObject {
 		});
 	}
 
-	hook(context: Context) {
+	override hook(context: Context) {
 		super.hook(context);
 
 		this.refreshSprite();

@@ -1,7 +1,7 @@
 import type { Spinner } from 'osu-standard-stable';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import { Clamp } from '@/utils';
-import DrawableApproachCircle from './DrawableApproachCircle';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import { Clamp } from '../../../utils.ts';
+import DrawableApproachCircle from './DrawableApproachCircle.ts';
 
 export default class DrawableSpinnerApproachCircle extends DrawableApproachCircle {
 	constructor(object: Spinner) {
@@ -10,7 +10,7 @@ export default class DrawableSpinnerApproachCircle extends DrawableApproachCircl
 		this.container.scale.set(480 / 384);
 	}
 
-	refreshSprite(): void {
+	override refreshSprite(): void {
 		super.refreshSprite();
 		this.container.texture =
 			this.skinManager?.getCurrentSkin().getTexture('spinner-approachcircle') ??
@@ -19,7 +19,7 @@ export default class DrawableSpinnerApproachCircle extends DrawableApproachCircl
 		this.container.tint = 0xffffff;
 	}
 
-	update(time: number) {
+	override update(time: number) {
 		const startFadeInTime = this.object.startTime - this.object.timePreempt;
 		const fadeInDuration = Math.min(
 			this.object.timeFadeIn,

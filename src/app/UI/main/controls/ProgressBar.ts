@@ -1,9 +1,9 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { Color, type ColorSource, type FederatedPointerEvent, Graphics } from 'pixi.js';
-import type Audio from '@/Audio';
-import type BeatmapSet from '@/BeatmapSet';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject } from '@/Context';
+import type Audio from '../../../Audio/index.ts';
+import type BeatmapSet from '../../../BeatmapSet/index.ts';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import { inject } from '../../../Context.ts';
 
 export default class ProgressBar {
 	container = new LayoutContainer({
@@ -178,7 +178,7 @@ export default class ProgressBar {
 			acc.get(point.color)!.push(point);
 
 			return acc;
-		}, new Map<ColorSource, any[]>());
+		}, new Map<ColorSource, { position: number, color: ColorSource }[]>());
 
 		for (const [color, colorPoints] of pointsByColor) {
 			for (const point of colorPoints) {

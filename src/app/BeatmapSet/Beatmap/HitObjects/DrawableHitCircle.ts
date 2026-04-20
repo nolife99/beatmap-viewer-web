@@ -1,24 +1,24 @@
 import { HitResult, type LegacyReplayFrame, Vector2 } from 'osu-classes';
 import type { StandardHitObject } from 'osu-standard-stable';
 import { type ColorSource, Container, RenderLayer, Sprite } from 'pixi.js';
-import HitSample from '@/Audio/HitSample';
-import type BeatmapSet from '@/BeatmapSet';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type GameplayConfig from '@/Config/GameplayConfig';
-import { type Context, inject } from '@/Context';
-import { refreshSprite as argonRefreshSprite, update as argonUpdate } from '@/Skinning/Argon/ArgonHitCircle';
-import { refreshSprite as legacyRefreshSprite, update as legacyUpdate } from '@/Skinning/Legacy/LegacyHitCircle';
-import { sharedRefreshColor } from '@/Skinning/Shared/HitCircle';
-import type SkinManager from '@/Skinning/SkinManager';
-import type ProgressBar from '@/UI/main/controls/ProgressBar';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import HitSample from '../../../Audio/HitSample.ts';
+import type BeatmapSet from '../../index.ts';
+import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import type GameplayConfig from '../../../Config/GameplayConfig.ts';
+import { type Context, inject } from '../../../Context.ts';
+import { refreshSprite as argonRefreshSprite, update as argonUpdate } from '../../../Skinning/Argon/ArgonHitCircle.ts';
+import { refreshSprite as legacyRefreshSprite, update as legacyUpdate } from '../../../Skinning/Legacy/LegacyHitCircle.ts';
+import { sharedRefreshColor } from '../../../Skinning/Shared/HitCircle.ts';
+import type SkinManager from '../../../Skinning/SkinManager.ts';
+import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
+import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
 import type Beatmap from '..';
-import type { BaseObjectEvaluation } from '../Replay';
-import TimelineHitCircle from '../Timeline/TimelineHitCircle';
-import DrawableApproachCircle from './DrawableApproachCircle';
-import DrawableDefaults from './DrawableDefaults';
-import DrawableHitObject, { type IHasApproachCircle } from './DrawableHitObject';
-import DrawableJudgement from './DrawableJudgement';
+import type { BaseObjectEvaluation } from '../Replay.ts';
+import TimelineHitCircle from '../Timeline/TimelineHitCircle.ts';
+import DrawableApproachCircle from './DrawableApproachCircle.ts';
+import DrawableDefaults from './DrawableDefaults.ts';
+import DrawableHitObject, { type IHasApproachCircle } from './DrawableHitObject.ts';
+import DrawableJudgement from './DrawableJudgement.ts';
 
 export default class DrawableHitCircle
 	extends DrawableHitObject
@@ -142,11 +142,11 @@ export default class DrawableHitCircle
 		if (this.timelineObject) this.timelineObject.object = val;
 	}
 
-	get evaluation(): BaseObjectEvaluation | undefined {
+	override get evaluation(): BaseObjectEvaluation | undefined {
 		return this._evaluation;
 	}
 
-	set evaluation(value: BaseObjectEvaluation | undefined) {
+	override set evaluation(value: BaseObjectEvaluation | undefined) {
 		this._evaluation = value;
 		this.judgement.evaluation = value;
 	}
@@ -171,7 +171,7 @@ export default class DrawableHitCircle
 		return dist < radius && this.wrapper.visible;
 	}
 
-	hook(context: Context) {
+	override hook(context: Context) {
 		super.hook(context);
 
 		this.refreshSprite();
@@ -198,7 +198,7 @@ export default class DrawableHitCircle
 		sharedRefreshColor(this);
 	}
 
-	playHitSound(time: number, _?: number): void {
+	override playHitSound(time: number, _?: number): void {
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const isSeeking =
 			inject<ProgressBar>('ui/main/controls/progress')?.isSeeking ||

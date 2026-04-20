@@ -1,15 +1,15 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import type BackgroundConfig from '@/Config/BackgroundConfig';
-import type FullscreenConfig from '@/Config/FullscreenConfig';
-import { inject, provide } from '@/Context';
-import type ResponsiveHandler from '@/ResponsiveHandler';
-import { Clamp } from '@/utils';
-import type Controls from '../controls';
-import Background from './Background';
-import Gameplays from './Gameplay/Gameplays';
-import Timeline from './Timeline';
-import Beatsnap from './Timeline/Beatsnap';
-import Zoomer from './Timeline/Zoomer';
+import type BackgroundConfig from '../../../Config/BackgroundConfig.ts';
+import type FullscreenConfig from '../../../Config/FullscreenConfig.ts';
+import { inject, provide } from '../../../Context.ts';
+import type ResponsiveHandler from '../../../ResponsiveHandler.ts';
+import { Clamp } from '../../../utils.ts';
+import type Controls from '../controls/index.ts';
+import Background from './Background.ts';
+import Gameplays from './Gameplay/Gameplays.ts';
+import Timeline from './Timeline/index.ts';
+import Beatsnap from './Timeline/Beatsnap/index.ts';
+import Zoomer from './Timeline/Zoomer/index.ts';
 
 export default class Viewer {
 	container = new LayoutContainer({

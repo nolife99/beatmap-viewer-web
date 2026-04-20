@@ -1,7 +1,7 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { Graphics, GraphicsContext } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject } from '@/Context';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import { inject } from '../../../Context.ts';
 
 export type StrainPoint = {
 	time: number;

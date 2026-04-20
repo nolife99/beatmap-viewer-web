@@ -1,7 +1,7 @@
-import type DrawableSlider from '@/BeatmapSet/Beatmap/HitObjects/DrawableSlider';
-import type DrawableSliderFollowCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderFollowCircle';
-import Easings from '@/UI/Easings';
-import { Clamp } from '@/utils';
+import type DrawableSlider from '../../BeatmapSet/Beatmap/HitObjects/DrawableSlider.ts';
+import type DrawableSliderFollowCircle from '../../BeatmapSet/Beatmap/HitObjects/DrawableSliderFollowCircle.ts';
+import Easings from '../../UI/Easings.ts';
+import { Clamp } from '../../utils.ts';
 
 export const update = (drawable: DrawableSliderFollowCircle, time: number) => {
 	const slider = drawable.context.consume<DrawableSlider>('drawable');

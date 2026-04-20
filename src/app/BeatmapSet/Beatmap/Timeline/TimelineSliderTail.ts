@@ -1,8 +1,8 @@
 import type { SliderTail } from 'osu-standard-stable';
-import type Skin from '@/Skinning/Skin';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import type DrawableSlider from '../HitObjects/DrawableSlider';
-import TimelineHitCircle from './TimelineHitCircle';
+import type Skin from '../../../Skinning/Skin.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import type DrawableSlider from '../HitObjects/DrawableSlider.ts';
+import TimelineHitCircle from './TimelineHitCircle.ts';
 
 export default class TimelineSliderTail extends TimelineHitCircle {
 	constructor(object: SliderTail) {
@@ -12,7 +12,7 @@ export default class TimelineSliderTail extends TimelineHitCircle {
 		this.defaults.destroy();
 	}
 
-	refreshSprite() {
+	override refreshSprite() {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
 

@@ -1,5 +1,5 @@
 import type Config from '.';
-import ConfigSection from './ConfigSection';
+import ConfigSection from './ConfigSection.ts';
 
 export type AudioProps = {
 	masterVolume?: number;
@@ -124,7 +124,7 @@ export default class AudioConfig extends ConfigSection {
 		});
 	}
 
-	jsonify(): AudioProps {
+	override jsonify(): AudioProps {
 		return {
 			masterVolume: this.masterVolume,
 			musicVolume: this.musicVolume,

@@ -1,8 +1,8 @@
 import '@pixi/layout';
-import type Audio from './Audio';
-import type BeatmapSet from './BeatmapSet';
-import { inject, provide } from './Context';
-import { Game } from './Game';
+import type Audio from './Audio/index.ts';
+import type BeatmapSet from './BeatmapSet/index.ts';
+import { inject, provide } from './Context.ts';
+import { Game } from './Game.ts';
 
 document.addEventListener('keydown', (event) => {
 	const bms = inject<BeatmapSet>('beatmapset');

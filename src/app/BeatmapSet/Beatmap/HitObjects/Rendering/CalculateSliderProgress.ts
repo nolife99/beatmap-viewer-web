@@ -1,3 +1,5 @@
+// deno-lint-ignore-file no-explicit-any
+
 import { type SliderPath, Vector2 } from 'osu-classes';
 import pool from '@stdlib/array-pool';
 
@@ -15,21 +17,21 @@ export default function calculateSliderProgress(
 	const calcPath = path.calculatedPath;
 	const pathLen = calcPath.length;
 
-	const d0 = (path as any)._progressToDistance(p0);
-	const d1 = (path as any)._progressToDistance(p1);
+	const d0: number = path["_progressToDistance"](p0);
+	const d1: number = path["_progressToDistance"](p1);
 
-	const cumLengths = (path as any)._cumulativeLength;
+	const cumLengths: number[] = path["_cumulativeLength"];
 
 	const startIdx = lowerBound(cumLengths, d0, 0, pathLen);
 	const endIdx = upperBound(cumLengths, d1, startIdx, pathLen);
 
-	const pStart: Vector2 = (path as any)._interpolateVertices(startIdx, d0);
-	const pEnd: Vector2 = (path as any)._interpolateVertices(endIdx, d1);
+	const pStart: Vector2 = path["_interpolateVertices"](startIdx, d0);
+	const pEnd: Vector2 = path["_interpolateVertices"](endIdx, d1);
 
 	const numPoints = endIdx - startIdx + 2;
 	let finalLen = 0;
 
-	if ((path as any).curveType === 'P' || numPoints <= 3) {
+	if (path.curveType === 'P' || numPoints <= 3) {
 		out[finalLen++] = pStart;
 
 		for (let j = startIdx; j < endIdx; j++) {
@@ -244,7 +246,7 @@ let gridArrayPoolIdx = 0;
 const addedEdges = new Set<number>();
 const edgeVisitCount = new Map<number, number>();
 
-let chunkPoints: Vector2[] = [];
+const chunkPoints: Vector2[] = [];
 
 function simplifyChunkAveraged(
 	chunkPoints: Vector2[],

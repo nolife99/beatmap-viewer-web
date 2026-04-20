@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Spectrogram plugin
  *
  * Render a spectrogram visualisation of the audio.
@@ -18,7 +18,7 @@
  * });
  */
 
-// @ts-nocheck
+// @ts-nocheck https://github.com/wavesurfer-js/wavesurfer.js
 
 // Import centralized FFT functionality
 import FFT, {
@@ -31,10 +31,10 @@ import FFT, {
 	setupColorMap,
 	unitType
 } from 'wavesurfer.js/dist/fft.js';
-import BasePlugin from 'wavesurfer.js/dist/base-plugin';
+import BasePlugin from 'wavesurfer.js/dist/base-plugin.js';
 import createElement from 'wavesurfer.js/dist/dom.js';
 
-import SpectrogramWorker from './spectrogram-worker.ts?worker';
+import SpectrogramWorker from './spectrogram-worker.ts?worker&inline';
 
 /**
  * Spectrogram plugin for wavesurfer.
@@ -150,7 +150,7 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 		string,
 		{
 			resolve: (value: Uint8Array[][]) => void
-			reject: (reason?: any) => void
+			reject: (reason?: Error) => void
 			timeout: ReturnType<typeof setTimeout>
 		}
 	>();
@@ -376,8 +376,7 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 		}
 
 		try {
-			// Create worker using imported worker constructor
-			this.worker = new SpectrogramWorker();
+			this.worker = new SpectrogramWorker;
 
 			this.worker.onmessage = (e) => {
 				const { type, id, result, error } = e.data;
@@ -504,12 +503,12 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 
 		if (zoomDiff < this.zoomThreshold && this.cachedFrequencies) {
 			// Small zoom change - just re-render with cached data
-			this.renderTimeout = window.setTimeout(() => {
+			this.renderTimeout = globalThis.setTimeout(() => {
 				this.fastRender();
 			}, this.renderThrottleMs);
 		} else {
 			// Significant zoom change - full re-render
-			this.renderTimeout = window.setTimeout(() => {
+			this.renderTimeout = globalThis.setTimeout(() => {
 				this.render();
 			}, this.renderThrottleMs);
 		}
@@ -525,7 +524,7 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 			} else {
 				const decodedData = this.wavesurfer?.getDecodedData();
 				if (decodedData) {
-					const frequencies = await this.getFrequenciesData();
+					await this.getFrequenciesData();
 					this.drawSpectrogram(this.cachedFrequencies);
 				}
 			}
@@ -691,7 +690,7 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 			let scrollTimeout: number | null = null;
 			const onScroll = () => {
 				if (scrollTimeout) clearTimeout(scrollTimeout);
-				scrollTimeout = window.setTimeout(renderVisibleCanvases, 16); // 60fps
+				scrollTimeout = globalThis.setTimeout(renderVisibleCanvases, 16); // 60fps
 			};
 
 			const wrapper = this.wavesurfer?.getWrapper();
@@ -789,7 +788,7 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 				}
 			}
 		})
-		.catch((error) => {
+		.catch(() => {
 			// Clean up on error
 			this.pendingBitmaps.delete(bitmapPromise);
 		});
@@ -803,7 +802,7 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 		return this.wavesurfer?.getWrapper()?.clientWidth || 0;
 	}
 
-	private async calculateFrequenciesWithWorker(buffer: AudioBuffer): Promise<Uint8Array[][]> {
+	private calculateFrequenciesWithWorker(buffer: AudioBuffer): Promise<Uint8Array[][]> {
 		if (!this.worker) {
 			throw new Error('Worker not available');
 		}
@@ -971,12 +970,10 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 		const bgWidth = 55;
 		const getMaxY = frequenciesHeight || 512;
 		const labelIndex = 5 * (getMaxY / 256);
-		const freqStart = this.frequencyMin;
-		const step = (this.frequencyMax - freqStart) / labelIndex;
 
 		// prepare canvas element for labels
 		const ctx = this.labelsEl.getContext('2d');
-		const dispScale = window.devicePixelRatio;
+		const dispScale = globalThis.devicePixelRatio;
 		this.labelsEl.height = this.height * channels * dispScale;
 		this.labelsEl.width = bgWidth * dispScale;
 		ctx.scale(dispScale, dispScale);

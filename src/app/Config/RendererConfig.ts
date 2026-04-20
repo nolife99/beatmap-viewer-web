@@ -1,5 +1,5 @@
 import type Config from '.';
-import ConfigSection from './ConfigSection';
+import ConfigSection from './ConfigSection.ts';
 
 export type RENDERER = 'webgl' | 'webgpu';
 export type RendererProps = {
@@ -68,11 +68,11 @@ export default class RendererConfig extends ConfigSection {
 		this.emitChange('antialiasing', val);
 	}
 
-	async emitChange(key: keyof RendererProps, newValue: unknown) {
-		super.emitChange(key, newValue);
+	override emitChange(key: keyof RendererProps, newValue: any) {
+		return super.emitChange(key, newValue);
 	}
 
-	onChange(key: keyof RendererProps, callback: (newValue: unknown) => void) {
+	override onChange(key: keyof RendererProps, callback: (newValue: any) => void) {
 		super.onChange(key, callback);
 	}
 
@@ -96,7 +96,7 @@ export default class RendererConfig extends ConfigSection {
 		}
 	}
 
-	jsonify(): RendererProps {
+	override jsonify(): RendererProps {
 		return {
 			renderer: this.renderer,
 			resolution: this.resolution,

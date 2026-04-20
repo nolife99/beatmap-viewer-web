@@ -1,10 +1,10 @@
-import type Beatmap from '@/BeatmapSet/Beatmap';
-import type DrawableHitCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableHitCircle';
-import ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type SkinningConfig from '@/Config/SkinningConfig';
-import { inject } from '@/Context';
-import type Skin from '../Skin';
-import Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import type Beatmap from '../../BeatmapSet/Beatmap/index.ts';
+import type DrawableHitCircle from '../../BeatmapSet/Beatmap/HitObjects/DrawableHitCircle.ts';
+import ExperimentalConfig from '../../Config/ExperimentalConfig.ts';
+import type SkinningConfig from '../../Config/SkinningConfig.ts';
+import { inject } from '../../Context.ts';
+import type Skin from '../Skin.ts';
+import Gameplays from '../../UI/main/viewer/Gameplay/Gameplays.ts';
 
 export const sharedRefreshSprite = (drawable: DrawableHitCircle) => {
 	const skin = drawable.skinManager?.getCurrentSkin();
@@ -74,10 +74,8 @@ export const sharedRefreshColor = (drawable: DrawableHitCircle) => {
 	}
 
 	const comboIndex = drawable.object.comboIndexWithOffsets % skin.colorsLength;
-	// biome-ignore lint/suspicious/noExplicitAny: It is complicated
-	const color = (skin.config.Colours as any)[
-		`Combo${comboIndex + 1}`
-		] as string;
+	const key = `Combo${comboIndex + 1}` as keyof typeof skin.config.Colours;
+	const color = skin.config.Colours[key] ?? skin.config.Colours.Combo1;
 
 	drawable.color = `rgb(${color})`;
 	drawable.hitCircleSprite.tint = `rgb(${color})`;

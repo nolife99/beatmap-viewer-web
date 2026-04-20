@@ -1,10 +1,10 @@
 import * as d3 from 'd3';
 import type { Slider, SliderHead } from 'osu-standard-stable';
-import type Skin from '@/Skinning/Skin';
-import { BLANK_TEXTURE } from '@/Skinning/Skin';
-import DrawableDefaults from '../HitObjects/DrawableDefaults';
-import type DrawableSlider from '../HitObjects/DrawableSlider';
-import TimelineHitCircle from './TimelineHitCircle';
+import type Skin from '../../../Skinning/Skin.ts';
+import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import DrawableDefaults from '../HitObjects/DrawableDefaults.ts';
+import type DrawableSlider from '../HitObjects/DrawableSlider.ts';
+import TimelineHitCircle from './TimelineHitCircle.ts';
 
 export default class TimelineSliderHead extends TimelineHitCircle {
 	constructor(object: SliderHead, parent: Slider) {
@@ -17,7 +17,7 @@ export default class TimelineSliderHead extends TimelineHitCircle {
 		this.container.addChild(this.defaults.container);
 	}
 
-	refreshSprite() {
+	override refreshSprite() {
 		const skin = this.skinManager?.getCurrentSkin();
 		if (!skin) return;
 

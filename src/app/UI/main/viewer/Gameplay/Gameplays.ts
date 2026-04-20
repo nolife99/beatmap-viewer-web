@@ -1,10 +1,10 @@
 import { Tween } from '@tweenjs/tween.js';
 import { Container } from 'pixi.js';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import { inject, ScopedClass } from '@/Context';
-import type ResponsiveHandler from '@/ResponsiveHandler';
-import { defaultEasing, tweenGroup } from '@/UI/animation/AnimationController';
-import FPS from '../FPS';
+import type ExperimentalConfig from '../../../../Config/ExperimentalConfig.ts';
+import { inject, ScopedClass } from '../../../../Context.ts';
+import type ResponsiveHandler from '../../../../ResponsiveHandler.ts';
+import { defaultEasing, tweenGroup } from '../../../animation/AnimationController.ts';
+import FPS from '../FPS.ts';
 import type Gameplay from '.';
 
 type GameplayEvents = 'add' | 'remove' | 'change';

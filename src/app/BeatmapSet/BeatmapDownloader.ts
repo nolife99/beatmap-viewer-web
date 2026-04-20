@@ -1,6 +1,6 @@
-import type Loading from '@/UI/loading';
-import type MirrorConfig from '../Config/MirrorConfig';
-import { inject } from '../Context';
+import type Loading from '../UI/loading/index.ts';
+import type MirrorConfig from '../Config/MirrorConfig.ts';
+import { inject } from '../Context.ts';
 
 async function fetchBlobWithProgress(url: string, options: RequestInit, onProgress: (pct: number) => void) {
 	const res = await fetch(url, options);

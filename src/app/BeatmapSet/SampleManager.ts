@@ -1,8 +1,7 @@
-// @ts-ignore
-import { getFileAudioBuffer } from '@soundcut/decode-audio-data-fast';
-import { inject } from '../Context';
-import type SkinManager from '../Skinning/SkinManager';
-import type { Resource } from '../ZipHandler';
+// import { getFileAudioBuffer } from '@soundcut/decode-audio-data-fast';
+import { inject } from '../Context.ts';
+import type SkinManager from '../Skinning/SkinManager.ts';
+import type { Resource } from '../ZipHandler/index.ts';
 
 const HITSOUND_REGEX =
 	/(normal|soft|drum)-(hitnormal|hitwhistle|hitclap|hitfinish|slidertick|sliderwhistle|sliderslide)([1-9][0-9]*)?/;
@@ -29,7 +28,7 @@ export default class SampleManager {
 						await resource.arrayBuffer()
 					);
 				} catch (e) {
-					console.warn(`Cannot decode ${filename}. Default to silent sample.`);
+					console.warn(`Cannot decode ${filename}. Default to silent sample. (${e})`);
 					audioBuffer = this.audioContext.createBuffer(
 						1,
 						1,

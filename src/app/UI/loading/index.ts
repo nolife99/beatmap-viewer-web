@@ -4,9 +4,7 @@ export default class Loading {
 	private _eleText: HTMLDivElement;
 
 	constructor() {
-		// biome-ignore lint/style/noNonNullAssertion: <explanation>
 		this._ele = document.querySelector<HTMLDivElement>('#loading')!;
-		// biome-ignore lint/style/noNonNullAssertion: <explanation>
 		this._eleText = document.querySelector<HTMLDivElement>('#loadingText')!;
 	}
 

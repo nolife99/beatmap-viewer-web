@@ -1,7 +1,7 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { type FederatedPointerEvent, Sprite, Texture } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject } from '@/Context';
+import type ColorConfig from '../../../../../Config/ColorConfig.ts';
+import { inject } from '../../../../../Context.ts';
 
 export default class Button {
 	container = new LayoutContainer({
@@ -23,19 +23,13 @@ export default class Button {
 		icon: string,
 		public onClick?: (e?: FederatedPointerEvent) => void
 	) {
-		(async () => {
-			this.sprite.texture = Texture.from(icon);
-			this.sprite.width = 20;
-			this.sprite.height = 20;
-			this.sprite.layout = {
-				width: 20,
-				height: 20
-			};
-			this.sprite.tint =
-				inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
+		this.sprite.texture = Texture.from(icon);
+		this.sprite.width = 20;
+		this.sprite.height = 20;
+		this.sprite.layout = { width: 20, height: 20 };
+		this.sprite.tint = inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
 
-			this.container.addChild(this.sprite);
-		})();
+		this.container.addChild(this.sprite);
 
 		inject<ColorConfig>('config/color')?.onChange('color', ({ base, text }) => {
 			this.container.layout = { backgroundColor: base };

@@ -13,20 +13,20 @@ import {
 	type TextStyleOptions,
 	Texture
 } from 'pixi.js';
-import type Audio from '@/Audio';
-import type BeatmapSet from '@/BeatmapSet';
-import type Beatmap from '@/BeatmapSet/Beatmap';
-import DrawableHitCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableHitCircle';
-import DrawableSlider from '@/BeatmapSet/Beatmap/HitObjects/DrawableSlider';
-import type BackgroundConfig from '@/Config/BackgroundConfig';
-import type ColorConfig from '@/Config/ColorConfig';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type FullscreenConfig from '@/Config/FullscreenConfig';
-import type GameplayConfig from '@/Config/GameplayConfig';
-import { inject, ScopedClass } from '@/Context';
-import { tweenGroup } from '@/UI/animation/AnimationController';
-import Easings from '@/UI/Easings';
-import Spinner from './Spinner';
+import type Audio from '../../../../Audio/index.ts';
+import type BeatmapSet from '../../../../BeatmapSet/index.ts';
+import type Beatmap from '../../../../BeatmapSet/Beatmap/index.ts';
+import DrawableHitCircle from '../../../../BeatmapSet/Beatmap/HitObjects/DrawableHitCircle.ts';
+import DrawableSlider from '../../../../BeatmapSet/Beatmap/HitObjects/DrawableSlider.ts';
+import type BackgroundConfig from '../../../../Config/BackgroundConfig.ts';
+import type ColorConfig from '../../../../Config/ColorConfig.ts';
+import type ExperimentalConfig from '../../../../Config/ExperimentalConfig.ts';
+import type FullscreenConfig from '../../../../Config/FullscreenConfig.ts';
+import type GameplayConfig from '../../../../Config/GameplayConfig.ts';
+import { inject, ScopedClass } from '../../../../Context.ts';
+import { tweenGroup } from '../../../animation/AnimationController.ts';
+import Easings from '../../../Easings.ts';
+import Spinner from './Spinner.ts';
 
 const defaultStyle: TextStyleOptions = {
 	fontFamily: 'Rubik',
@@ -457,9 +457,7 @@ export default class Gameplay extends ScopedClass {
 			closeButton.tint = text;
 		});
 
-		(async () => {
-			closeButton.texture = Texture.from('x.png');
-		})();
+		closeButton.texture = Texture.from('x.png');
 
 		closeButtonContainer.cursor = 'pointer';
 		const unloadSelf = () => {

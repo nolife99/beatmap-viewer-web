@@ -1,14 +1,14 @@
-import { provide } from '../Context';
-import AudioConfig, { type AudioProps } from './AudioConfig';
-import BackgroundConfig, { type BackgroundProps } from './BackgroundConfig';
-import ColorConfig from './ColorConfig';
-import ExperimentalConfig, { type ExperimentalProps } from './ExperimentalConfig';
-import FullscreenConfig from './FullscreenConfig';
-import GameplayConfig, { type GameplayProps } from './GameplayConfig';
-import MirrorConfig, { type MirrorProps } from './MirrorConfig';
-import RendererConfig, { type RendererProps } from './RendererConfig';
-import SkinningConfig, { type SkinningProps } from './SkinningConfig';
-import TimelineConfig, { type TimelineProps } from './TimelineConfig';
+import { provide } from '../Context.ts';
+import AudioConfig, { type AudioProps } from './AudioConfig.ts';
+import BackgroundConfig, { type BackgroundProps } from './BackgroundConfig.ts';
+import ColorConfig from './ColorConfig.ts';
+import ExperimentalConfig, { type ExperimentalProps } from './ExperimentalConfig.ts';
+import FullscreenConfig from './FullscreenConfig.ts';
+import GameplayConfig, { type GameplayProps } from './GameplayConfig.ts';
+import MirrorConfig, { type MirrorProps } from './MirrorConfig.ts';
+import RendererConfig, { type RendererProps } from './RendererConfig.ts';
+import SkinningConfig, { type SkinningProps } from './SkinningConfig.ts';
+import TimelineConfig, { type TimelineProps } from './TimelineConfig.ts';
 
 type Configs = {
 	renderer: RendererProps;

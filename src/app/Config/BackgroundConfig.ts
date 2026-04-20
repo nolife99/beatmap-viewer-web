@@ -1,5 +1,5 @@
 import type Config from '.';
-import ConfigSection from './ConfigSection';
+import ConfigSection from './ConfigSection.ts';
 
 export type BackgroundProps = {
 	backgroundDim?: number;
@@ -137,7 +137,7 @@ export default class BackgroundConfig extends ConfigSection {
 		});
 	}
 
-	jsonify(): BackgroundProps {
+	override jsonify(): BackgroundProps {
 		return {
 			backgroundDim: this.backgroundDim,
 			backgroundBlur: this.backgroundBlur,

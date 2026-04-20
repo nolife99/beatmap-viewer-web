@@ -1,13 +1,13 @@
 import * as d3 from 'd3';
 import { Easing, HitResult } from 'osu-classes';
-import type DrawableHitCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableHitCircle';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type GameplayConfig from '@/Config/GameplayConfig';
-import { inject } from '@/Context';
-import Easings from '@/UI/Easings';
-import { Clamp } from '@/utils';
-import { sharedRefreshSprite } from '../Shared/HitCircle';
-import { BLANK_TEXTURE } from '../Skin';
+import type DrawableHitCircle from '../../BeatmapSet/Beatmap/HitObjects/DrawableHitCircle.ts';
+import type ExperimentalConfig from '../../Config/ExperimentalConfig.ts';
+import type GameplayConfig from '../../Config/GameplayConfig.ts';
+import { inject } from '../../Context.ts';
+import Easings from '../../UI/Easings.ts';
+import { Clamp } from '../../utils.ts';
+import { sharedRefreshSprite } from '../Shared/HitCircle.ts';
+import { BLANK_TEXTURE } from '../Skin.ts';
 
 export const refreshSprite = (drawable: DrawableHitCircle) => {
 	sharedRefreshSprite(drawable);

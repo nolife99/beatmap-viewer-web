@@ -1,12 +1,12 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { BitmapText, Container, Texture } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import type FullscreenConfig from '@/Config/FullscreenConfig';
-import type TimelineConfig from '@/Config/TimelineConfig';
-import { inject } from '@/Context';
-import type ResponsiveHandler from '@/ResponsiveHandler';
-import { defaultStyle } from '@/UI/sidepanel/Metadata';
-import Button from './Button';
+import type ColorConfig from '../../../../../Config/ColorConfig.ts';
+import type FullscreenConfig from '../../../../../Config/FullscreenConfig.ts';
+import type TimelineConfig from '../../../../../Config/TimelineConfig.ts';
+import { inject } from '../../../../../Context.ts';
+import type ResponsiveHandler from '../../../../../ResponsiveHandler.ts';
+import { defaultStyle } from '../../../../sidepanel/Metadata.ts';
+import Button from './Button.ts';
 
 export default class Beatsnap {
 	container: LayoutContainer;

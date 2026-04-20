@@ -6,13 +6,14 @@ async function extract(zipFile: Blob) {
 	const blobReader = new BlobReader(zipFile);
 	const zipReader = new ZipReader(blobReader);
 
-	const entries = await zipReader.getEntries();
+	const entries = zipReader.getEntriesGenerator();
 	const resources: Map<string, Resource> = new Map();
 
-	for (const file of entries) {
+	for await (const file of entries) {
+		if (file.directory) continue;
 		const writer = new BlobWriter();
 
-		const blob = await file.getData?.(writer);
+		const blob = await file.getData(writer);
 		resources.set(file.filename.toLowerCase(), blob);
 	}
 

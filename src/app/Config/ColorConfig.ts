@@ -1,4 +1,4 @@
-import ConfigSection from './ConfigSection';
+import ConfigSection from './ConfigSection.ts';
 
 export type ColorPalette = {
 	crust: number;

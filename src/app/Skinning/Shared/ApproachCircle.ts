@@ -1,6 +1,6 @@
-import type DrawableApproachCircle from '@/BeatmapSet/Beatmap/HitObjects/DrawableApproachCircle';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import { inject } from '@/Context';
+import type DrawableApproachCircle from '../../BeatmapSet/Beatmap/HitObjects/DrawableApproachCircle.ts';
+import type ExperimentalConfig from '../../Config/ExperimentalConfig.ts';
+import { inject } from '../../Context.ts';
 
 export const sharedUpdate = (
 	drawable: DrawableApproachCircle,

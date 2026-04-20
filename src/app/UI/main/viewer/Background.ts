@@ -1,7 +1,7 @@
 import { BlurFilter, Container, Sprite, Texture } from 'pixi.js';
-import type BackgroundConfig from '@/Config/BackgroundConfig';
-import type FullscreenConfig from '@/Config/FullscreenConfig';
-import { inject } from '@/Context';
+import type BackgroundConfig from '../../../Config/BackgroundConfig.ts';
+import type FullscreenConfig from '../../../Config/FullscreenConfig.ts';
+import { inject } from '../../../Context.ts';
 
 export default class Background {
 	blurFilter = new BlurFilter({

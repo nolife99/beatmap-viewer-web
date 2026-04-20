@@ -1,9 +1,8 @@
 import * as d3 from 'd3';
 import { Vibrant } from 'node-vibrant/browser';
-import type ColorConfig from './Config/ColorConfig';
-import type { ColorPalette } from './Config/ColorConfig';
-import { inject } from './Context';
-import type { Vector2 } from 'osu-classes';
+import type ColorConfig from './Config/ColorConfig.ts';
+import type { ColorPalette } from './Config/ColorConfig.ts';
+import { inject } from './Context.ts';
 import { Color, type ColorSource } from 'pixi.js';
 
 export function lighten(
@@ -36,12 +35,16 @@ export function darken(
 	return col.setValue(ret);
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Could be any
-export function debounce(fn: (...args: any) => void, timeout = 100) {
-	let timer: NodeJS.Timeout;
-	// biome-ignore lint/suspicious/noExplicitAny: Literally any
-	return (...args: any) => {
-		if (timer) clearTimeout(timer);
+export function debounce<T extends unknown[]>(
+	fn: (...args: T) => void,
+	timeout = 100,
+) {
+	let timer: number | undefined;
+
+	return (...args: T) => {
+		if (timer !== undefined) {
+			clearTimeout(timer);
+		}
 		timer = setTimeout(() => fn(...args), timeout);
 	};
 }
@@ -173,18 +176,4 @@ export const difficultyRange = (
 	if (val > 5) return mid + ((max - mid) * (val - 5)) / 5;
 	if (val < 5) return mid - ((mid - min) * (5 - val)) / 5;
 	return mid;
-};
-
-const closestPointTo = (p: Vector2, start: Vector2, end: Vector2): Vector2 => {
-	const v = end.subtract(start);
-	const w = p.subtract(start);
-
-	const c1 = w.dot(v);
-	if (c1 <= 0) return start;
-
-	const c2 = v.dot(v);
-	if (c2 <= c1) return end;
-
-	const b = c1 / c2;
-	return start.add(v.scale(b));
 };

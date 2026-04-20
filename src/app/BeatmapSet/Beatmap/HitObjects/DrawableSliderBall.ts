@@ -1,15 +1,15 @@
 import type { Slider } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type GameplayConfig from '@/Config/GameplayConfig';
-import { type Context, inject } from '@/Context';
-import { update as argonUpdate } from '@/Skinning/Argon/ArgonSliderBall';
-import { update as legacyUpdate } from '@/Skinning/Legacy/LegacySliderBall';
-import type Skin from '@/Skinning/Skin';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import type GameplayConfig from '../../../Config/GameplayConfig.ts';
+import { type Context, inject } from '../../../Context.ts';
+import { update as argonUpdate } from '../../../Skinning/Argon/ArgonSliderBall.ts';
+import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacySliderBall.ts';
+import type Skin from '../../../Skinning/Skin.ts';
+import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
 import type Beatmap from '..';
-import AnimatedSkinnableElement from './AnimatedSkinnableElement';
-import type DrawableSlider from './DrawableSlider';
+import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
+import type DrawableSlider from './DrawableSlider.ts';
 
 export default class DrawableSliderBall extends AnimatedSkinnableElement {
 	container: Container;
@@ -171,7 +171,7 @@ export default class DrawableSliderBall extends AnimatedSkinnableElement {
 		}
 	}
 
-	hook(context: Context) {
+	override hook(context: Context) {
 		super.hook(context);
 		this.refreshSprite();
 		return this;

@@ -11,8 +11,8 @@ import {
 	type Vector2
 } from '@rian8337/osu-base';
 import { groupD8, Sprite, Texture } from 'pixi.js';
-import { ScopedClass } from '@/Context';
-import { EasingsMap } from '@/UI/Easings';
+import { ScopedClass } from '../../../Context.ts';
+import { EasingsMap } from '../../../UI/Easings.ts';
 
 export default class StoryboardSprite extends ScopedClass {
 	container: Sprite = new Sprite({

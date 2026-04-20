@@ -1,10 +1,10 @@
 import { parse } from 'js-ini';
 import { Rectangle, Texture } from 'pixi.js';
-import type SkinningConfig from '@/Config/SkinningConfig';
-import { inject } from '@/Context';
-import type { Resource } from '@/ZipHandler';
-import type SkinManager from './SkinManager';
-import type { SkinMetadata } from './SkinManager';
+import type SkinningConfig from '../Config/SkinningConfig.ts';
+import { inject } from '../Context.ts';
+import type { Resource } from '../ZipHandler/index.ts';
+import type SkinManager from './SkinManager.ts';
+import type { SkinMetadata } from './SkinManager.ts';
 
 const sanitizeINI = (str: string) =>
 	str
@@ -212,7 +212,7 @@ function createFrameTexture(
 	});
 }
 
-async function buildAtlas(items: AtlasItem[], resolution: 1 | 2): Promise<PackedAtlas | null> {
+function buildAtlas(items: AtlasItem[], resolution: 1 | 2): PackedAtlas | null {
 	if (items.length === 0) return null;
 
 	const packed = packAtlas(items, ATLAS_PADDING);
@@ -549,8 +549,8 @@ export default class Skin {
 			}
 		}
 
-		const atlas1x = await buildAtlas([...staticItems1x, ...animatedItems1x], 1);
-		const atlas2x = await buildAtlas([...staticItems2x, ...animatedItems2x], 2);
+		const atlas1x = buildAtlas([...staticItems1x, ...animatedItems1x], 1);
+		const atlas2x = buildAtlas([...staticItems2x, ...animatedItems2x], 2);
 
 		if (atlas1x) this.atlasTextures.push(atlas1x.texture);
 		if (atlas2x) this.atlasTextures.push(atlas2x.texture);

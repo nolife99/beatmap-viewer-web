@@ -1,5 +1,5 @@
 import type Config from '.';
-import ConfigSection from './ConfigSection';
+import ConfigSection from './ConfigSection.ts';
 
 export type SkinningProps = {
 	skinningIdx?: number;
@@ -88,7 +88,7 @@ export default class SkinningConfig extends ConfigSection {
 		});
 	}
 
-	jsonify(): SkinningProps {
+	override jsonify(): SkinningProps {
 		return {
 			skinningIdx: this.skinningIdx,
 			disableBeatmapSkin: this.disableBeatmapSkin,

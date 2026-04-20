@@ -1,5 +1,5 @@
-import type DrawableSliderRepeat from '@/BeatmapSet/Beatmap/HitObjects/DrawableSliderRepeat';
-import Easings from '@/UI/Easings';
+import type DrawableSliderRepeat from '../../BeatmapSet/Beatmap/HitObjects/DrawableSliderRepeat.ts';
+import Easings from '../../UI/Easings.ts';
 
 export const update = (drawable: DrawableSliderRepeat, time: number) => {
 	const duration = 300;

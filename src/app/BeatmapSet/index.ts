@@ -1,36 +1,36 @@
 import { Tween } from '@tweenjs/tween.js';
 import type { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
 import { Application, Assets, type FederatedWheelEvent, Texture } from 'pixi.js';
-import Audio, { getAudioContext } from '@/Audio';
-import type AudioConfig from '@/Config/AudioConfig';
-import type BackgroundConfig from '@/Config/BackgroundConfig';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
-import type TimelineConfig from '@/Config/TimelineConfig';
-import Skin from '@/Skinning/Skin';
-import { tweenGroup } from '@/UI/animation/AnimationController';
-import Easings from '@/UI/Easings';
-import type Loading from '@/UI/loading';
-import type Play from '@/UI/main/controls/Play';
-import type ProgressBar from '@/UI/main/controls/ProgressBar';
-import type Timestamp from '@/UI/main/controls/Timestamp';
-import type Background from '@/UI/main/viewer/Background';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
-import type Timeline from '@/UI/main/viewer/Timeline';
-import type Metadata from '@/UI/sidepanel/Metadata';
-import type DifficultyGraph from '@/UI/sidepanel/Modding/DifficultyGraph';
-import type Spectrogram from '@/UI/sidepanel/Modding/Spectrogram';
-import type Timing from '@/UI/sidepanel/Timing';
-import { getDiffColour, loadColorPalette } from '@/utils';
-import Video from '@/Video';
-import { inject, provide, ScopedClass } from '../Context';
-import type { Resource } from '../ZipHandler';
-import Beatmap from './Beatmap';
-import type DrawableHitCircle from './Beatmap/HitObjects/DrawableHitCircle';
-import type DrawableSlider from './Beatmap/HitObjects/DrawableSlider';
-import Storyboard from './Beatmap/Storyboard';
-import SampleManager from './SampleManager';
+import Audio, { getAudioContext } from '../Audio/index.ts';
+import type AudioConfig from '../Config/AudioConfig.ts';
+import type BackgroundConfig from '../Config/BackgroundConfig.ts';
+import type ExperimentalConfig from '../Config/ExperimentalConfig.ts';
+import type TimelineConfig from '../Config/TimelineConfig.ts';
+import Skin from '../Skinning/Skin.ts';
+import { tweenGroup } from '../UI/animation/AnimationController.ts';
+import Easings from '../UI/Easings.ts';
+import type Loading from '../UI/loading/index.ts';
+import type Play from '../UI/main/controls/Play.ts';
+import type ProgressBar from '../UI/main/controls/ProgressBar.ts';
+import type Timestamp from '../UI/main/controls/Timestamp.ts';
+import type Background from '../UI/main/viewer/Background.ts';
+import type Gameplays from '../UI/main/viewer/Gameplay/Gameplays.ts';
+import type Timeline from '../UI/main/viewer/Timeline/index.ts';
+import type Metadata from '../UI/sidepanel/Metadata.ts';
+import type DifficultyGraph from '../UI/sidepanel/Modding/DifficultyGraph.ts';
+import type Spectrogram from '../UI/sidepanel/Modding/Spectrogram.ts';
+import type Timing from '../UI/sidepanel/Timing/index.ts';
+import { getDiffColour, loadColorPalette } from '../utils.ts';
+import Video from '../Video/index.ts';
+import { inject, provide, ScopedClass } from '../Context.ts';
+import type { Resource } from '../ZipHandler/index.ts';
+import Beatmap from './Beatmap/index.ts';
+import type DrawableHitCircle from './Beatmap/HitObjects/DrawableHitCircle.ts';
+import type DrawableSlider from './Beatmap/HitObjects/DrawableSlider.ts';
+import Storyboard from './Beatmap/Storyboard/index.ts';
+import SampleManager from './SampleManager.ts';
 
-const extraMode = await (await fetch('/assets/extra-mode.svg')).text();
+import extraMode from '../../assets/extra-mode.svg?raw';
 
 export default class BeatmapSet extends ScopedClass {
 	difficulties: Beatmap[] = [];
@@ -188,7 +188,7 @@ export default class BeatmapSet extends ScopedClass {
 		inject<Loading>('ui/loading')?.setText('Loading audio');
 		inject<Spectrogram>('ui/sidepanel/modding/spectrogram')?.unloadTexture();
 
-		this.context.consume('audio')?.destroy();
+		this.context.consume<Audio>('audio')?.destroy();
 
 		const gainNode = this.context.provide('masterGainNode', this.audioContext.createGain());
 		gainNode.connect(this.audioContext.destination);
@@ -212,7 +212,7 @@ export default class BeatmapSet extends ScopedClass {
 		console.timeEnd('Constructing audio');
 	}
 
-	async loadVideo(beatmap: Beatmap) {
+	loadVideo(beatmap: Beatmap) {
 		const videoFilePath =
 			beatmap.data.events.storyboard?.layers.get('Video')?.elements.at(0)
 				?.filePath ?? '';
@@ -241,7 +241,7 @@ export default class BeatmapSet extends ScopedClass {
 
 		const video = this.context.provide('video', new Video());
 		try {
-			await video.load(
+			video.load(
 				videoResource,
 				beatmap.data.events.storyboard?.layers.get('Video')?.elements.at(0)
 					?.startTime ?? 0
@@ -450,15 +450,11 @@ export default class BeatmapSet extends ScopedClass {
 		if (playButton) {
 			switch (this.context.consume<Audio>('audio')?.state) {
 				case 'PLAYING': {
-					(async () => {
-						playButton.sprite.texture = Texture.from('pause.png');
-					})();
+					playButton.sprite.texture = Texture.from('pause.png');
 					break;
 				}
 				case 'STOPPED': {
-					(async () => {
-						playButton.sprite.texture = Texture.from('play.png');
-					})();
+					playButton.sprite.texture = Texture.from('play.png');
 					break;
 				}
 			}
@@ -667,7 +663,7 @@ export default class BeatmapSet extends ScopedClass {
 
 		const ids = [masterId, ...slavesId].filter((id) => id !== undefined);
 
-		const url = new URL(window.location.href);
+		const url = new URL(globalThis.location.href);
 		const params = url.searchParams;
 
 		for (let i = 0; i < ids.length; i++) {
@@ -681,7 +677,7 @@ export default class BeatmapSet extends ScopedClass {
 			params.append('b', id.toString());
 		}
 
-		window.history.replaceState(null, '', url);
+		globalThis.history.replaceState(null, '', url);
 
 		const input = document.querySelector<HTMLInputElement>('#idInput');
 		if (!input) return;

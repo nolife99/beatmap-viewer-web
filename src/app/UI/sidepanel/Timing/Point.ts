@@ -1,8 +1,8 @@
 import { DifficultyPoint, type SamplePoint, TimingPoint } from 'osu-classes';
 import { BitmapText, type ColorSource, Container, Graphics } from 'pixi.js';
-import type ColorConfig from '@/Config/ColorConfig';
-import { inject } from '@/Context';
-import { millisecondsToMinutesString } from '@/utils';
+import type ColorConfig from '../../../Config/ColorConfig.ts';
+import { inject } from '../../../Context.ts';
+import { millisecondsToMinutesString } from '../../../utils.ts';
 
 export default class Point {
 	container: Container;

@@ -1,11 +1,11 @@
-import type Beatmap from '@/BeatmapSet/Beatmap';
-import type DrawableSlider from '@/BeatmapSet/Beatmap/HitObjects/DrawableSlider';
-import type SkinningConfig from '@/Config/SkinningConfig';
-import { inject } from '@/Context';
-import { darken } from '@/utils';
-import type ExperimentalConfig from '@/Config/ExperimentalConfig';
+import type Beatmap from '../../BeatmapSet/Beatmap/index.ts';
+import type DrawableSlider from '../../BeatmapSet/Beatmap/HitObjects/DrawableSlider.ts';
+import type SkinningConfig from '../../Config/SkinningConfig.ts';
+import { inject } from '../../Context.ts';
+import { darken } from '../../utils.ts';
+import type ExperimentalConfig from '../../Config/ExperimentalConfig.ts';
 import { Color } from 'pixi.js';
-import type Gameplays from '@/UI/main/viewer/Gameplay/Gameplays';
+import type Gameplays from '../../UI/main/viewer/Gameplay/Gameplays.ts';
 
 export const refreshColor = (drawable: DrawableSlider) => {
 	const skin = drawable.skinManager?.getCurrentSkin();
@@ -28,8 +28,8 @@ export const refreshColor = (drawable: DrawableSlider) => {
 		colors?.length &&
 		!inject<SkinningConfig>('config/skinning')?.disableBeatmapSkin
 			? `${colors[comboIndex].red},${colors[comboIndex].green},${colors[comboIndex].blue}`
-			: // biome-ignore lint/suspicious/noExplicitAny: It is complicated
-			((skin.config.Colours as any)[`Combo${comboIndex + 1}`] as string);
+			: (skin.config.Colours[`Combo${comboIndex + 1}` as keyof typeof skin.config.Colours] ?? 
+				skin.config.Colours.Combo1);
 
 	const color = (tintByDiff ? new Color(beatmap.randomColor).toUint8RgbArray().join(',') : comboColor).split(',').map((value) => +value / 255);
 	drawable.trackColor = color;
