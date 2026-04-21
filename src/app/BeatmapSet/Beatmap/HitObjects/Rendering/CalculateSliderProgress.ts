@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
-
 import { type SliderPath, Vector2 } from 'osu-classes';
 import pool from '@stdlib/array-pool';
 

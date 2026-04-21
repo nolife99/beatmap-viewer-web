@@ -1,8 +1,8 @@
 import { Group, Tween } from '@tweenjs/tween.js';
-import bezier from 'bezier-easing';
+import Easings from "../Easings.ts";
 
 export const tweenGroup = new Group();
-export const defaultEasing = bezier(0, 0.4, 0, 1.0);
+export const defaultEasing = Easings.OutQuint;
 
 export default class AnimationController {
 	animations: Map<string, Tween> = new Map();

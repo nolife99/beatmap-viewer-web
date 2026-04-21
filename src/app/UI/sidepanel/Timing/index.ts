@@ -1,5 +1,4 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import type { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
 import { Container, type FederatedPointerEvent, Rectangle } from 'pixi.js';
 import type ColorConfig from '../../../Config/ColorConfig.ts';
 import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
@@ -9,6 +8,7 @@ import type State from '../../../State.ts';
 import AnimationController from '../../animation/AnimationController.ts';
 import Easings from '../../Easings.ts';
 import Point from './Point.ts';
+import { ControlPoint } from "osu-classes";
 
 export default class Timing {
 	container: LayoutContainer;
@@ -97,7 +97,7 @@ export default class Timing {
 
 		this.container.on('wheel', (event) => {
 			const deltaY = event.deltaY;
-			this.scrollTo(this._scrollOffset + deltaY * 1.5);
+			this.scrollTo(this._scrollOffset + deltaY * 15);
 		});
 
 		this.container.on('pointerdown', (event) => this.handleDragStart(event));
@@ -107,7 +107,7 @@ export default class Timing {
 	}
 
 	async updateTimingPoints(
-		points: (TimingPoint | DifficultyPoint | SamplePoint)[]
+		points: ControlPoint[]
 	) {
 		if (this.points.length > 0) {
 			for (const point of this.points) {
@@ -263,9 +263,7 @@ export default class Timing {
 		this._currentVelocity *= 0.85;
 	}
 
-	private createTimingPointsSync(
-		points: (TimingPoint | DifficultyPoint | SamplePoint)[]
-	) {
+	private createTimingPointsSync(points: ControlPoint[]) {
 		const p = [];
 		let i = 0;
 
@@ -278,10 +276,8 @@ export default class Timing {
 		return p;
 	}
 
-	private async createTimingPointsAsync(
-		points: (TimingPoint | DifficultyPoint | SamplePoint)[]
-	) {
-		return await Promise.all(
+	private createTimingPointsAsync(points: ControlPoint[]) {
+		return Promise.all(
 			Iterator.from(points).map((point, i) => {
 				return new Promise<Point>((resolve) => {
 					setTimeout(() => {

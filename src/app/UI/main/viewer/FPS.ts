@@ -75,7 +75,8 @@ export default class FPS {
 			layout: {
 				objectFit: 'none',
 				objectPosition: 'center right'
-			}
+			},
+			visible: false
 		});
 
 		this.container.addChild(this.fpsText, this.frameTimeText, this.poolMemoryText);

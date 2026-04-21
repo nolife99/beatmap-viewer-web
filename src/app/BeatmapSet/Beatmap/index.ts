@@ -1,6 +1,6 @@
-import md5 from 'crypto-js/md5';
+import crypto from 'node:crypto';
 import { sort } from 'fast-sort';
-import { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
+import { ControlPoint } from 'osu-classes';
 import { BeatmapDecoder } from 'osu-parsers';
 import {
 	Circle,
@@ -36,6 +36,7 @@ import type Replay from './Replay.ts';
 
 // @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix
 import ObjectsWorker from './Worker/Objects.ts?worker&inline';
+import { ControlPointType } from "osu-classes";
 
 const decoder = new BeatmapDecoder();
 const ruleset = new StandardRuleset();
@@ -67,7 +68,7 @@ export default class Beatmap extends ScopedClass {
 	constructor(public raw: string) {
 		super();
 
-		this.md5 = md5(raw).toString();
+		this.md5 = crypto.createHash('md5').update(raw).digest('hex');
 
 		const initialMods =
 			inject<ExperimentalConfig>('config/experimental')?.getModsString() ?? '';
@@ -145,13 +146,13 @@ export default class Beatmap extends ScopedClass {
 
 		const points = this.data.controlPoints.groups.map((group) => {
 			const hasTimingPoint = group.controlPoints.some(
-				(point) => point instanceof TimingPoint
+				(point) => point.pointType === ControlPointType.TimingPoint
 			);
 			const hasDifficultyPoint = group.controlPoints.some(
-				(point) => point instanceof DifficultyPoint
+				(point) => point.pointType === ControlPointType.DifficultyPoint
 			);
 			const hasSamplePoint = group.controlPoints.some(
-				(point) => point instanceof SamplePoint
+				(point) => point.pointType === ControlPointType.SamplePoint
 			);
 
 			if (!hasTimingPoint && !hasDifficultyPoint && hasSamplePoint) {
@@ -214,11 +215,11 @@ export default class Beatmap extends ScopedClass {
 		].sort((a, b) => {
 			if (a.startTime === b.startTime) {
 				const getPointRank = (
-					t: TimingPoint | DifficultyPoint | SamplePoint
+					t: ControlPoint
 				) => {
-					if (t instanceof TimingPoint) return 0;
-					if (t instanceof DifficultyPoint) return 1;
-					if (t instanceof SamplePoint) return 2;
+					if (t.pointType === ControlPointType.TimingPoint) return 0;
+					if (t.pointType === ControlPointType.DifficultyPoint) return 1;
+					if (t.pointType === ControlPointType.SamplePoint) return 2;
 					return 0;
 				};
 
@@ -371,7 +372,7 @@ export default class Beatmap extends ScopedClass {
 			Math.ceil(time + 2)
 		);
 
-		let samplePoint: SamplePoint = currentSamplePoint;
+		let samplePoint = currentSamplePoint;
 		if (
 			potentialFutureSamplePoint?.group &&
 			potentialFutureSamplePoint.group.startTime - time < 3

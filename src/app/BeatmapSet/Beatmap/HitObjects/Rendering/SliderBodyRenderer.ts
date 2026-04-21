@@ -61,7 +61,11 @@ function createBodyGeometry() {
 				format: 'float32x2'
 			},
 			aSegment: {
-				buffer: new Buffer({ data: new Float32Array([]), usage: BufferUsage.VERTEX, shrinkToFit: false }),
+				buffer: new Buffer({
+					data: new Float32Array([]), 
+					usage: BufferUsage.VERTEX | BufferUsage.COPY_DST, 
+					shrinkToFit: false 
+				}),
 				format: 'float32x4',
 				instance: true
 			}
@@ -200,6 +204,7 @@ export default class SliderBodyRenderer {
 			this.selectionBody.geometry,
 			SliderBodyRenderer.assertAttachedToAppStage(this.selectionBody, 'updateSelectionGeometry')
 		);
+
 		this.selectionUniforms.uniforms.uRadius = radius;
 		this.selectionBody.filterArea = this.computePaddedBounds(bounds, radius);
 	}
@@ -228,7 +233,7 @@ export default class SliderBodyRenderer {
 		const segmentsCount = Math.max(1, pointsCount - 1);
 		const requiredFloats = segmentsCount * 4;
 
-		const rawStaging = pool.malloc(requiredFloats, 'float32');
+		const rawStaging = pool(requiredFloats, 'float32');
 		if (!rawStaging) {
 			throw new Error(
 				`Renting staging buffer (size ${requiredFloats * Float32Array.BYTES_PER_ELEMENT})`
@@ -244,7 +249,7 @@ export default class SliderBodyRenderer {
 
 		for (let i = 0; i < segmentsCount; i++) {
 			const A = points[i];
-			const B = (i + 1 < pointsCount) ? points[i + 1] : A;
+			const B = points[Math.min(i + 1, pointsCount - 1)];
 
 			const offset = i * 4;
 			staging[offset + 0] = A.x;

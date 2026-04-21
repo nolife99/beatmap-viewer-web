@@ -88,10 +88,10 @@ fn fsMain(input: VertexOutput) -> FragmentOutput {
         discard;
     }
 
-    let blurRate = fwidth(dist);
+    let blurRate = fwidth(dist) * 1.5;
     let innerWidth = 1.0 - customUniforms.borderWidth;
 
-    let factor = smoothstep(innerWidth, innerWidth + blurRate, dist);
+    let factor = smoothstep(innerWidth - blurRate, innerWidth, dist);
 
     let innerBody = mix(customUniforms.innerColor, customUniforms.outerColor, dist);
     let color = mix(innerBody, customUniforms.borderColor, factor);

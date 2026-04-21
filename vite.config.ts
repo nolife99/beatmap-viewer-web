@@ -30,7 +30,6 @@ if (isCodespace) {
 
 export default defineConfig({
 	worker: {
-		format: 'es',
 		rollupOptions: {
 			output: {
 				codeSplitting: false,
@@ -39,7 +38,7 @@ export default defineConfig({
 	},
 	plugins: [tailwindcss(), nodePolyfills(), viteSingleFile()],
 	build: {
-		target: "esnext",
+		target: "es6",
 		assetsInlineLimit: Number.MAX_SAFE_INTEGER,
 		rollupOptions: {
 			output: {

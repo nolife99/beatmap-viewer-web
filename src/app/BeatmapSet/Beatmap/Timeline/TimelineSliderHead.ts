@@ -1,10 +1,10 @@
-import * as d3 from 'd3';
 import type { Slider, SliderHead } from 'osu-standard-stable';
 import type Skin from '../../../Skinning/Skin.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import DrawableDefaults from '../HitObjects/DrawableDefaults.ts';
 import type DrawableSlider from '../HitObjects/DrawableSlider.ts';
 import TimelineHitCircle from './TimelineHitCircle.ts';
+import { Color } from "pixi.js";
 
 export default class TimelineSliderHead extends TimelineHitCircle {
 	constructor(object: SliderHead, parent: Slider) {
@@ -54,13 +54,13 @@ export default class TimelineSliderHead extends TimelineHitCircle {
 
 		if (!skin.config.General.Argon) return;
 
-		const col = d3.color(color as string);
+		const col = new Color(color);
 		if (!col) return;
-
+		
 		const lumi =
-			0.299 * (col?.rgb().r / 255) +
-			0.587 * (col?.rgb().g / 255) +
-			0.114 * (col?.rgb().b / 255);
+			0.299 * col.red +
+			0.587 * col.green +
+			0.114 * col.blue;
 		this.defaults.container.tint = lumi > 0.5 ? color : 0xffffff;
 		this.defaults.container.children.map((sprite) => {
 			sprite.tint = lumi > 0.5 ? 0x333333 : 0xe5e5e5;

@@ -1,16 +1,15 @@
 {
-  "compilerOptions": {
-    "lib": ["deno.ns", "dom", "dom.iterable", "esnext"],
-    "strict": true,
-    "noFallthroughCasesInSwitch": true
-  },
-  "imports": {
-    "@std/http": "jsr:@std/http@^1.1.0"
-  },
-  "deploy": {
-    "org": "nolife99",
-    "app": "beatmap-viewer-web"
-  }
+	"compilerOptions": {
+		"lib": ["deno.ns", "dom", "dom.iterable", "esnext"],
+		"strict": true,
+		"noFallthroughCasesInSwitch": true
+	},
+	"imports": {
+		"@std/http": "jsr:@std/http@^1.1.0"
+	},
+	"deploy": {
+		"org": "nolife99",
+		"app": "beatmap-viewer-web"
+	}
 }
-
 

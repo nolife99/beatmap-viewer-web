@@ -26,10 +26,10 @@ void main() {
     // Properly union overlaps
     gl_FragDepth = dist;
 
-    float blurRate = fwidth(dist);
+    float blurRate = fwidth(dist) * 1.5;
     float innerWidth = 1.0 - borderWidth;
 
-    float factor = smoothstep(innerWidth, innerWidth + blurRate, dist);
+    float factor = smoothstep(innerWidth - blurRate, innerWidth, dist);
 
     vec4 innerBody = mix(innerColor, outerColor, dist);
     vec4 color = mix(innerBody, borderColor, factor);

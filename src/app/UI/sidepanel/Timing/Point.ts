@@ -1,8 +1,9 @@
-import { DifficultyPoint, type SamplePoint, TimingPoint } from 'osu-classes';
+import { ControlPoint, DifficultyPoint, type SamplePoint, TimingPoint } from 'osu-classes';
 import { BitmapText, type ColorSource, Container, Graphics } from 'pixi.js';
 import type ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject } from '../../../Context.ts';
 import { millisecondsToMinutesString } from '../../../utils.ts';
+import { ControlPointType } from "osu-classes";
 
 export default class Point {
 	container: Container;
@@ -15,12 +16,12 @@ export default class Point {
 	private accent: ColorSource;
 	private bg = inject<ColorConfig>('config/color')?.color.mantle ?? 0x181825;
 	private _destroyed = false;
-
-	constructor(public data: TimingPoint | DifficultyPoint | SamplePoint) {
+	
+	constructor(public data: ControlPoint) {
 		this.accent =
-			data instanceof TimingPoint
+			data.pointType === ControlPointType.TimingPoint
 				? 0xf38ba8
-				: data instanceof DifficultyPoint
+				: data.pointType === ControlPointType.DifficultyPoint
 					? 0xa6e3a1
 					: (inject<ColorConfig>('config/color')?.color.text ?? 0xcdd6f4);
 
@@ -40,9 +41,9 @@ export default class Point {
 
 			this.bg = mantle;
 			this.accent =
-				data instanceof TimingPoint
+				data.pointType === ControlPointType.TimingPoint
 					? 0xf38ba8
-					: data instanceof DifficultyPoint
+					: data.pointType === ControlPointType.DifficultyPoint
 						? 0xa6e3a1
 						: (inject<ColorConfig>('config/color')?.color.text ?? 0xcdd6f4);
 
@@ -63,11 +64,11 @@ export default class Point {
 
 		this.content1 = new BitmapText({
 			text:
-				data instanceof TimingPoint
-					? `${Math.round(data.bpm)} BPM`
-					: data instanceof DifficultyPoint
-						? `x${data.sliderVelocity.toFixed(2)}`
-						: `${data.sampleSet} : ${data.customIndex === 0 ? 'Default' : `Custom ${data.customIndex}`}`,
+				data.pointType === ControlPointType.TimingPoint
+					? `${Math.round((data as TimingPoint).bpm)} BPM`
+					: data.pointType === ControlPointType.DifficultyPoint
+						? `x${(data as DifficultyPoint).sliderVelocity.toFixed(2)}`
+						: `${(data as SamplePoint).sampleSet}: ${(data as SamplePoint).customIndex === 0 ? 'Default' : `Custom ${(data as SamplePoint).customIndex}`}`,
 			style: {
 				fontSize: 14,
 				fontFamily: 'Rubik',
@@ -81,11 +82,11 @@ export default class Point {
 
 		this.content2 = new BitmapText({
 			text:
-				data instanceof TimingPoint
-					? `Signature ${data.timeSignature}/4`
-					: data instanceof DifficultyPoint
+				data.pointType === ControlPointType.TimingPoint
+					? `Signature ${(data as TimingPoint).timeSignature}/4`
+					: data.pointType === ControlPointType.DifficultyPoint
 						? ''
-						: `Volume ${data.volume}%`,
+						: `Volume ${(data as SamplePoint).volume}%`,
 			style: {
 				fontSize: 14,
 				fontFamily: 'Rubik',

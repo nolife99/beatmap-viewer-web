@@ -227,7 +227,7 @@ export default class Gameplay extends ScopedClass {
 		this.grid.x = (width - _w) / 2;
 		this.grid.y = (height - _h) / 2;
 
-		this.drawGrid(_w);
+		setTimeout(() => this.drawGrid(_w));
 
 		this.selectContainer.scale.set(scale);
 
