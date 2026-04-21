@@ -1,4 +1,4 @@
-import { Application, Assets, GpuBlendModesToPixi, RenderTarget, Spritesheet, Texture, UPDATE_PRIORITY } from 'pixi.js';
+import { Application, Assets, GpuBlendModesToPixi, RenderTarget, Spritesheet, UPDATE_PRIORITY } from 'pixi.js';
 import State from './State.ts';
 import AnimationController, { tweenGroup } from './UI/animation/AnimationController.ts';
 import BeatmapSet from './BeatmapSet/index.ts';

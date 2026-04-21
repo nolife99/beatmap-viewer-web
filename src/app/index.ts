@@ -34,7 +34,7 @@ document.addEventListener('keydown', (event) => {
 				activeElement?.getAttribute('type') === 'text'
 			)
 				return;
-			bms.toggle();
+			bms.toggle(event);
 
 			break;
 		}

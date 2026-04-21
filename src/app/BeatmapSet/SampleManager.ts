@@ -10,12 +10,11 @@ export default class SampleManager {
 	private map = new Map<string, AudioBuffer>();
 
 	constructor(
-		private audioContext: BaseAudioContext,
 		private files: Map<string, Resource>
 	) {
 	}
 
-	load() {
+	load(ctx: BaseAudioContext) {
 		return Promise.all(
 			[...this.files].map(async ([filename, resource]) => {
 				if (!HITSOUND_REGEX.test(filename)) return;
@@ -24,15 +23,15 @@ export default class SampleManager {
 				let audioBuffer: AudioBuffer;
 
 				try {
-					audioBuffer = await this.audioContext.decodeAudioData(
+					audioBuffer = await ctx.decodeAudioData(
 						await resource.arrayBuffer()
 					);
 				} catch (e) {
 					console.warn(`Cannot decode ${filename}. Default to silent sample. (${e})`);
-					audioBuffer = this.audioContext.createBuffer(
+					audioBuffer = ctx.createBuffer(
 						1,
 						1,
-						this.audioContext.sampleRate
+						ctx.sampleRate
 					);
 				}
 

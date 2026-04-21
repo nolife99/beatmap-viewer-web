@@ -3,6 +3,7 @@ import { Color, Sprite, Texture } from 'pixi.js';
 import type BeatmapSet from '../../../BeatmapSet/index.ts';
 import type ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject } from '../../../Context.ts';
+import Audio from "../../../Audio/index.ts";
 
 export default class Play {
 	container = new LayoutContainer({
@@ -40,9 +41,12 @@ export default class Play {
 
 		this.container.cursor = 'pointer';
 
-		this.container.addEventListener('pointertap', () =>
-			inject<BeatmapSet>('beatmapset')?.toggle()
-		);
+		this.container.addEventListener('pointertap', event => {
+			const audio = inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio');
+			if (!audio) return;
+
+			inject<BeatmapSet>('beatmapset')?.toggle(event);
+		});
 
 		this.container.addEventListener('pointerenter', () => {
 			this.container.layout = {

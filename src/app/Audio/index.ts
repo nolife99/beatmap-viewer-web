@@ -5,11 +5,12 @@ import SpectrogramProcessor from './SpectrogramProcessor.ts';
 import { SoundTouchNode } from '@soundtouchjs/audio-worklet';
 import soundTouchProcessor from '../../assets/soundtouch-processor.js?url';
 
-const audioContext = new AudioContext;
-audioContext.audioWorklet.addModule(soundTouchProcessor);
+export const audioContext = new AudioContext;
+audioContext.audioWorklet.addModule(soundTouchProcessor as URL);
 
-export function getAudioContext() {
-	return audioContext;
+if ('audioSession' in navigator) {
+    // @ts-expect-error WebKit only API
+    navigator.audioSession.type = 'playback';
 }
 
 export default class Audio extends ScopedClass {
@@ -23,7 +24,7 @@ export default class Audio extends ScopedClass {
 	private soundTouchNode?: SoundTouchNode;
 	private desyncedFrames = 0;
 
-	constructor(private masterNode: AudioNode) {
+	constructor(private masterNode: AudioNode, private beatmapSet: BeatmapSet) {
 		super();
 
 		this.localGainNode = masterNode.context.createGain();
@@ -54,15 +55,22 @@ export default class Audio extends ScopedClass {
 		else this.desyncedFrames = 0;
 
 		if (this.desyncedFrames > 30) {
-			this.context.consume<BeatmapSet>('beatmapset')?.seek(now);
+			this.beatmapSet.seek(now);
 			this.desyncedFrames = 0;
-			console.warn(`Audio desynced: ${offset.toFixed()}ms`);
+
+			const ctx = this.masterNode.context;
+			if (ctx.state === 'interrupted' && this.state === 'PLAYING' && ctx instanceof AudioContext) {
+				ctx.suspend().then(() => this.beatmapSet.toggle());
+			}
+			else {
+				console.warn(`Audio desynced: ${offset.toFixed()}ms`);
+			}
 		}
 
 		if (now > this.duration) {
 			if (this.state === 'PLAYING') {
-				this.context.consume<BeatmapSet>('beatmapset')?.toggle();
-				this.context.consume<BeatmapSet>('beatmapset')?.seek(0);
+				this.beatmapSet.toggle();
+				this.beatmapSet.seek(0);
 			}
 			return this.duration;
 		}
@@ -84,7 +92,7 @@ export default class Audio extends ScopedClass {
 	}
 
 	get playbackRate() {
-		return this.context.consume<BeatmapSet>('beatmapset')?.playbackRate ?? 1;
+		return this.beatmapSet.playbackRate ?? 1;
 	}
 
 	get duration() {
@@ -152,8 +160,8 @@ export default class Audio extends ScopedClass {
 
 		this.sourceNode.onended = () => {
 			if (this.state === 'PLAYING') {
-				this.context.consume<BeatmapSet>('beatmapset')?.toggle();
-				this.context.consume<BeatmapSet>('beatmapset')?.seek(0);
+				this.beatmapSet.toggle();
+				this.beatmapSet.seek(0);
 			}
 		};
 	}

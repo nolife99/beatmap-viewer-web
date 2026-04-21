@@ -1,7 +1,7 @@
 import { Tween } from '@tweenjs/tween.js';
 import type { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
 import { Application, Assets, type FederatedWheelEvent, Texture } from 'pixi.js';
-import Audio, { getAudioContext } from '../Audio/index.ts';
+import Audio, { audioContext } from '../Audio/index.ts';
 import type AudioConfig from '../Config/AudioConfig.ts';
 import type BackgroundConfig from '../Config/BackgroundConfig.ts';
 import type ExperimentalConfig from '../Config/ExperimentalConfig.ts';
@@ -34,7 +34,6 @@ import extraMode from '../../assets/extra-mode.svg?raw';
 
 export default class BeatmapSet extends ScopedClass {
 	difficulties: Beatmap[] = [];
-	audioContext = getAudioContext();
 	playbackRate = 1;
 	master?: Beatmap;
 	slaves: Set<Beatmap> = new Set();
@@ -91,11 +90,8 @@ export default class BeatmapSet extends ScopedClass {
 		inject<Loading>('ui/loading')?.setText('Loading hitSamples');
 
 		console.time('Load hitSamples');
-		const sampleManager = this.context.provide(
-			'sampleManager',
-			new SampleManager(this.audioContext, this.resources)
-		);
-		await sampleManager.load();
+		const sampleManager = this.context.provide('sampleManager', new SampleManager(this.resources));
+		await sampleManager.load(audioContext);
 		console.timeEnd('Load hitSamples');
 
 		await this.loadBeatmapSkin();
@@ -190,8 +186,8 @@ export default class BeatmapSet extends ScopedClass {
 
 		this.context.consume<Audio>('audio')?.destroy();
 
-		const gainNode = this.context.provide('masterGainNode', this.audioContext.createGain());
-		gainNode.connect(this.audioContext.destination);
+		const gainNode = this.context.provide('masterGainNode', audioContext.createGain());
+		gainNode.connect(audioContext.destination);
 
 		gainNode.gain.value = inject<AudioConfig>('config/audio')?.masterVolume ?? 0.8;
 		inject<AudioConfig>('config/audio')?.onChange('masterVolume', (val) => {
@@ -200,7 +196,7 @@ export default class BeatmapSet extends ScopedClass {
 
 		const audio = this.context.provide(
 			'audio',
-			new Audio(gainNode).hook(this.context)
+			new Audio(gainNode, this).hook(this.context)
 		);
 		await audio.createBufferNode(audioFile);
 
@@ -423,10 +419,14 @@ export default class BeatmapSet extends ScopedClass {
 		this.setIds();
 	}
 
-	toggle() {
+	async toggle(event: UIEvent | null = null) {
 		const playButton = inject<Play>('ui/main/controls/play');
 
 		const audio = this.context.consume<Audio>('audio');
+		if (event && audio?.state === 'STOPPED') {
+			await audioContext.suspend();
+			await audioContext.resume();
+		}
 		audio?.toggle();
 
 		this.master?.toggle();
