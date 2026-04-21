@@ -110,7 +110,6 @@ Deno.serve({
             <meta property="twitter:image" content="https://fukutotojido.s-ul.eu/YuVf9ZAd" />
         `;
 
-        // Inject the dynamic meta tags into the HTML placeholder
         const html = template.replace('', metaTags);
 
         return new Response(html, {
@@ -121,11 +120,9 @@ Deno.serve({
         });
     }
 
-    // Serve Static Dist Files
     if (isProduction) {
         const path = url.pathname === '/' ? '/index.html' : url.pathname;
         try {
-            // Deno.open returns a readable stream, which Response natively accepts!
             const file = await Deno.open(`./dist${path}`, { read: true });
             return new Response(file.readable, { headers: corsHeaders });
         } catch {

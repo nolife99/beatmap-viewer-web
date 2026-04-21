@@ -3,5 +3,8 @@
     "lib": ["deno.ns", "dom", "dom.iterable", "esnext"],
     "strict": true,
     "noFallthroughCasesInSwitch": true
+  },
+  "imports": {
+    "@std/http": "jsr:@std/http@^1.1.0"
   }
 }
