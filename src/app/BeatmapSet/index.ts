@@ -62,7 +62,7 @@ export default class BeatmapSet extends ScopedClass {
 
 		inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'mods',
-			({
+			async ({
 				 mods: val,
 				 shouldPlaybackChange
 			 }: {
@@ -71,9 +71,9 @@ export default class BeatmapSet extends ScopedClass {
 			}) => {
 				if (!shouldPlaybackChange) return;
 
-				this.toggle();
+				await this.toggle();
 				this.playbackRate = val.includes('DT') ? 1.5 : 1;
-				this.toggle();
+				await this.toggle();
 			}
 		);
 	}
@@ -423,11 +423,7 @@ export default class BeatmapSet extends ScopedClass {
 		const playButton = inject<Play>('ui/main/controls/play');
 
 		const audio = this.context.consume<Audio>('audio');
-		if (event && audio?.state === 'STOPPED') {
-			await audioContext.suspend();
-			await audioContext.resume();
-		}
-		audio?.toggle();
+		await audio?.toggle(event);
 
 		this.master?.toggle();
 		for (const slave of this.slaves) {

@@ -4,6 +4,7 @@ import { inject, ScopedClass } from '../Context.ts';
 import SpectrogramProcessor from './SpectrogramProcessor.ts';
 import { SoundTouchNode } from '@soundtouchjs/audio-worklet';
 import soundTouchProcessor from '../../assets/soundtouch-processor.js?url';
+import { Ticker } from "pixi.js";
 
 export const audioContext = new AudioContext;
 audioContext.audioWorklet.addModule(soundTouchProcessor as URL);
@@ -54,23 +55,27 @@ export default class Audio extends ScopedClass {
 		if (Math.abs(offset) > 10) this.desyncedFrames++;
 		else this.desyncedFrames = 0;
 
-		if (this.desyncedFrames > 30) {
-			this.beatmapSet.seek(now);
+		if (this.desyncedFrames > 20) {
 			this.desyncedFrames = 0;
 
 			const ctx = this.masterNode.context;
-			if (ctx.state === 'interrupted' && this.state === 'PLAYING' && ctx instanceof AudioContext) {
-				ctx.suspend().then(() => this.beatmapSet.toggle());
+			if (ctx instanceof AudioContext && this.state === 'PLAYING') {
+				const checkTimeBefore = ctx.currentTime;
+				Ticker.system.addOnce(() => {
+					if (this.state === 'PLAYING' && ctx.currentTime === checkTimeBefore) {
+						this.beatmapSet.toggle().then(() => ctx.suspend().catch(() => {}));
+					}
+				});
 			}
 			else {
+				this.beatmapSet.seek(now);
 				console.warn(`Audio desynced: ${offset.toFixed()}ms`);
 			}
 		}
 
 		if (now > this.duration) {
 			if (this.state === 'PLAYING') {
-				this.beatmapSet.toggle();
-				this.beatmapSet.seek(0);
+				this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
 			}
 			return this.duration;
 		}
@@ -115,10 +120,14 @@ export default class Audio extends ScopedClass {
 		this.init = true;
 	}
 
-	toggle() {
+	async toggle(event: UIEvent | null) {
 		if (this.state === 'PLAYING') {
 			this.pause();
 			return;
+		}
+		if (event) {
+			await audioContext.suspend();
+			await audioContext.resume();
 		}
 		this.play();
 	}
@@ -160,8 +169,7 @@ export default class Audio extends ScopedClass {
 
 		this.sourceNode.onended = () => {
 			if (this.state === 'PLAYING') {
-				this.beatmapSet.toggle();
-				this.beatmapSet.seek(0);
+				this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
 			}
 		};
 	}
