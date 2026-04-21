@@ -4,7 +4,6 @@ import { inject, ScopedClass } from '../Context.ts';
 import SpectrogramProcessor from './SpectrogramProcessor.ts';
 import { SoundTouchNode } from '@soundtouchjs/audio-worklet';
 import soundTouchProcessor from '../../assets/soundtouch-processor.js?url';
-import { Ticker } from "pixi.js";
 
 export const audioContext = new AudioContext;
 audioContext.audioWorklet.addModule(soundTouchProcessor as URL);
@@ -55,22 +54,21 @@ export default class Audio extends ScopedClass {
 		if (Math.abs(offset) > 10) this.desyncedFrames++;
 		else this.desyncedFrames = 0;
 
+		const ctx = this.masterNode.context;
+		if (ctx instanceof AudioContext && this.state === 'PLAYING') {
+			const checkTimeBefore = ctx.currentTime;
+			setTimeout(() => {
+				if (this.state === 'PLAYING' && ctx.currentTime === checkTimeBefore) {
+					this.beatmapSet.toggle().then(() => ctx.suspend().catch(() => {}));
+				}
+			}, 100);
+		}
+
 		if (this.desyncedFrames > 20) {
 			this.desyncedFrames = 0;
 
-			const ctx = this.masterNode.context;
-			if (ctx instanceof AudioContext && this.state === 'PLAYING') {
-				const checkTimeBefore = ctx.currentTime;
-				Ticker.system.addOnce(() => {
-					if (this.state === 'PLAYING' && ctx.currentTime === checkTimeBefore) {
-						this.beatmapSet.toggle().then(() => ctx.suspend().catch(() => {}));
-					}
-				});
-			}
-			else {
-				this.beatmapSet.seek(now);
-				console.warn(`Audio desynced: ${offset.toFixed()}ms`);
-			}
+			this.beatmapSet.seek(now);
+			console.warn(`Audio desynced: ${offset.toFixed()}ms`);
 		}
 
 		if (now > this.duration) {

@@ -36,7 +36,18 @@ export default defineConfig({
 			}
 		}
 	},
-	plugins: [tailwindcss(), nodePolyfills(), viteSingleFile()],
+	plugins: [tailwindcss(), nodePolyfills(), viteSingleFile(), {
+		name: 'remove-eruda',
+		transformIndexHtml(html) {
+			if (Deno.env.get('NODE_ENV') === 'production') {
+				return html.replace(
+					/<script src="\/\/cdn\.jsdelivr\.net\/npm\/eruda"><\/script>\s*<script>eruda\.init\(\);<\/script>/g,
+					''
+				)
+			}
+			return html;
+		}
+	}],
 	build: {
 		target: "es6",
 		assetsInlineLimit: Number.MAX_SAFE_INTEGER,
