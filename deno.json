@@ -6,5 +6,11 @@
   },
   "imports": {
     "@std/http": "jsr:@std/http@^1.1.0"
+  },
+  "deploy": {
+    "org": "nolife99",
+    "app": "beatmap-viewer-web"
   }
 }
+
+
