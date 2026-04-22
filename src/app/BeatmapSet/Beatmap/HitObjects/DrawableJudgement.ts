@@ -91,26 +91,26 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 		switch (value.value) {
 			case HitResult.Great: {
 				this.texturesList = inject<SkinManager>('skinManager')
-				?.getCurrentSkin()
-				.getAnimatedTexture('hit300') ?? [BLANK_TEXTURE];
+					?.getCurrentSkin()
+					.getAnimatedTexture('hit300') ?? [BLANK_TEXTURE];
 				break;
 			}
 			case HitResult.Ok: {
 				this.texturesList = inject<SkinManager>('skinManager')
-				?.getCurrentSkin()
-				.getAnimatedTexture('hit100') ?? [BLANK_TEXTURE];
+					?.getCurrentSkin()
+					.getAnimatedTexture('hit100') ?? [BLANK_TEXTURE];
 				break;
 			}
 			case HitResult.Meh: {
 				this.texturesList = inject<SkinManager>('skinManager')
-				?.getCurrentSkin()
-				.getAnimatedTexture('hit50') ?? [BLANK_TEXTURE];
+					?.getCurrentSkin()
+					.getAnimatedTexture('hit50') ?? [BLANK_TEXTURE];
 				break;
 			}
 			case HitResult.Miss: {
 				this.texturesList = inject<SkinManager>('skinManager')
-				?.getCurrentSkin()
-				.getAnimatedTexture('hit0') ?? [BLANK_TEXTURE];
+					?.getCurrentSkin()
+					.getAnimatedTexture('hit0') ?? [BLANK_TEXTURE];
 				break;
 			}
 			default: {

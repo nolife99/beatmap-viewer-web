@@ -5,58 +5,64 @@ import type FullscreenConfig from '../../../Config/FullscreenConfig.ts';
 import { inject } from '../../../Context.ts';
 
 export default class Fullscreen {
-	container = new LayoutContainer({
-		layout: {
-			aspectRatio: 1,
-			backgroundColor: new Color(inject<ColorConfig>('config/color')?.color.crust).setAlpha(0.7),
-			height: '100%',
-			flexShrink: 0,
-			alignItems: 'center',
-			justifyContent: 'center'
-		}
-	});
+  container = new LayoutContainer({
+    layout: {
+      aspectRatio: 1,
+      backgroundColor: new Color(
+        inject<ColorConfig>("config/color")?.color.crust,
+      ).setAlpha(0.7),
+      height: "100%",
+      flexShrink: 0,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });
 
-	sprite = new Sprite();
+  sprite = new Sprite();
 
-	constructor() {
-		this.sprite.texture = Texture.from('maximize.png');
-		this.sprite.width = 20;
-		this.sprite.height = 20;
-		this.sprite.layout = { width: 20, height: 20 };
-		this.sprite.tint =
-			inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
+  constructor() {
+    this.sprite.texture = Texture.from("maximize.png");
+    this.sprite.width = 20;
+    this.sprite.height = 20;
+    this.sprite.layout = { width: 20, height: 20 };
+    this.sprite.tint = inject<ColorConfig>("config/color")?.color.text ??
+      0xffffff;
 
-		this.container.addChild(this.sprite);
+    this.container.addChild(this.sprite);
 
-		inject<ColorConfig>('config/color')?.onChange(
-			'color',
-			({ crust, text }) => {
-				this.container.layout = { backgroundColor: new Color(crust).setAlpha(0.7) };
-				this.sprite.tint = text;
-			}
-		);
+    inject<ColorConfig>("config/color")?.onChange(
+      "color",
+      ({ crust, text }) => {
+        this.container.layout = {
+          backgroundColor: new Color(crust).setAlpha(0.7),
+        };
+        this.sprite.tint = text;
+      },
+    );
 
-		this.container.cursor = 'pointer';
+    this.container.cursor = "pointer";
 
-		this.container.addEventListener('pointertap', () => {
-			const config = inject<FullscreenConfig>('config/fullscreen');
-			if (!config) return;
+    this.container.addEventListener("pointertap", () => {
+      const config = inject<FullscreenConfig>("config/fullscreen");
+      if (!config) return;
 
-			config.fullscreen = !config.fullscreen;
-		});
+      config.fullscreen = !config.fullscreen;
+    });
 
-		this.container.addEventListener('pointerenter', () => {
-			this.container.layout = {
-				backgroundColor:
-					new Color(inject<ColorConfig>('config/color')?.color.surface2 ?? 0xffffff).setAlpha(0.8)
-			};
-		});
+    this.container.addEventListener("pointerenter", () => {
+      this.container.layout = {
+        backgroundColor: new Color(
+          inject<ColorConfig>("config/color")?.color.surface2 ?? 0xffffff,
+        ).setAlpha(0.8),
+      };
+    });
 
-		this.container.addEventListener('pointerleave', () => {
-			this.container.layout = {
-				backgroundColor:
-					new Color(inject<ColorConfig>('config/color')?.color.crust ?? 0xffffff).setAlpha(0.7)
-			};
-		});
-	}
+    this.container.addEventListener("pointerleave", () => {
+      this.container.layout = {
+        backgroundColor: new Color(
+          inject<ColorConfig>("config/color")?.color.crust ?? 0xffffff,
+        ).setAlpha(0.7),
+      };
+    });
+  }
 }

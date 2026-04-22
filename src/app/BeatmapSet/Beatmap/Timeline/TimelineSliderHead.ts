@@ -4,7 +4,7 @@ import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import DrawableDefaults from '../HitObjects/DrawableDefaults.ts';
 import type DrawableSlider from '../HitObjects/DrawableSlider.ts';
 import TimelineHitCircle from './TimelineHitCircle.ts';
-import { Color } from "pixi.js";
+import { Color } from 'pixi.js';
 
 export default class TimelineSliderHead extends TimelineHitCircle {
 	constructor(object: SliderHead, parent: Slider) {

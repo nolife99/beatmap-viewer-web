@@ -15,13 +15,15 @@ if (!isProduction) {
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type'
+	'Access-Control-Allow-Headers': 'Content-Type',
+	'Cross-Origin-Opener-Policy': 'same-origin',
+	'Cross-Origin-Embedder-Policy': 'require-corp'
 };
 
 async function handleDownload(req: Request): Promise<Response> {
 	try {
 		const body = await req.json();
-		
+
 		if (!body || typeof body.url !== 'string') {
 			return new Response('Invalid or missing URL', { status: 400 });
 		}
@@ -41,7 +43,7 @@ const port = Number(Deno.env.get('PORT') ?? 5000);
 
 Deno.serve({
 	port,
-	hostname: '0.0.0.0',
+	hostname: '0.0.0.0'
 }, async (req) => {
 	const url = new URL(req.url);
 
@@ -51,7 +53,7 @@ Deno.serve({
 
 	if (req.method === 'POST' && url.pathname === '/api/download') {
 		const response = await handleDownload(req);
-		
+
 		for (const [key, value] of Object.entries(corsHeaders)) {
 			response.headers.set(key, value);
 		}

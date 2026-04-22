@@ -79,11 +79,11 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		}
 
 		this.texturesList = this.skinManager
-		?.getCurrentSkin()
-		.getAnimatedTexture(
-			'followpoint',
-			this.context.consume<Skin>('beatmapSkin')
-		) ?? [BLANK_TEXTURE];
+			?.getCurrentSkin()
+			.getAnimatedTexture(
+				'followpoint',
+				this.context.consume<Skin>('beatmapSkin')
+			) ?? [BLANK_TEXTURE];
 	}
 
 	override hook(context: Context) {

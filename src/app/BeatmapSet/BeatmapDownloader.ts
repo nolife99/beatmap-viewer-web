@@ -152,12 +152,12 @@ const fetchBlobFromMirror = async (
 	const allMirrors = [
 		...document.querySelectorAll<HTMLInputElement>('[name=beatmapMirror]')
 	]
-	.map((ele) => ({
-		url: ele.dataset.url,
-		rank: ele.dataset.rank as string,
-		name: ele.value
-	}))
-	.toSorted((a, b) => +a.rank - +b.rank);
+		.map((ele) => ({
+			url: ele.dataset.url,
+			rank: ele.dataset.rank as string,
+			name: ele.value
+		}))
+		.toSorted((a, b) => +a.rank - +b.rank);
 
 	const configIndex = allMirrors.findIndex(
 		(entry) => entry.url === urlTemplate.trim()

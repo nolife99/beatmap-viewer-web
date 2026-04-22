@@ -140,13 +140,13 @@ export default class DrawableSliderBall extends AnimatedSkinnableElement {
 		if (!skin.config.General.Argon) {
 			const beatmapHasSliderB =
 				this.context
-				.consume<Skin>('beatmapSkin')
-				?.animatedTextures.has('sliderb') ||
+					.consume<Skin>('beatmapSkin')
+					?.animatedTextures.has('sliderb') ||
 				this.context.consume<Skin>('beatmapSkin')?.textures.has('sliderb');
 			const hasSliderB =
 				this.context
-				.consume<Skin>('beatmapSkin')
-				?.animatedTextures.has('sliderb') ||
+					.consume<Skin>('beatmapSkin')
+					?.animatedTextures.has('sliderb') ||
 				skin.animatedTextures.has('sliderb') ||
 				skin.textures.has('sliderb') ||
 				this.context.consume<Skin>('beatmapSkin')?.textures.has('sliderb');

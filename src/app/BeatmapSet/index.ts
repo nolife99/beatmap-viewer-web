@@ -63,9 +63,9 @@ export default class BeatmapSet extends ScopedClass {
 		inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'mods',
 			async ({
-				 mods: val,
-				 shouldPlaybackChange
-			 }: {
+					   mods: val,
+					   shouldPlaybackChange
+				   }: {
 				mods: string;
 				shouldPlaybackChange: boolean;
 			}) => {
@@ -115,12 +115,12 @@ export default class BeatmapSet extends ScopedClass {
 				})
 			)
 		)
-		.filter((beatmap) => beatmap !== null)
-		.sort(
-			(a, b) =>
-				-a.difficultyAttributes.starRating +
-				b.difficultyAttributes.starRating
-		);
+			.filter((beatmap) => beatmap !== null)
+			.sort(
+				(a, b) =>
+					-a.difficultyAttributes.starRating +
+					b.difficultyAttributes.starRating
+			);
 
 		const el = document.querySelector<HTMLDivElement>('#diffsContainer');
 		if (el) el.innerHTML = '';
@@ -141,11 +141,11 @@ export default class BeatmapSet extends ScopedClass {
 			button.addEventListener('click', () => {
 				this.loadMaster(i);
 				document
-				.querySelector<HTMLDivElement>('#diffsContainerWrapper')
-				?.classList.add('showOut');
+					.querySelector<HTMLDivElement>('#diffsContainerWrapper')
+					?.classList.add('showOut');
 				document
-				.querySelector<HTMLDivElement>('#diffsContainerWrapper')
-				?.classList.remove('showIn');
+					.querySelector<HTMLDivElement>('#diffsContainerWrapper')
+					?.classList.remove('showIn');
 			});
 
 			const button2 = document.createElement('button');
@@ -157,11 +157,11 @@ export default class BeatmapSet extends ScopedClass {
 				this.loadSlave(i);
 
 				document
-				.querySelector<HTMLDivElement>('#diffsContainerWrapper')
-				?.classList.add('showOut');
+					.querySelector<HTMLDivElement>('#diffsContainerWrapper')
+					?.classList.add('showOut');
 				document
-				.querySelector<HTMLDivElement>('#diffsContainerWrapper')
-				?.classList.remove('showIn');
+					.querySelector<HTMLDivElement>('#diffsContainerWrapper')
+					?.classList.remove('showIn');
 			});
 
 			div?.append(button, button2);
@@ -176,8 +176,8 @@ export default class BeatmapSet extends ScopedClass {
 		this.audioKey = beatmap.data.general.audioFilename;
 		console.time('Constructing audio');
 		const audioFile = this.context
-		.consume<Map<string, Resource>>('resources')
-		?.get(this.audioKey.toLowerCase());
+			.consume<Map<string, Resource>>('resources')
+			?.get(this.audioKey.toLowerCase());
 
 		if (!audioFile) throw new Error('Cannot find audio in resource?');
 
@@ -220,13 +220,13 @@ export default class BeatmapSet extends ScopedClass {
 
 		this.videoKey = videoFilePath;
 		const videoResource = this.context
-		.consume<Map<string, Resource>>('resources')
-		?.get(
-			(
-				beatmap.data.events.storyboard?.layers.get('Video')?.elements.at(0)
-					?.filePath ?? ''
-			).toLowerCase()
-		);
+			.consume<Map<string, Resource>>('resources')
+			?.get(
+				(
+					beatmap.data.events.storyboard?.layers.get('Video')?.elements.at(0)
+						?.filePath ?? ''
+				).toLowerCase()
+			);
 
 		if (!videoResource) return;
 
@@ -253,8 +253,8 @@ export default class BeatmapSet extends ScopedClass {
 		this.backgroundKey = beatmap.data.events.backgroundPath;
 		const background = inject<Background>('ui/main/viewer/background');
 		const backgroundResource = this.context
-		.consume<Map<string, Resource>>('resources')
-		?.get(beatmap.data.events.backgroundPath?.toLowerCase() ?? '');
+			.consume<Map<string, Resource>>('resources')
+			?.get(beatmap.data.events.backgroundPath?.toLowerCase() ?? '');
 
 		if (!backgroundResource) return;
 
@@ -273,14 +273,14 @@ export default class BeatmapSet extends ScopedClass {
 
 	async loadStoryboard() {
 		const storyboardKey = this.context
-		.consume<Map<string, Resource>>('resources')
-		?.keys()
-		.find((key) => key.includes('.osb'));
+			.consume<Map<string, Resource>>('resources')
+			?.keys()
+			.find((key) => key.includes('.osb'));
 		if (!storyboardKey) return;
 
 		const storyboardFile = this.context
-		.consume<Map<string, Resource>>('resources')
-		?.get(storyboardKey.toLowerCase());
+			.consume<Map<string, Resource>>('resources')
+			?.get(storyboardKey.toLowerCase());
 
 		const storyboard = this.context.provide(
 			'storyboard',
@@ -316,8 +316,8 @@ export default class BeatmapSet extends ScopedClass {
 		if (svg) {
 			const color = getDiffColour(beatmap.difficultyAttributes.starRating);
 			svg.innerHTML = svg.innerHTML
-			.replace(/stroke=".*"/g, `stroke="${color}"`)
-			.replace(/fill=".*"/, `fill="${color}"`);
+				.replace(/stroke=".*"/g, `stroke="${color}"`)
+				.replace(/fill=".*"/, `fill="${color}"`);
 		}
 		const sr = document.querySelector<HTMLSpanElement>('#masterSR');
 		if (sr)
@@ -582,23 +582,23 @@ export default class BeatmapSet extends ScopedClass {
 		const tween = new Tween({
 			value: audio.currentTime
 		})
-		.easing(Easings.Out)
-		.to(
-			{
-				value: time
-			},
-			duration
-		)
-		.onUpdate(({ value }) => this.seek(value))
-		.onComplete(() => {
-			tweenGroup.remove(tween);
-			this.isSeeking = false;
-		})
-		.onStop(() => {
-			tweenGroup.remove(tween);
-			this.isSeeking = false;
-		})
-		.start();
+			.easing(Easings.Out)
+			.to(
+				{
+					value: time
+				},
+				duration
+			)
+			.onUpdate(({ value }) => this.seek(value))
+			.onComplete(() => {
+				tweenGroup.remove(tween);
+				this.isSeeking = false;
+			})
+			.onStop(() => {
+				tweenGroup.remove(tween);
+				this.isSeeking = false;
+			})
+			.start();
 
 		tweenGroup.add(tween);
 		this._currentTween = tween;

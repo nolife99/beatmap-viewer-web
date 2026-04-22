@@ -27,8 +27,8 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		this.container.eventMode = 'none';
 
 		this.texturesList = this.skinManager
-		?.getCurrentSkin()
-		.getAnimatedTexture('sliderfollowcircle') ?? [BLANK_TEXTURE];
+			?.getCurrentSkin()
+			.getAnimatedTexture('sliderfollowcircle') ?? [BLANK_TEXTURE];
 
 		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
 			this.refreshSprite()
@@ -62,13 +62,13 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		this.updateFn = skin.config.General.Argon ? argonUpdate : legacyUpdate;
 
 		this.texturesList = this.skinManager
-		?.getCurrentSkin()
-		.getAnimatedTexture(
-			'sliderfollowcircle',
-			skin.config.General.Argon
-				? this.context.consume<Skin>('beatmapSkin')
-				: undefined
-		) ?? [BLANK_TEXTURE];
+			?.getCurrentSkin()
+			.getAnimatedTexture(
+				'sliderfollowcircle',
+				skin.config.General.Argon
+					? this.context.consume<Skin>('beatmapSkin')
+					: undefined
+			) ?? [BLANK_TEXTURE];
 
 		this.container.blendMode = skin.config.General.Argon ? 'add' : 'normal';
 		this.refreshColor();

@@ -1,5 +1,7 @@
 {
-  "forwardPorts": [5173],
+  "forwardPorts": [
+    5173
+  ],
   "image": "mcr.microsoft.com/devcontainers/universal:2",
   "features": {
     "ghcr.io/devcontainers-community/features/deno:1": {}

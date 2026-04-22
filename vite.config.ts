@@ -1,7 +1,9 @@
-import tailwindcss from "@tailwindcss/vite";
-import { defineConfig, HmrOptions } from "vite";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
-import { viteSingleFile } from 'vite-plugin-singlefile'
+import tailwindcss from '@tailwindcss/vite';
+import { defineConfig, HmrOptions } from 'vite';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { viteSingleFile } from 'vite-plugin-singlefile';
+import crossOriginIsolation from 'vite-plugin-cross-origin-isolation';
+import RemoteAssets from 'vite-plugin-remote-assets';
 
 const vitePort = 5173;
 
@@ -9,7 +11,7 @@ const isCodespace = !!Deno.env.get('CODESPACE_NAME');
 const isReplit = !!Deno.env.get('REPL_ID');
 const isCodeSandbox = !!Deno.env.get('CSB');
 
-let hmrConfig: HmrOptions = {};
+let hmrConfig: HmrOptions;
 
 if (isCodespace) {
 	hmrConfig = {
@@ -30,44 +32,44 @@ if (isCodespace) {
 
 export default defineConfig({
 	worker: {
-		rollupOptions: {
+		rolldownOptions: {
 			output: {
-				codeSplitting: false,
+				codeSplitting: false
 			}
 		}
 	},
-	plugins: [tailwindcss(), nodePolyfills(), viteSingleFile(), {
+	plugins: [tailwindcss(), nodePolyfills(), RemoteAssets(), viteSingleFile(), crossOriginIsolation(), {
 		name: 'remove-eruda',
 		transformIndexHtml(html) {
 			if (Deno.env.get('NODE_ENV') === 'production') {
 				return html.replace(
 					/<script src="\/\/cdn\.jsdelivr\.net\/npm\/eruda"><\/script>\s*<script>eruda\.init\(\);<\/script>/g,
 					''
-				)
+				);
 			}
 			return html;
 		}
 	}],
 	build: {
-		target: "es6",
+		target: 'es6',
 		assetsInlineLimit: Number.MAX_SAFE_INTEGER,
-		rollupOptions: {
+		rolldownOptions: {
 			output: {
 				minifyInternalExports: true,
-				codeSplitting: false,
+				codeSplitting: false
 			}
 		}
 	},
 	optimizeDeps: {
-		exclude: ["web-demuxer", "wavesurfer.js"],
+		exclude: ['web-demuxer', 'wavesurfer.js']
 	},
 	preview: {
-		allowedHosts: ["beatmap.try-z.net", "preview.tryz.id.vn"],
+		allowedHosts: ['beatmap.try-z.net', 'preview.tryz.id.vn']
 	},
-	base: "",
+	base: '',
 
 	server: {
-		host: "0.0.0.0",
+		host: '0.0.0.0',
 		port: vitePort,
 		allowedHosts: true,
 		cors: {
@@ -81,5 +83,5 @@ export default defineConfig({
 			usePolling: false
 		},
 		hmr: hmrConfig
-	},
+	}
 });

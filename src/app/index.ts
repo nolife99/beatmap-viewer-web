@@ -4,132 +4,134 @@ import type BeatmapSet from './BeatmapSet/index.ts';
 import { inject, provide } from './Context.ts';
 import { Game } from './Game.ts';
 
-document.addEventListener('keydown', (event) => {
-	const bms = inject<BeatmapSet>('beatmapset');
-	const audio = bms?.context.consume<Audio>('audio');
+document.addEventListener("keydown", (event) => {
+  const bms = inject<BeatmapSet>("beatmapset");
+  const audio = bms?.context.consume<Audio>("audio");
 
-	if (!bms || !audio) return;
+  if (!bms || !audio) return;
 
-	switch (event.key) {
-		case 'ArrowLeft': {
-			bms.smoothTick(
-				-1,
-				event.shiftKey,
-				bms.context.consume<Audio>('audio')?.state === 'PLAYING'
-			);
-			break;
-		}
-		case 'ArrowRight': {
-			bms.smoothTick(
-				1,
-				event.shiftKey,
-				bms.context.consume<Audio>('audio')?.state === 'PLAYING'
-			);
-			break;
-		}
-		case ' ': {
-			const activeElement = document.activeElement;
-			if (
-				activeElement?.tagName === 'INPUT' &&
-				activeElement?.getAttribute('type') === 'text'
-			)
-				return;
-			bms.toggle(event);
+  switch (event.key) {
+    case "ArrowLeft": {
+      bms.smoothTick(
+        -1,
+        event.shiftKey,
+        bms.context.consume<Audio>("audio")?.state === "PLAYING",
+      );
+      break;
+    }
+    case "ArrowRight": {
+      bms.smoothTick(
+        1,
+        event.shiftKey,
+        bms.context.consume<Audio>("audio")?.state === "PLAYING",
+      );
+      break;
+    }
+    case " ": {
+      const activeElement = document.activeElement;
+      if (
+        activeElement?.tagName === "INPUT" &&
+        activeElement?.getAttribute("type") === "text"
+      ) {
+        return;
+      }
+      bms.toggle(event);
 
-			break;
-		}
-		case 'c':
-		case 'C': {
-			if (!event.ctrlKey) return;
-			if (!bms.master) return;
+      break;
+    }
+    case "c":
+    case "C": {
+      if (!event.ctrlKey) return;
+      if (!bms.master) return;
 
-			const selected = [];
-			for (const idx of bms.master.container.selected) {
-				selected.push(bms.master.objects[idx].object);
-			}
+      const selected = [];
+      for (const idx of bms.master.container.selected) {
+        selected.push(bms.master.objects[idx].object);
+      }
 
-			if (!selected.length) return;
+      if (!selected.length) return;
 
-			const timestamp = selected[0].startTime;
-			const indexes = selected
-			.toSorted((a, b) => a.startTime - b.startTime)
-			.map((o) => o.currentComboIndex + 1)
-			.join(',');
+      const timestamp = selected[0].startTime;
+      const indexes = selected
+        .toSorted((a, b) => a.startTime - b.startTime)
+        .map((o) => o.currentComboIndex + 1)
+        .join(",");
 
-			const m = Math.floor(timestamp / 1000 / 60);
-			const s = Math.floor((timestamp - m * 1000 * 60) / 1000);
-			const ms = timestamp % 1000;
+      const m = Math.floor(timestamp / 1000 / 60);
+      const s = Math.floor((timestamp - m * 1000 * 60) / 1000);
+      const ms = timestamp % 1000;
 
-			navigator.clipboard.writeText(
-				`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}:${ms.toString().padStart(3, '0')} (${indexes})`
-			);
-		}
-	}
+      navigator.clipboard.writeText(
+        `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}:${
+          ms.toString().padStart(3, "0")
+        } (${indexes})`,
+      );
+    }
+  }
 });
 
 document.addEventListener(
-	'wheel',
-	(e) => {
-		if (e.ctrlKey) e.preventDefault();
-	},
-	{
-		capture: true,
-		passive: false
-	}
+  "wheel",
+  (e) => {
+    if (e.ctrlKey) e.preventDefault();
+  },
+  {
+    capture: true,
+    passive: false,
+  },
 );
 
-for (const ele of document.querySelectorAll('.flyout-toggle')) {
-	const parent = ele.parentElement;
-	if (!parent) continue;
+for (const ele of document.querySelectorAll(".flyout-toggle")) {
+  const parent = ele.parentElement;
+  if (!parent) continue;
 
-	const container = parent.querySelector('.flyout');
-	if (!container) continue;
+  const container = parent.querySelector(".flyout");
+  if (!container) continue;
 
-	ele.addEventListener('click', (e) => {
-		e.stopPropagation();
+  ele.addEventListener("click", (e) => {
+    e.stopPropagation();
 
-		if (container.classList.contains('hidden')) {
-			container.classList.remove('hidden');
-			container.classList.add('showIn');
+    if (container.classList.contains("hidden")) {
+      container.classList.remove("hidden");
+      container.classList.add("showIn");
 
-			return;
-		}
+      return;
+    }
 
-		container.classList.toggle('showOut');
-		container.classList.toggle('showIn');
-	});
+    container.classList.toggle("showOut");
+    container.classList.toggle("showIn");
+  });
 }
 
-document.body.addEventListener('click', (e) => {
-	const flyouts = document.querySelectorAll('.flyout');
+document.body.addEventListener("click", (e) => {
+  const flyouts = document.querySelectorAll(".flyout");
 
-	for (const ele of flyouts) {
-		const boundingRect = ele.getBoundingClientRect();
-		const isOutBound =
-			e.clientX < boundingRect.left ||
-			e.clientX > boundingRect.right ||
-			e.clientY < boundingRect.top ||
-			e.clientY > boundingRect.bottom;
-		const isOpen = ele.classList.contains('showIn');
+  for (const ele of flyouts) {
+    const boundingRect = ele.getBoundingClientRect();
+    const isOutBound = e.clientX < boundingRect.left ||
+      e.clientX > boundingRect.right ||
+      e.clientY < boundingRect.top ||
+      e.clientY > boundingRect.bottom;
+    const isOpen = ele.classList.contains("showIn");
 
-		if (isOpen && isOutBound) {
-			e.preventDefault();
+    if (isOpen && isOutBound) {
+      e.preventDefault();
 
-			ele.classList.add('showOut');
-			ele.classList.remove('showIn');
+      ele.classList.add("showOut");
+      ele.classList.remove("showIn");
 
-			return;
-		}
-	}
+      return;
+    }
+  }
 });
 
 (async () => {
-	try {
-		await navigator.wakeLock.request('screen');
-	} catch {
-		// the wake lock request fails - usually system related, such being low on battery
-	}
+  try {
+    await navigator.wakeLock.request("screen");
+  } catch {
+    // the wake lock request fails - usually system related, such being low on battery
+  }
 
-	const game = provide('game', new Game());
-	await game.init();
+  const game = provide("game", new Game());
+  await game.init();
 })();

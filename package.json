@@ -1,42 +1,44 @@
 {
-	"name": "beatmap-viewer-web",
-	"module": "index.ts",
-	"type": "module",
-	"private": true,
-	"scripts": {
-		"dev": "deno run -A --watch src/server/index.ts",
-		"build": "deno run -A npm:vite build",
-		"preview": "deno run -A npm:vite preview --port 5000"
-	},
-	"peerDependencies": {
-		"typescript": "^6"
-	},
-	"dependencies": {
-		"@deno/vite-plugin": "^2.0.2",
-		"@flatten-js/interval-tree": "2.0.3",
-		"@pixi/layout": "^3.1.0",
-		"@rian8337/osu-base": "^3.3.0",
-		"@soundcut/decode-audio-data-fast": "^2.0.1",
-		"@soundtouchjs/audio-worklet": "^1.0.9",
-		"@stdlib/array-pool": "^0.3.1",
-		"@tailwindcss/vite": "^4.1.12",
-		"@tweenjs/tween.js": "^25.0.0",
-		"@types/d3": "^7.4.3",
-		"@zip.js/zip.js": "^2.7.60",
-		"d3": "^7.9.0",
-		"fast-sort": "^3.4.1",
-		"js-ini": "^1.6.0",
-		"lightningcss": "^1.32.0",
-		"node-vibrant": "^4.0.3",
-		"osu-classes": "npm:@fukutotojido/osu-classes",
-		"osu-parsers": "^4.1.7",
-		"osu-standard-stable": "^5.0.1",
-		"pixi.js": "^8.17.1",
-		"tailwindcss": "^4.2.2",
-		"vite": "8.0.5",
-		"vite-plugin-node-polyfills": "^0.26.0",
-		"vite-plugin-singlefile": "^2.3.3",
-		"wavesurfer.js": "^7.12.5",
-		"web-demuxer": "^3.0.3"
-	}
+  "name": "beatmap-viewer-web",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "deno run -A --watch src/server/index.ts",
+    "build": "deno run -A npm:vite build",
+    "preview": "deno run -A npm:vite preview --port 5000"
+  },
+  "peerDependencies": {
+    "typescript": "^6"
+  },
+  "dependencies": {
+    "@deno/vite-plugin": "^2.0.2",
+    "@flatten-js/interval-tree": "2.0.3",
+    "@pixi/layout": "^3.1.0",
+    "@rian8337/osu-base": "^3.3.0",
+    "@soundcut/decode-audio-data-fast": "^2.0.1",
+    "@soundtouchjs/audio-worklet": "^1.0.9",
+    "@stdlib/array-pool": "^0.3.1",
+    "@tailwindcss/vite": "^4.1.12",
+    "@tweenjs/tween.js": "^25.0.0",
+    "@types/d3": "^7.4.3",
+    "@zip.js/zip.js": "^2.7.60",
+    "d3": "^7.9.0",
+    "fast-sort": "^3.4.1",
+    "js-ini": "^1.6.0",
+    "lightningcss": "^1.32.0",
+    "node-vibrant": "^4.0.3",
+    "osu-classes": "npm:@fukutotojido/osu-classes",
+    "osu-parsers": "^4.1.7",
+    "osu-standard-stable": "^5.0.1",
+    "pixi.js": "^8.17.1",
+    "tailwindcss": "^4.2.2",
+    "vite": "8.0.5",
+    "vite-plugin-cross-origin-isolation": "^0.1.6",
+    "vite-plugin-node-polyfills": "^0.26.0",
+    "vite-plugin-remote-assets": "^2.1.0",
+    "vite-plugin-singlefile": "^2.3.3",
+    "wavesurfer.js": "^7.12.5",
+    "web-demuxer": "^3.0.3"
+  }
 }

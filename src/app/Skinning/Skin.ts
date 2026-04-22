@@ -3,8 +3,7 @@ import { Rectangle, Texture } from 'pixi.js';
 import type SkinningConfig from '../Config/SkinningConfig.ts';
 import { inject } from '../Context.ts';
 import type { Resource } from '../ZipHandler/index.ts';
-import type SkinManager from './SkinManager.ts';
-import type { SkinMetadata } from './SkinManager.ts';
+import type SkinManager, { SkinMetadata } from './SkinManager.ts';
 
 const sanitizeINI = (str: string) =>
 	str

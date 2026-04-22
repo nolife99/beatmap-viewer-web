@@ -48,18 +48,18 @@ export default class Storyboard extends ScopedClass {
 		super();
 
 		const mask = new Graphics()
-		.rect(-106.666666667, 0, 853.333333333, 480)
-		.fill({
-			color: 0x0,
-			alpha: 0.01
-		});
+			.rect(-106.666666667, 0, 853.333333333, 480)
+			.fill({
+				color: 0x0,
+				alpha: 0.01
+			});
 
 		this.fill = new Graphics()
-		.rect(-106.666666667, 0, 853.333333333, 480)
-		.fill({
-			color: 0x0,
-			alpha: 0
-		});
+			.rect(-106.666666667, 0, 853.333333333, 480)
+			.fill({
+				color: 0x0,
+				alpha: 0
+			});
 
 		this.container.addChild(
 			mask,
@@ -297,11 +297,11 @@ export default class Storyboard extends ScopedClass {
 		);
 
 		const context = new GraphicsContext()
-		.rect(-106.666666667, 0, 853.333333333, 480)
-		.fill({
-			color: 0x0,
-			alpha: hasBG ? 1 : 0
-		});
+			.rect(-106.666666667, 0, 853.333333333, 480)
+			.fill({
+				color: 0x0,
+				alpha: hasBG ? 1 : 0
+			});
 
 		this.fill.context.destroy();
 		this.fill.context = context;
@@ -328,41 +328,41 @@ export default class Storyboard extends ScopedClass {
 
 		const sprites = await Promise.all([
 			...[...(data.layers.Background?.elements ?? [])]
-			.filter((element) => element instanceof StoryboardSpriteData)
-			.map((element) => {
-				const ele = (
-					element instanceof StoryboardAnimationData
-						? new StoryboardAnimation(element, StoryboardLayerType.background)
-						: new StoryboardSprite(element, StoryboardLayerType.background)
-				).hook(this.context);
-				ele.loadTexture();
+				.filter((element) => element instanceof StoryboardSpriteData)
+				.map((element) => {
+					const ele = (
+						element instanceof StoryboardAnimationData
+							? new StoryboardAnimation(element, StoryboardLayerType.background)
+							: new StoryboardSprite(element, StoryboardLayerType.background)
+					).hook(this.context);
+					ele.loadTexture();
 
-				return ele;
-			}),
+					return ele;
+				}),
 			...[...(data.layers.Foreground?.elements ?? [])]
-			.filter((element) => element instanceof StoryboardSpriteData)
-			.map((element) => {
-				const ele = (
-					element instanceof StoryboardAnimationData
-						? new StoryboardAnimation(element, StoryboardLayerType.foreground)
-						: new StoryboardSprite(element, StoryboardLayerType.foreground)
-				).hook(this.context);
-				ele.loadTexture();
+				.filter((element) => element instanceof StoryboardSpriteData)
+				.map((element) => {
+					const ele = (
+						element instanceof StoryboardAnimationData
+							? new StoryboardAnimation(element, StoryboardLayerType.foreground)
+							: new StoryboardSprite(element, StoryboardLayerType.foreground)
+					).hook(this.context);
+					ele.loadTexture();
 
-				return ele;
-			}),
+					return ele;
+				}),
 			...[...(data.layers.Overlay?.elements ?? [])]
-			.filter((element) => element instanceof StoryboardSpriteData)
-			.map((element) => {
-				const ele = (
-					element instanceof StoryboardAnimationData
-						? new StoryboardAnimation(element, StoryboardLayerType.overlay)
-						: new StoryboardSprite(element, StoryboardLayerType.overlay)
-				).hook(this.context);
-				ele.loadTexture();
+				.filter((element) => element instanceof StoryboardSpriteData)
+				.map((element) => {
+					const ele = (
+						element instanceof StoryboardAnimationData
+							? new StoryboardAnimation(element, StoryboardLayerType.overlay)
+							: new StoryboardSprite(element, StoryboardLayerType.overlay)
+					).hook(this.context);
+					ele.loadTexture();
 
-				return ele;
-			})
+					return ele;
+				})
 		]);
 
 		const s = sprites.map((sprite, idx) => {

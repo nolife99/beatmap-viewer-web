@@ -7,7 +7,10 @@ import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
 import type GameplayConfig from '../../../Config/GameplayConfig.ts';
 import { type Context, inject } from '../../../Context.ts';
 import { refreshSprite as argonRefreshSprite, update as argonUpdate } from '../../../Skinning/Argon/ArgonHitCircle.ts';
-import { refreshSprite as legacyRefreshSprite, update as legacyUpdate } from '../../../Skinning/Legacy/LegacyHitCircle.ts';
+import {
+	refreshSprite as legacyRefreshSprite,
+	update as legacyUpdate
+} from '../../../Skinning/Legacy/LegacyHitCircle.ts';
 import { sharedRefreshColor } from '../../../Skinning/Shared/HitCircle.ts';
 import type SkinManager from '../../../Skinning/SkinManager.ts';
 import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
