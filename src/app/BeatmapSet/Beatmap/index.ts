@@ -52,7 +52,7 @@ export default class Beatmap extends ScopedClass {
 	randomColor: ColorSource = new Color(Math.floor(Math.random() * 0xffffff))
 		.toHex();
 
-	worker = new ObjectsWorker();
+	worker: Worker = new ObjectsWorker();
 	previousObjects = new Set<number>();
 	previousTime = 0;
 	container: Gameplay;

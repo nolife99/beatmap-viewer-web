@@ -15,20 +15,20 @@ let hmrConfig: HmrOptions;
 
 if (isCodespace) {
 	hmrConfig = {
-		host: `${Deno.env.get('CODESPACE_NAME')}-${vitePort}.${
-			Deno.env.get('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN')
-		}`,
+		host: `${Deno.env.get('CODESPACE_NAME')}-${vitePort}.${Deno.env.get(
+			'GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN'
+		)}`,
 		clientPort: 443,
-		protocol: 'wss'
+		protocol: 'wss',
 	};
 } else if (isReplit || isCodeSandbox) {
 	hmrConfig = {
 		clientPort: 443,
-		protocol: 'wss'
+		protocol: 'wss',
 	};
 } else {
 	hmrConfig = {
-		port: vitePort
+		port: vitePort,
 	};
 }
 
@@ -36,9 +36,9 @@ export default defineConfig({
 	worker: {
 		rolldownOptions: {
 			output: {
-				codeSplitting: false
-			}
-		}
+				codeSplitting: false,
+			},
+		},
 	},
 	plugins: [
 		tailwindcss(),
@@ -49,15 +49,23 @@ export default defineConfig({
 		{
 			name: 'remove-eruda',
 			transformIndexHtml(html) {
-				if (Deno.env.get('NODE_ENV') === 'production') {
-					return html.replace(
-						/<script src="\/\/cdn\.jsdelivr\.net\/npm\/eruda"><\/script>\s*<script>eruda\.init\(\);<\/script>/g,
-						''
-					);
+				if (Deno.env.get('NODE_ENV') !== 'production') {
+					return [
+						{
+							tag: 'script',
+							attrs: { src: '//cdn.jsdelivr.net/npm/eruda' },
+							injectTo: 'body',
+						},
+						{
+							tag: 'script',
+							children: 'eruda.init();',
+							injectTo: 'body',
+						},
+					];
 				}
 				return html;
-			}
-		}
+			},
+		},
 	],
 	build: {
 		target: 'es6',
@@ -65,15 +73,15 @@ export default defineConfig({
 		rolldownOptions: {
 			output: {
 				minifyInternalExports: true,
-				codeSplitting: false
-			}
-		}
+				codeSplitting: false,
+			},
+		},
 	},
 	optimizeDeps: {
-		exclude: ['web-demuxer', 'wavesurfer.js']
+		exclude: ['web-demuxer', 'wavesurfer.js'],
 	},
 	preview: {
-		allowedHosts: ['beatmap.try-z.net', 'preview.tryz.id.vn']
+		allowedHosts: ['beatmap.try-z.net', 'preview.tryz.id.vn'],
 	},
 	base: '',
 
@@ -86,11 +94,11 @@ export default defineConfig({
 			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 			allowedHeaders: ['Content-Type', 'Authorization'],
 			credentials: true,
-			maxAge: 86400
+			maxAge: 86400,
 		},
 		watch: {
-			usePolling: false
+			usePolling: false,
 		},
-		hmr: hmrConfig
-	}
+		hmr: hmrConfig,
+	},
 });

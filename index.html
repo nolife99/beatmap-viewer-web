@@ -1,473 +1,743 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-    <meta content="JoSu! | osu! Beatmap Viewer" property="og:site_name"/>
-    <meta content="https://beatmap.try-z.net" property="og:url"/>
-    <meta content="https://beatmap.try-z.net" property="twitter:url"/>
-    <meta content="https://beatmap.try-z.net" property="twitter:domain"/>
-    <meta content="summary_large_image" name="twitter:card"/>
-    <title>JoSu!</title>
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+			name="viewport"
+		/>
+		<meta content="JoSu! | osu! Beatmap Viewer" property="og:site_name" />
+		<meta content="https://beatmap.try-z.net" property="og:url" />
+		<meta content="https://beatmap.try-z.net" property="twitter:url" />
+		<meta content="https://beatmap.try-z.net" property="twitter:domain" />
+		<meta content="summary_large_image" name="twitter:card" />
+		<title>JoSu!</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet"/>
-
-</head>
-<body>
-<link href="https://fonts.googleapis.com" rel="preconnect">
-<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
-<link href="/src/app/style.css" rel="stylesheet"/>
-<div class="absolute top-0 left-0 w-full h-full bg-black/50 backdrop-blur-lg"></div>
-<main>
-    <div class="relative w-full min-h-[50px] shrink-0 flex items-center gap-2.5" id="topBar">
-        <div class="flex items-center gap-2.5 h-full">
-            <button
-                    class="min-h-10 h-full px-5 rounded-full bg-black/40 hover:bg-white/10 outline-white/10 outline cursor-pointer transition"
-                    id="settingsButton"
-            >
-                <i class="ri-settings-3-fill text-white text-[24px]"></i>
-            </button>
-            <div
-                    class="flex items-center h-full has-focus-within:outline-2 has-focus-within:outline-text rounded-full outline-white/10 outline min-h-10"
-                    id="search"
-            >
-                <input
-                        class="min-w-[264px] h-full rounded-full rounded-r-none focus-within:outline-0 bg-black/40 px-5 placeholder:text-white/60 text-white text-xs flex-1"
-                        id="idInput"
-                        name=""
-                        placeholder="Open using beatmap ID / URL"
-                        type="text"
-                />
-                <button class="h-full pr-5 rounded-full rounded-l-none bg-black/40" id="submitId" tabindex="-1">
-                    <i class="ri-search-line text-white text-[24px]"></i>
-                </button>
-            </div>
-            <label
-                    class="h-full p-5 rounded-full bg-black/40 hover:bg-white/10 outline-white/10 outline cursor-pointer text-white aspect-square flex items-center justify-center transition"
-                    for="fileInput"
-            >
-                <i class="ri-folder-add-fill"></i>
-                <input hidden id="fileInput" name="fileInput" type="file"/>
-            </label>
-        </div>
-        <div class="flex items-center flex-1 gap-2.5 h-full">
-            <div class="flex-1 flex flex-col px-5" id="metadata">
-                <div class="text-sm font-medium text-white line-clamp-1" id="title">Artist - Title</div>
-                <div class="text-xs text-white line-clamp-1" id="mapper">by Mapper</div>
-            </div>
-            <label class="relative h-full min-h-[50px] w-[320px] text-xs" for="diffs" id="diffsLabel">
-                <button class="hidden flyout-toggle" id="diffs"></button>
-                <div
-                        class="relative w-full h-full min-h-[50px] bg-black/40 flex items-center gap-2.5 rounded-full px-5 hover:bg-white/10 outline-white/10 outline transition-colors cursor-pointer text-white select-none z-[100]"
-                >
-                    <svg fill="none" height="20" id="extraMode" viewBox="0 0 20 20" width="20"
-                         xmlns="http://www.w3.org/2000/svg">
-                        <g clip-path="url(#clip0_1_34)">
-                            <rect height="18" rx="9" stroke="white" stroke-width="2" width="18" x="1" y="1"/>
-                            <rect fill="white" height="10" rx="5" width="10" x="5" y="5"/>
-                        </g>
-                        <defs>
-                            <clipPath id="clip0_1_34">
-                                <rect fill="white" height="20" width="20"/>
-                            </clipPath>
-                        </defs>
-                    </svg>
-                    <span class="flex-1 text-left truncate" id="masterDiff">Choose Difficulty</span>
-                    <span id="masterSR">SR★</span>
-                </div>
-                <div
-                        class="flyout absolute w-max min-w-full top-[100%] right-0 mt-2.5 bg-black/40 backdrop-blur-2xl p-2.5 rounded-[20px] z-99 hidden max-h-[50vh] overflow-auto outline-white/10 outline"
-                        id="diffsContainerWrapper"
-                        style="max-width: min(320px, calc(100vw - 40px))"
-                >
-                    <div class="h-full w-full flex-col gap-[5px] overflow-auto" id="diffsContainer"></div>
-                </div>
-            </label>
-        </div>
-    </div>
-    <div class="relative w-full flex-1 overflow-hidden" id="app"></div>
-    <div class="absolute bottom-0 right-0 invisible" id="a"></div>
-    <div class="fixed w-full h-full hidden items-center justify-center bg-black/60 top-0 left-0 z-9999 p-5" id="splash">
-        <div
-                class="relative max-w-full max-h-full w-[800px] min-h-[400px] bg-base border-surface-1 rounded-4xl border flex flex-col gap-5 drop-shadow-2xl overflow-hidden p-2.5 text-text"
-                id="splashContainer"
-        >
-            <img alt="" class="relative w-full rounded-3xl border-surface-1 border" src="src/assets/splash.png"/>
-            <button
-                    class="absolute text-white right-5 top-5 flex items-center justify-center h-10 w-10 p-2.5 bg-black/10 cursor-pointer rounded-full hover:bg-white/10 transition"
-            >
-                <i class="ri-close-line"></i>
-            </button>
-            <div class="flex flex-col gap-2 p-5 pt-0">
-                <div class="text-3xl font-bold">Welcome to JoSu!</div>
-                <ul>
-                    <li class="list-disc list-inside">
-                        To start JoSu!, please select a beatmap ID from
-                        <a class="underline" href="https://osu.ppy.sh/beatmapsets" rel="noopener noreferrer"
-                           target="_blank">osu! beatmap listing page</a>.
-                    </li>
-                    <li class="list-disc list-inside">
-                        Alternatively, you can import a local beatmap or replay by using the import button or drag and
-                        drop the .osz/.osr into the site.
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    <div class="fixed top-0 left-0 w-full h-full bg-black/50 overlayHidden" id="overlay"></div>
-</main>
-<div class="fixed top-0 w-[600px] max-w-[80vw] h-svh overflow-auto bg-crust flex flex-col gap-2.5 text-text"
-     id="settings">
-    <div class="bg-base p-10 flex flex-col w-full">
-        <div class="font-medium text-3xl">Settings</div>
-        <div>Change how JoSu! behaves</div>
-    </div>
-    <div class="bg-base p-10 flex flex-col w-full gap-5">
-        <div class="font-medium">Skinning</div>
-        <label class="relative h-full min-h-[50px] w-full text-xs" for="skins" id="skinsLabel">
-            <button class="hidden flyout-toggle" id="skins"></button>
-            <div
-                    class="w-full h-full bg-black/40 flex items-center gap-2.5 rounded-full px-5 hover:bg-white/10 transition-colors cursor-pointer text-text select-none outline-white/10 outline"
-            >
-                <span class="flex-1 text-left truncate" id="currentSkin">Current Skin</span>
-            </div>
-            <div
-                    class="flyout absolute w-full top-[100%] left-0 mt-2.5 bg-black/40 backdrop-blur-2xl p-2.5 rounded-[20px] z-99 flex-col gap-[5px] hidden max-h-[50vh] overflow-auto outline-white/10 outline"
-                    id="skinsContainer"
-            ></div>
-        </label>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="disableBeatmapSkin" tabindex="-1">Ignore beatmap
-                    skin</label>
-                <input id="disableBeatmapSkin" name="disableBeatmapSkin" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5 rangeInput">
-            <div class="flex items-center justify-between w-full text-sm">
-                <div class="flex items-center gap-2.5">
-                    <div class="font-normal">Cursor Size</div>
-                    <button class="cursor-pointer reset -rotate-45 text-xs" data-for="cursorSize"><i
-                            class="ri-reset-left-line"></i></button>
-                </div>
-                <label for="cursorSize">1.00x</label>
-            </div>
-            <input id="cursorSize" max="2" min="0.1" name="cursorSize" step="0.01" tabindex="-1" type="range"/>
-        </div>
-    </div>
-    <div class="bg-base p-10 flex flex-col w-full gap-5">
-        <div class="font-medium">Mods</div>
-        <div class="grid grid-cols-2 gap-[5px] w-full justify-between">
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="modsHD">
-                <img src="src/assets/mods/HD.png"/> <span>Hidden</span>
-                <div class="h-2.5 w-1 rounded-full bg-[#ffed66]"></div>
-                <input hidden id="modsHD" name="modsHD" tabindex="-1" type="checkbox"/>
-            </label>
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="modsHR">
-                <img src="src/assets/mods/HR.png"/> <span>Hard Rock</span>
-                <div class="h-2.5 w-1 rounded-full bg-[#ff6680]"></div>
-                <input hidden id="modsHR" name="modsHR" tabindex="-1" type="checkbox"/>
-            </label>
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="modsDT">
-                <img src="src/assets/mods/DT.png"/> <span>Double Time</span>
-                <div class="h-2.5 w-1 rounded-full bg-[#6687ff]"></div>
-                <input hidden id="modsDT" name="modsDT" tabindex="-1" type="checkbox"/>
-            </label>
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="modsEZ">
-                <img src="src/assets/mods/EZ.png"/> <span>Easy</span>
-                <div class="h-2.5 w-1 rounded-full bg-[#94ff66]"></div>
-                <input hidden id="modsEZ" name="modsEZ" tabindex="-1" type="checkbox"/>
-            </label>
-        </div>
-    </div>
-    <div class="bg-base p-10 flex flex-col w-full gap-5">
-        <div class="font-medium">Gameplay</div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="grid" tabindex="-1">Show Grid</label>
-                <input id="grid" name="grid" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="snakeIn" tabindex="-1">Snaking In Slider</label>
-                <input id="snakeIn" name="snakeIn" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="snakeOut" tabindex="-1">Snaking Out Slider</label>
-                <input id="snakeOut" name="snakeOut" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="tintSliderBall" tabindex="-1">Tint
-                    Sliderball</label>
-                <input id="tintSliderBall" name="tintSliderBall" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="hitAnim" tabindex="-1">Hit Animation</label>
-                <input id="hitAnim" name="hitAnim" type="checkbox"/>
-            </div>
-        </div>
-    </div>
-    <div class="bg-base p-10 flex flex-col w-full gap-5">
-        <div class="font-medium">Background</div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <div class="font-normal">Background Dim</div>
-                <label for="backgroundDim">100%</label>
-            </div>
-            <input id="backgroundDim" max="100" min="0" name="backgrounđDim" step="1" tabindex="-1" type="range"/>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <div class="font-normal">Background Blur</div>
-                <label for="backgroundBlur">100%</label>
-            </div>
-            <input id="backgroundBlur" max="100" min="0" name="backgroundBlur" step="1" tabindex="-1" type="range"/>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="video" tabindex="-1">Show Video</label>
-                <input id="video" name="video" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="storyboard">Show Storyboard</label>
-                <input id="storyboard" name="storyboard" tabindex="-1" type="checkbox"/>
-            </div>
-        </div>
-    </div>
-    <div class="bg-base p-10 flex flex-col w-full gap-5">
-        <div class="font-medium">Audio</div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <div class="font-normal">Master Volume</div>
-                <label for="masterVolume">100%</label>
-            </div>
-            <input id="masterVolume" max="1" min="0" name="masterVolume" step="0.01" tabindex="-1" type="range"/>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <div class="font-normal">Music Volume</div>
-                <label for="musicVolume">100%</label>
-            </div>
-            <input id="musicVolume" max="1" min="0" name="musicVolume" step="0.01" tabindex="-1" type="range"/>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <div class="font-normal">Effect Volume</div>
-                <label for="effectVolume">100%</label>
-            </div>
-            <input id="effectVolume" max="1" min="0" name="effectVolume" step="0.01" tabindex="-1" type="range"/>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer" for="hitsound">Disable beatmap hitsound</label>
-                <input id="hitsound" name="hitsound" tabindex="-1" type="checkbox"/>
-            </div>
-        </div>
-    </div>
-    <div class="bg-base p-10 flex flex-col w-full gap-5">
-        <div class="font-medium">Beatmap Mirror</div>
-        <div class="grid grid-cols-2 gap-[5px] w-full">
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="mirror-nerinyan">
-                <img src="https://avatars.githubusercontent.com/u/92726970?s=200&v=4"/> <span>Nerinyan</span>
-                <input
-                        data-rank="1"
-                        data-url="https://api.nerinyan.moe/v2/d/$setId"
-                        hidden
-                        id="mirror-nerinyan"
-                        name="beatmapMirror"
-                        tabindex="-1"
-                        type="radio"
-                        value="Nerinyan"
-                />
-            </label>
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="mirror-sayobot">
-                <img src="https://bbs.hiosu.com/favicon.ico"/> <span>Sayobot</span>
-                <input
-                        data-rank="5"
-                        data-url="https://dl.sayobot.cn/beatmaps/download/full/$setId"
-                        hidden
-                        id="mirror-sayobot"
-                        name="beatmapMirror"
-                        tabindex="-1"
-                        type="radio"
-                        value="Sayobot"
-                />
-            </label>
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="mirror-nekoha">
-                <img src="https://mirror.nekoha.moe/assets/nekoha.png"/> <span>Nekoha</span>
-                <input
-                        data-rank="4"
-                        data-url="https://mirror.nekoha.moe/api4/download/$setId"
-                        hidden
-                        id="mirror-nekoha"
-                        name="beatmapMirror"
-                        tabindex="-1"
-                        type="radio"
-                        value="Nekoha"
-                />
-            </label>
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="mirror-osudirect">
-                <img src="https://osu.direct/_app/immutable/assets/logo.BIV-kUpp.svg"/> <span>osu.direct</span>
-                <input
-                        data-rank="3"
-                        data-url="https://osu.direct/api/d/$setId"
-                        hidden
-                        id="mirror-osudirect"
-                        name="beatmapMirror"
-                        tabindex="-1"
-                        type="radio"
-                        value="osu.direct"
-                />
-            </label>
-            <label class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
-                   for="mirror-mino">
-                <img src="https://avatars.githubusercontent.com/u/151744297?s=200&v=4"/> <span>Mino</span>
-                <input
-                        data-rank="2"
-                        data-url="https://catboy.best/d/$setId"
-                        hidden
-                        id="mirror-mino"
-                        name="beatmapMirror"
-                        tabindex="-1"
-                        type="radio"
-                        value="mino"
-                />
-            </label>
-        </div>
-    </div>
-    <div class="bg-base p-10 flex flex-col w-full gap-5">
-        <div class="font-medium">Experimental</div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer flex flex-col" for="asyncLoading">
-                    <span>Asynchronous Loading</span>
-                    <span class="text-xs">Load beatmap asynchronously for responsiveness</span>
-                </label>
-                <input id="asyncLoading" name="asyncLoading" tabindex="-1" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer flex flex-col" for="antialiasing">
-                    <span>Antialiasing</span>
-                    <span class="text-xs">Might cause performance issues on lower-end devices</span>
-                </label>
-                <input id="antialiasing" name="antialiasing" tabindex="-1" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="font-normal flex-1 cursor-pointer flex flex-col" for="overlapGameplays">
-                    <span>Overlap gameplays in multi-mode</span>
-                </label>
-                <input id="overlapGameplays" name="overlapGameplays" tabindex="-1" type="checkbox"/>
-            </div>
-        </div>
-        <div class="flex flex-col w-full gap-2.5 text-sm">
-            <div class="font-normal flex-1 flex flex-col">
-                <span>Renderer</span>
-            </div>
-            <label class="relative h-full min-h-[50px] w-full text-xs" for="renderer" id="rendererLabel">
-                <button class="hidden flyout-toggle" id="renderer"></button>
-                <div
-                        class="w-full h-full bg-black/40 flex items-center gap-2.5 rounded-full px-5 hover:bg-white/10 transition-colors cursor-pointer text-text select-none outline-white/10 outline"
-                >
-                    <span class="flex-1 text-left truncate" id="currentRenderer">Current Renderer</span>
-                </div>
-                <div
-                        class="flyout absolute w-full top-[100%] left-0 mt-2.5 bg-black/40 backdrop-blur-2xl p-2.5 rounded-[20px] z-99 flex-col gap-[5px] hidden max-h-[50vh] overflow-auto outline-white/10 outline"
-                        id="rendererContainer"
-                >
-                    <div class="flex gap-2.5 items-center">
-                        <button
-                                class="flex w-full items-center gap-2.5 p-2.5 hover:bg-white/10 cursor-pointer transition-colors rounded-[10px] text-white renderer-select"
-                                data-renderer="webgl"
-                        >
-                            WebGL
-                        </button>
-                    </div>
-                    <div class="flex gap-2.5 items-center">
-                        <button
-                                class="flex w-full items-center gap-2.5 p-2.5 hover:bg-white/10 cursor-pointer transition-colors rounded-[10px] text-white renderer-select"
-                                data-renderer="webgpu"
-                        >
-                            WebGPU
-                        </button>
-                    </div>
-                </div>
-            </label>
-        </div>
-        <div class="flex flex-col w-full gap-2.5">
-            <div class="flex items-center justify-between w-full text-sm">
-                <label class="relative h-full min-h-[50px] w-full text-xs" for="reloadDefaultSkins">
-                    <button
-                            class="w-full h-full bg-crust flex items-center gap-2.5 rounded-full px-5 hover:bg-text transition-colors cursor-pointer text-text hover:text-base select-none"
-                            id="reloadDefaultSkins"
-                    >
-                        <span class="flex-1 text-center truncate">Reload default skins</span>
-                    </button>
-                </label>
-            </div>
-        </div>
-    </div>
-    <div class="bg-base p-10 flex flex-col w-full gap-5">
-        <div class="flex flex-col">
-            <div class="font-medium">About me</div>
-            <span class="text-xs">In case you wanna contact me :D</span>
-        </div>
-        <div class="flex gap-2.5">
-            <a
-                    class="p-2 rounded-lg bg-mantle text-text visited:text-text flex gap-2.5 px-5 hover:bg-surface-0 transition text-sm items-center text-center"
-                    href="https://osu.ppy.sh/users/8266808"
-                    rel="noopener noreferrer"
-                    target="_blank"
-            >
-                <i class="ri-user-3-fill"></i><span class="contactLabel">ANON TOKYO</span>
-            </a>
-            <a
-                    class="p-2 rounded-lg bg-mantle text-text visited:text-text flex gap-2.5 px-5 hover:bg-surface-0 transition text-sm items-center text-center"
-                    href="https://github.com/FukutoTojido"
-                    rel="noopener noreferrer"
-                    target="_blank"
-            >
-                <i class="ri-github-fill"></i><span class="contactLabel">FukutoTojido</span>
-            </a>
-            <a
-                    class="p-2 rounded-lg bg-mantle text-text visited:text-text flex gap-2.5 px-5 hover:bg-surface-0 transition text-sm items-center text-center"
-                    href="https://twitter.com/FukutoTojido"
-                    rel="noopener noreferrer"
-                    target="_blank"
-            >
-                <i class="ri-twitter-fill"></i><span class="contactLabel">@FukutoTojido</span>
-            </a>
-        </div>
-    </div>
-</div>
-<div class="absolute w-full h-full top-0 left-0 flex items-center justify-center gap-2.5 bg-black/50 z-[999]"
-     id="loading">
-    <span class="loader scale-50"></span>
-    <div class="flex flex-col">
-        <div class="font-medium text-lg">JoSu! is loading</div>
-        <div class="text-sm" id="loadingText">Initiating</div>
-    </div>
-</div>
-<script src="/src/app/index.ts" type="module"></script>
-</body>
+		<link
+			href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<link href="https://fonts.googleapis.com" rel="preconnect" />
+		<link crossorigin href="https://fonts.gstatic.com" rel="preconnect" />
+		<link href="/src/app/style.css" rel="stylesheet" />
+		<div
+			class="absolute top-0 left-0 w-full h-full bg-black/50 backdrop-blur-lg"
+		></div>
+		<main>
+			<div
+				class="relative w-full min-h-[50px] shrink-0 flex items-center gap-2.5"
+				id="topBar"
+			>
+				<div class="flex items-center gap-2.5 h-full">
+					<button
+						class="min-h-10 h-full px-5 rounded-full bg-black/40 hover:bg-white/10 outline-white/10 outline cursor-pointer transition"
+						id="settingsButton"
+					>
+						<i class="ri-settings-3-fill text-white text-[24px]"></i>
+					</button>
+					<div
+						class="flex items-center h-full has-focus-within:outline-2 has-focus-within:outline-text rounded-full outline-white/10 outline min-h-10"
+						id="search"
+					>
+						<input
+							class="min-w-[264px] h-full rounded-full rounded-r-none focus-within:outline-0 bg-black/40 px-5 placeholder:text-white/60 text-white text-xs flex-1"
+							id="idInput"
+							name=""
+							placeholder="Open using beatmap ID / URL"
+							type="text"
+						/>
+						<button
+							class="h-full pr-5 rounded-full rounded-l-none bg-black/40"
+							id="submitId"
+							tabindex="-1"
+						>
+							<i class="ri-search-line text-white text-[24px]"></i>
+						</button>
+					</div>
+					<label
+						class="h-full p-5 rounded-full bg-black/40 hover:bg-white/10 outline-white/10 outline cursor-pointer text-white aspect-square flex items-center justify-center transition"
+						for="fileInput"
+					>
+						<i class="ri-folder-add-fill"></i>
+						<input hidden id="fileInput" name="fileInput" type="file" />
+					</label>
+				</div>
+				<div class="flex items-center flex-1 gap-2.5 h-full">
+					<div class="flex-1 flex flex-col px-5" id="metadata">
+						<div class="text-sm font-medium text-white line-clamp-1" id="title">
+							Artist - Title
+						</div>
+						<div class="text-xs text-white line-clamp-1" id="mapper">
+							by Mapper
+						</div>
+					</div>
+					<label
+						class="relative h-full min-h-[50px] w-[320px] text-xs"
+						for="diffs"
+						id="diffsLabel"
+					>
+						<button class="hidden flyout-toggle" id="diffs"></button>
+						<div
+							class="relative w-full h-full min-h-[50px] bg-black/40 flex items-center gap-2.5 rounded-full px-5 hover:bg-white/10 outline-white/10 outline transition-colors cursor-pointer text-white select-none z-[100]"
+						>
+							<svg
+								fill="none"
+								height="20"
+								id="extraMode"
+								viewBox="0 0 20 20"
+								width="20"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<g clip-path="url(#clip0_1_34)">
+									<rect
+										height="18"
+										rx="9"
+										stroke="white"
+										stroke-width="2"
+										width="18"
+										x="1"
+										y="1"
+									/>
+									<rect
+										fill="white"
+										height="10"
+										rx="5"
+										width="10"
+										x="5"
+										y="5"
+									/>
+								</g>
+								<defs>
+									<clipPath id="clip0_1_34">
+										<rect fill="white" height="20" width="20" />
+									</clipPath>
+								</defs>
+							</svg>
+							<span class="flex-1 text-left truncate" id="masterDiff"
+								>Choose Difficulty</span
+							>
+							<span id="masterSR">SR★</span>
+						</div>
+						<div
+							class="flyout absolute w-max min-w-full top-[100%] right-0 mt-2.5 bg-black/40 backdrop-blur-2xl p-2.5 rounded-[20px] z-99 hidden max-h-[50vh] overflow-auto outline-white/10 outline"
+							id="diffsContainerWrapper"
+							style="max-width: min(320px, calc(100vw - 40px))"
+						>
+							<div
+								class="h-full w-full flex-col gap-[5px] overflow-auto"
+								id="diffsContainer"
+							></div>
+						</div>
+					</label>
+				</div>
+			</div>
+			<div class="relative w-full flex-1 overflow-hidden" id="app"></div>
+			<div class="absolute bottom-0 right-0 invisible" id="a"></div>
+			<div
+				class="fixed w-full h-full hidden items-center justify-center bg-black/60 top-0 left-0 z-9999 p-5"
+				id="splash"
+			>
+				<div
+					class="relative max-w-full max-h-full w-[800px] min-h-[400px] bg-base border-surface-1 rounded-4xl border flex flex-col gap-5 drop-shadow-2xl overflow-hidden p-2.5 text-text"
+					id="splashContainer"
+				>
+					<img
+						alt=""
+						class="relative w-full rounded-3xl border-surface-1 border"
+						src="src/assets/splash.png"
+					/>
+					<button
+						class="absolute text-white right-5 top-5 flex items-center justify-center h-10 w-10 p-2.5 bg-black/10 cursor-pointer rounded-full hover:bg-white/10 transition"
+					>
+						<i class="ri-close-line"></i>
+					</button>
+					<div class="flex flex-col gap-2 p-5 pt-0">
+						<div class="text-3xl font-bold">Welcome to JoSu!</div>
+						<ul>
+							<li class="list-disc list-inside">
+								To start JoSu!, please select a beatmap ID from
+								<a
+									class="underline"
+									href="https://osu.ppy.sh/beatmapsets"
+									rel="noopener noreferrer"
+									target="_blank"
+									>osu! beatmap listing page</a
+								>.
+							</li>
+							<li class="list-disc list-inside">
+								Alternatively, you can import a local beatmap or replay by using
+								the import button or drag and drop the .osz/.osr into the site.
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			<div
+				class="fixed top-0 left-0 w-full h-full bg-black/50 overlayHidden"
+				id="overlay"
+			></div>
+		</main>
+		<div
+			class="fixed top-0 w-[600px] max-w-[80vw] h-svh overflow-auto bg-crust flex flex-col gap-2.5 text-text"
+			id="settings"
+		>
+			<div class="bg-base p-10 flex flex-col w-full">
+				<div class="font-medium text-3xl">Settings</div>
+				<div>Change how JoSu! behaves</div>
+			</div>
+			<div class="bg-base p-10 flex flex-col w-full gap-5">
+				<div class="font-medium">Skinning</div>
+				<label
+					class="relative h-full min-h-[50px] w-full text-xs"
+					for="skins"
+					id="skinsLabel"
+				>
+					<button class="hidden flyout-toggle" id="skins"></button>
+					<div
+						class="w-full h-full bg-black/40 flex items-center gap-2.5 rounded-full px-5 hover:bg-white/10 transition-colors cursor-pointer text-text select-none outline-white/10 outline"
+					>
+						<span class="flex-1 text-left truncate" id="currentSkin"
+							>Current Skin</span
+						>
+					</div>
+					<div
+						class="flyout absolute w-full top-[100%] left-0 mt-2.5 bg-black/40 backdrop-blur-2xl p-2.5 rounded-[20px] z-99 flex-col gap-[5px] hidden max-h-[50vh] overflow-auto outline-white/10 outline"
+						id="skinsContainer"
+					></div>
+				</label>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer"
+							for="disableBeatmapSkin"
+							tabindex="-1"
+							>Ignore beatmap skin</label
+						>
+						<input
+							id="disableBeatmapSkin"
+							name="disableBeatmapSkin"
+							type="checkbox"
+						/>
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5 rangeInput">
+					<div class="flex items-center justify-between w-full text-sm">
+						<div class="flex items-center gap-2.5">
+							<div class="font-normal">Cursor Size</div>
+							<button
+								class="cursor-pointer reset -rotate-45 text-xs"
+								data-for="cursorSize"
+							>
+								<i class="ri-reset-left-line"></i>
+							</button>
+						</div>
+						<label for="cursorSize">1.00x</label>
+					</div>
+					<input
+						id="cursorSize"
+						max="2"
+						min="0.1"
+						name="cursorSize"
+						step="0.01"
+						tabindex="-1"
+						type="range"
+					/>
+				</div>
+			</div>
+			<div class="bg-base p-10 flex flex-col w-full gap-5">
+				<div class="font-medium">Mods</div>
+				<div class="grid grid-cols-2 gap-[5px] w-full justify-between">
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="modsHD"
+					>
+						<img src="src/assets/mods/HD.png" /> <span>Hidden</span>
+						<div class="h-2.5 w-1 rounded-full bg-[#ffed66]"></div>
+						<input
+							hidden
+							id="modsHD"
+							name="modsHD"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</label>
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="modsHR"
+					>
+						<img src="src/assets/mods/HR.png" /> <span>Hard Rock</span>
+						<div class="h-2.5 w-1 rounded-full bg-[#ff6680]"></div>
+						<input
+							hidden
+							id="modsHR"
+							name="modsHR"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</label>
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="modsDT"
+					>
+						<img src="src/assets/mods/DT.png" /> <span>Double Time</span>
+						<div class="h-2.5 w-1 rounded-full bg-[#6687ff]"></div>
+						<input
+							hidden
+							id="modsDT"
+							name="modsDT"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</label>
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="modsEZ"
+					>
+						<img src="src/assets/mods/EZ.png" /> <span>Easy</span>
+						<div class="h-2.5 w-1 rounded-full bg-[#94ff66]"></div>
+						<input
+							hidden
+							id="modsEZ"
+							name="modsEZ"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</label>
+				</div>
+			</div>
+			<div class="bg-base p-10 flex flex-col w-full gap-5">
+				<div class="font-medium">Gameplay</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer"
+							for="grid"
+							tabindex="-1"
+							>Show Grid</label
+						>
+						<input id="grid" name="grid" type="checkbox" />
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer"
+							for="snakeIn"
+							tabindex="-1"
+							>Snaking In Slider</label
+						>
+						<input id="snakeIn" name="snakeIn" type="checkbox" />
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer"
+							for="snakeOut"
+							tabindex="-1"
+							>Snaking Out Slider</label
+						>
+						<input id="snakeOut" name="snakeOut" type="checkbox" />
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer"
+							for="tintSliderBall"
+							tabindex="-1"
+							>Tint Sliderball</label
+						>
+						<input id="tintSliderBall" name="tintSliderBall" type="checkbox" />
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer"
+							for="hitAnim"
+							tabindex="-1"
+							>Hit Animation</label
+						>
+						<input id="hitAnim" name="hitAnim" type="checkbox" />
+					</div>
+				</div>
+			</div>
+			<div class="bg-base p-10 flex flex-col w-full gap-5">
+				<div class="font-medium">Background</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<div class="font-normal">Background Dim</div>
+						<label for="backgroundDim">100%</label>
+					</div>
+					<input
+						id="backgroundDim"
+						max="100"
+						min="0"
+						name="backgrounđDim"
+						step="1"
+						tabindex="-1"
+						type="range"
+					/>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<div class="font-normal">Background Blur</div>
+						<label for="backgroundBlur">100%</label>
+					</div>
+					<input
+						id="backgroundBlur"
+						max="100"
+						min="0"
+						name="backgroundBlur"
+						step="1"
+						tabindex="-1"
+						type="range"
+					/>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer"
+							for="video"
+							tabindex="-1"
+							>Show Video</label
+						>
+						<input id="video" name="video" type="checkbox" />
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label class="font-normal flex-1 cursor-pointer" for="storyboard"
+							>Show Storyboard</label
+						>
+						<input
+							id="storyboard"
+							name="storyboard"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</div>
+				</div>
+			</div>
+			<div class="bg-base p-10 flex flex-col w-full gap-5">
+				<div class="font-medium">Audio</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<div class="font-normal">Master Volume</div>
+						<label for="masterVolume">100%</label>
+					</div>
+					<input
+						id="masterVolume"
+						max="1"
+						min="0"
+						name="masterVolume"
+						step="0.01"
+						tabindex="-1"
+						type="range"
+					/>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<div class="font-normal">Music Volume</div>
+						<label for="musicVolume">100%</label>
+					</div>
+					<input
+						id="musicVolume"
+						max="1"
+						min="0"
+						name="musicVolume"
+						step="0.01"
+						tabindex="-1"
+						type="range"
+					/>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<div class="font-normal">Effect Volume</div>
+						<label for="effectVolume">100%</label>
+					</div>
+					<input
+						id="effectVolume"
+						max="1"
+						min="0"
+						name="effectVolume"
+						step="0.01"
+						tabindex="-1"
+						type="range"
+					/>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label class="font-normal flex-1 cursor-pointer" for="hitsound"
+							>Disable beatmap hitsound</label
+						>
+						<input
+							id="hitsound"
+							name="hitsound"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</div>
+				</div>
+			</div>
+			<div class="bg-base p-10 flex flex-col w-full gap-5">
+				<div class="font-medium">Beatmap Mirror</div>
+				<div class="grid grid-cols-2 gap-[5px] w-full">
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="mirror-nerinyan"
+					>
+						<img
+							src="https://avatars.githubusercontent.com/u/92726970?s=200&v=4"
+						/>
+						<span>Nerinyan</span>
+						<input
+							data-rank="1"
+							data-url="https://api.nerinyan.moe/v2/d/$setId"
+							hidden
+							id="mirror-nerinyan"
+							name="beatmapMirror"
+							tabindex="-1"
+							type="radio"
+							value="Nerinyan"
+						/>
+					</label>
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="mirror-sayobot"
+					>
+						<img src="https://bbs.hiosu.com/favicon.ico" /> <span>Sayobot</span>
+						<input
+							data-rank="5"
+							data-url="https://dl.sayobot.cn/beatmaps/download/full/$setId"
+							hidden
+							id="mirror-sayobot"
+							name="beatmapMirror"
+							tabindex="-1"
+							type="radio"
+							value="Sayobot"
+						/>
+					</label>
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="mirror-nekoha"
+					>
+						<img src="https://mirror.nekoha.moe/assets/nekoha.png" />
+						<span>Nekoha</span>
+						<input
+							data-rank="4"
+							data-url="https://mirror.nekoha.moe/api4/download/$setId"
+							hidden
+							id="mirror-nekoha"
+							name="beatmapMirror"
+							tabindex="-1"
+							type="radio"
+							value="Nekoha"
+						/>
+					</label>
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="mirror-osudirect"
+					>
+						<img
+							src="https://osu.direct/_app/immutable/assets/logo.BIV-kUpp.svg"
+						/>
+						<span>osu.direct</span>
+						<input
+							data-rank="3"
+							data-url="https://osu.direct/api/d/$setId"
+							hidden
+							id="mirror-osudirect"
+							name="beatmapMirror"
+							tabindex="-1"
+							type="radio"
+							value="osu.direct"
+						/>
+					</label>
+					<label
+						class="font-normal flex-1 cursor-pointer flex items-center gap-5 p-2.5 rounded-xl border item"
+						for="mirror-mino"
+					>
+						<img
+							src="https://avatars.githubusercontent.com/u/151744297?s=200&v=4"
+						/>
+						<span>Mino</span>
+						<input
+							data-rank="2"
+							data-url="https://catboy.best/d/$setId"
+							hidden
+							id="mirror-mino"
+							name="beatmapMirror"
+							tabindex="-1"
+							type="radio"
+							value="mino"
+						/>
+					</label>
+				</div>
+			</div>
+			<div class="bg-base p-10 flex flex-col w-full gap-5">
+				<div class="font-medium">Experimental</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer flex flex-col"
+							for="asyncLoading"
+						>
+							<span>Asynchronous Loading</span>
+							<span class="text-xs"
+								>Load beatmap asynchronously for responsiveness</span
+							>
+						</label>
+						<input
+							id="asyncLoading"
+							name="asyncLoading"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer flex flex-col"
+							for="antialiasing"
+						>
+							<span>Antialiasing</span>
+							<span class="text-xs"
+								>Might cause performance issues on lower-end devices</span
+							>
+						</label>
+						<input
+							id="antialiasing"
+							name="antialiasing"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="font-normal flex-1 cursor-pointer flex flex-col"
+							for="overlapGameplays"
+						>
+							<span>Overlap gameplays in multi-mode</span>
+						</label>
+						<input
+							id="overlapGameplays"
+							name="overlapGameplays"
+							tabindex="-1"
+							type="checkbox"
+						/>
+					</div>
+				</div>
+				<div class="flex flex-col w-full gap-2.5 text-sm">
+					<div class="font-normal flex-1 flex flex-col">
+						<span>Renderer</span>
+					</div>
+					<label
+						class="relative h-full min-h-[50px] w-full text-xs"
+						for="renderer"
+						id="rendererLabel"
+					>
+						<button class="hidden flyout-toggle" id="renderer"></button>
+						<div
+							class="w-full h-full bg-black/40 flex items-center gap-2.5 rounded-full px-5 hover:bg-white/10 transition-colors cursor-pointer text-text select-none outline-white/10 outline"
+						>
+							<span class="flex-1 text-left truncate" id="currentRenderer"
+								>Current Renderer</span
+							>
+						</div>
+						<div
+							class="flyout absolute w-full top-[100%] left-0 mt-2.5 bg-black/40 backdrop-blur-2xl p-2.5 rounded-[20px] z-99 flex-col gap-[5px] hidden max-h-[50vh] overflow-auto outline-white/10 outline"
+							id="rendererContainer"
+						>
+							<div class="flex gap-2.5 items-center">
+								<button
+									class="flex w-full items-center gap-2.5 p-2.5 hover:bg-white/10 cursor-pointer transition-colors rounded-[10px] text-white renderer-select"
+									data-renderer="webgl"
+								>
+									WebGL
+								</button>
+							</div>
+							<div class="flex gap-2.5 items-center">
+								<button
+									class="flex w-full items-center gap-2.5 p-2.5 hover:bg-white/10 cursor-pointer transition-colors rounded-[10px] text-white renderer-select"
+									data-renderer="webgpu"
+								>
+									WebGPU
+								</button>
+							</div>
+						</div>
+					</label>
+				</div>
+				<div class="flex flex-col w-full gap-2.5">
+					<div class="flex items-center justify-between w-full text-sm">
+						<label
+							class="relative h-full min-h-[50px] w-full text-xs"
+							for="reloadDefaultSkins"
+						>
+							<button
+								class="w-full h-full bg-crust flex items-center gap-2.5 rounded-full px-5 hover:bg-text transition-colors cursor-pointer text-text hover:text-base select-none"
+								id="reloadDefaultSkins"
+							>
+								<span class="flex-1 text-center truncate"
+									>Reload default skins</span
+								>
+							</button>
+						</label>
+					</div>
+				</div>
+			</div>
+			<div class="bg-base p-10 flex flex-col w-full gap-5">
+				<div class="flex flex-col">
+					<div class="font-medium">About me</div>
+					<span class="text-xs">In case you wanna contact me :D</span>
+				</div>
+				<div class="flex gap-2.5">
+					<a
+						class="p-2 rounded-lg bg-mantle text-text visited:text-text flex gap-2.5 px-5 hover:bg-surface-0 transition text-sm items-center text-center"
+						href="https://osu.ppy.sh/users/8266808"
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						<i class="ri-user-3-fill"></i
+						><span class="contactLabel">ANON TOKYO</span>
+					</a>
+					<a
+						class="p-2 rounded-lg bg-mantle text-text visited:text-text flex gap-2.5 px-5 hover:bg-surface-0 transition text-sm items-center text-center"
+						href="https://github.com/FukutoTojido"
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						<i class="ri-github-fill"></i
+						><span class="contactLabel">FukutoTojido</span>
+					</a>
+					<a
+						class="p-2 rounded-lg bg-mantle text-text visited:text-text flex gap-2.5 px-5 hover:bg-surface-0 transition text-sm items-center text-center"
+						href="https://twitter.com/FukutoTojido"
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						<i class="ri-twitter-fill"></i
+						><span class="contactLabel">@FukutoTojido</span>
+					</a>
+				</div>
+			</div>
+		</div>
+		<div
+			class="absolute w-full h-full top-0 left-0 flex items-center justify-center gap-2.5 bg-black/50 z-[999]"
+			id="loading"
+		>
+			<span class="loader scale-50"></span>
+			<div class="flex flex-col">
+				<div class="font-medium text-lg">JoSu! is loading</div>
+				<div class="text-sm" id="loadingText">Initiating</div>
+			</div>
+		</div>
+		<script src="/src/app/index.ts" type="module"></script>
+	</body>
 </html>

@@ -642,7 +642,7 @@ export default class BeatmapSet extends ScopedClass {
 
 		for (const slave of this.difficulties) {
 			slave.destroy();
-			slave.worker.postMessage({ type: 'destroy' });
+			slave.worker.terminate();
 		}
 
 		this.context.consume<Video>('video')?.destroy();
