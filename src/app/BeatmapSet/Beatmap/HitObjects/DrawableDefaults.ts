@@ -1,9 +1,9 @@
-import type { Circle, StandardHitObject } from 'osu-standard-stable';
+import { Circle, StandardHitObject } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
+import { Context } from '../../../Context.ts';
 import { update } from '../../../Skinning/Legacy/LegacyDefaults.ts';
-import type Skin from '../../../Skinning/Skin.ts';
+import Skin from '../../../Skinning/Skin.ts';
 import SkinnableElement from './SkinnableElement.ts';
-import type { Context } from '../../../Context.ts';
 
 export default class DrawableDefaults extends SkinnableElement {
 	container: Container;

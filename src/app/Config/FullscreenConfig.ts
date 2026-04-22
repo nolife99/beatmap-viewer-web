@@ -1,31 +1,31 @@
-import type Config from '.';
+import Config from '.';
 import ConfigSection from './ConfigSection.ts';
 
 type FullscreenProps = {
-  fullscreen: boolean;
+	fullscreen: boolean;
 };
 
 export default class FullscreenConfig extends ConfigSection {
-  constructor(config: Config, defaultOptions?: FullscreenProps) {
-    super(config);
+	constructor(config: Config, defaultOptions?: FullscreenProps) {
+		super(config);
 
-    if (!defaultOptions) return;
+		if (!defaultOptions) return;
 
-    const { fullscreen } = defaultOptions;
-    this.fullscreen = fullscreen;
-  }
+		const { fullscreen } = defaultOptions;
+		this.fullscreen = fullscreen;
+	}
 
-  private _fullscreen = false;
-  get fullscreen() {
-    return this._fullscreen;
-  }
+	private _fullscreen = false;
+	get fullscreen() {
+		return this._fullscreen;
+	}
 
-  set fullscreen(val: boolean) {
-    this._fullscreen = val;
-    this.emitChange("fullscreen", val);
-  }
+	set fullscreen(val: boolean) {
+		this._fullscreen = val;
+		this.emitChange('fullscreen', val);
+	}
 
-  override jsonify() {
-    return {};
-  }
+	override jsonify() {
+		return {};
+	}
 }

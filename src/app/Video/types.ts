@@ -1,48 +1,48 @@
 export enum MessageType {
-  Init = "init",
-  Load = "load",
-  Seek = "seek",
-  Frame = "frame",
-  Play = "play",
-  Stop = "stop",
+	Init = 'init',
+	Load = 'load',
+	Seek = 'seek',
+	Frame = 'frame',
+	Play = 'play',
+	Stop = 'stop',
 }
 
 type WorkerInit = {
-  type: MessageType.Init;
-  data: string;
+	type: MessageType.Init;
+	data: string;
 };
 
 type WorkerLoad = {
-  type: MessageType.Load;
-  data: Blob;
-  offset: number;
+	type: MessageType.Load;
+	data: Blob;
+	offset: number;
 };
 
 type WorkerSeek = {
-  type: MessageType.Seek;
-  data: number;
+	type: MessageType.Seek;
+	data: number;
 };
 
 type WorkerFrame = {
-  type: MessageType.Frame;
-  data: VideoFrame;
+	type: MessageType.Frame;
+	data: VideoFrame;
 };
 
 type WorkerPlay = {
-  type: MessageType.Play;
-  data: number;
-  playbackRate?: number;
+	type: MessageType.Play;
+	data: number;
+	playbackRate?: number;
 };
 
 type WorkerStop = {
-  type: MessageType.Stop;
-  data: number;
+	type: MessageType.Stop;
+	data: number;
 };
 
 export type WorkerPayload =
-  | WorkerInit
-  | WorkerLoad
-  | WorkerSeek
-  | WorkerFrame
-  | WorkerPlay
-  | WorkerStop;
+	| WorkerInit
+	| WorkerLoad
+	| WorkerSeek
+	| WorkerFrame
+	| WorkerPlay
+	| WorkerStop;

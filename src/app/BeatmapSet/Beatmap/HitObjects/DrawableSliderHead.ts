@@ -1,16 +1,16 @@
 import { HitResult, type HitSample as Sample, type LegacyReplayFrame } from 'osu-classes';
-import type { Slider, SliderHead } from 'osu-standard-stable';
-import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import { Slider, SliderHead } from 'osu-standard-stable';
+import Beatmap from '..';
+import HitSample from '../../../Audio/HitSample.ts';
+import ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
 import { inject } from '../../../Context.ts';
 import { update as argonUpdate } from '../../../Skinning/Argon/ArgonSliderHead.ts';
-import type Skin from '../../../Skinning/Skin.ts';
-import HitSample from '../../../Audio/HitSample.ts';
-import type Beatmap from '..';
+import Skin from '../../../Skinning/Skin.ts';
+import Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
 import DrawableApproachCircle from './DrawableApproachCircle.ts';
 import DrawableDefaults from './DrawableDefaults.ts';
 import DrawableHitCircle from './DrawableHitCircle.ts';
-import type DrawableSlider from './DrawableSlider.ts';
-import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
+import DrawableSlider from './DrawableSlider.ts';
 
 export default class DrawableSliderHead extends DrawableHitCircle {
 	override hitSound?: HitSample;
@@ -71,8 +71,7 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 			this.context.consume<Skin>('beatmapSkin')
 		);
 
-		const hitCircle =
-			sliderStartCircle ??
+		const hitCircle = sliderStartCircle ??
 			skin.getTexture('hitcircle', this.context.consume<Skin>('beatmapSkin'));
 		const hitCircleOverlay = sliderStartCircle
 			? (sliderStartCircleOverlay ??
@@ -101,7 +100,8 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		const tintByDiff =
-			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) -
+			1 &&
 			inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 			beatmap?.randomColor;
 

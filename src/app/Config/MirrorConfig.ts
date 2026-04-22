@@ -1,85 +1,85 @@
-import type Config from '.';
+import Config from '.';
 import ConfigSection from './ConfigSection.ts';
 
 export type Mirror = {
-  name: string;
-  urlTemplate: string;
+	name: string;
+	urlTemplate: string;
 };
 
 export type MirrorProps = {
-  mirror?: Mirror;
+	mirror?: Mirror;
 };
 
 export default class MirrorConfig extends ConfigSection {
-  constructor(config: Config, defaultOptions?: MirrorProps) {
-    super(config);
+	constructor(config: Config, defaultOptions?: MirrorProps) {
+		super(config);
 
-    this.loadEventListeners();
+		this.loadEventListeners();
 
-    if (!defaultOptions) return;
+		if (!defaultOptions) return;
 
-    const { mirror } = defaultOptions;
-    this.mirror = mirror ?? {
-      name: "Nerinyan",
-      urlTemplate: "https://api.nerinyan.moe/v2/d/$setId",
-    };
-  }
+		const { mirror } = defaultOptions;
+		this.mirror = mirror ?? {
+			name: 'Nerinyan',
+			urlTemplate: 'https://api.nerinyan.moe/v2/d/$setId'
+		};
+	}
 
-  private _mirror = {
-    name: "Nerinyan",
-    urlTemplate: "https://api.nerinyan.moe/v2/d/$setId",
-  };
-  get mirror() {
-    return this._mirror;
-  }
+	private _mirror = {
+		name: 'Nerinyan',
+		urlTemplate: 'https://api.nerinyan.moe/v2/d/$setId'
+	};
+	get mirror() {
+		return this._mirror;
+	}
 
-  set mirror(val: Mirror) {
-    this._mirror = { ...val, urlTemplate: this.migrate(val) };
+	set mirror(val: Mirror) {
+		this._mirror = { ...val, urlTemplate: this.migrate(val) };
 
-    for (
-      const element of document.querySelectorAll<HTMLInputElement>(
-        "[name=beatmapMirror]",
-      )
-    ) {
-      element.checked = element.value === val.name;
-    }
+		for (
+			const element of document.querySelectorAll<HTMLInputElement>(
+			'[name=beatmapMirror]'
+		)
+			) {
+			element.checked = element.value === val.name;
+		}
 
-    this.emitChange("mirror", val);
-  }
+		this.emitChange('mirror', val);
+	}
 
-  loadEventListeners() {
-    for (
-      const element of document.querySelectorAll<HTMLInputElement>(
-        "[name=beatmapMirror]",
-      )
-    ) {
-      element.addEventListener("change", (event) => {
-        const name = (event.target as HTMLInputElement).value;
-        const url = (event.target as HTMLInputElement).dataset.url;
+	loadEventListeners() {
+		for (
+			const element of document.querySelectorAll<HTMLInputElement>(
+			'[name=beatmapMirror]'
+		)
+			) {
+			element.addEventListener('change', (event) => {
+				const name = (event.target as HTMLInputElement).value;
+				const url = (event.target as HTMLInputElement).dataset.url;
 
-        if (!url) return;
-        this.mirror = {
-          name,
-          urlTemplate: url,
-        };
-      });
-    }
-  }
+				if (!url) return;
+				this.mirror = {
+					name,
+					urlTemplate: url
+				};
+			});
+		}
+	}
 
-  override jsonify(): MirrorProps {
-    return {
-      mirror: this.mirror,
-    };
-  }
+	override jsonify(): MirrorProps {
+		return {
+			mirror: this.mirror
+		};
+	}
 
-  migrate(val: Mirror) {
-    switch (val.name) {
-      case "Nerinyan": {
-        return "https://api.nerinyan.moe/v2/d/$setId";
-      }
-      default: {
-        return val.urlTemplate;
-      }
-    }
-  }
+	migrate(val: Mirror) {
+		switch (val.name) {
+			case 'Nerinyan': {
+				return 'https://api.nerinyan.moe/v2/d/$setId';
+			}
+			default: {
+				return val.urlTemplate;
+			}
+		}
+	}
 }

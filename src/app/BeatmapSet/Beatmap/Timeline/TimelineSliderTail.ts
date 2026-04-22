@@ -1,7 +1,6 @@
-import type { SliderTail } from 'osu-standard-stable';
-import type Skin from '../../../Skinning/Skin.ts';
-import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
-import type DrawableSlider from '../HitObjects/DrawableSlider.ts';
+import { SliderTail } from 'osu-standard-stable';
+import Skin, { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import DrawableSlider from '../HitObjects/DrawableSlider.ts';
 import TimelineHitCircle from './TimelineHitCircle.ts';
 
 export default class TimelineSliderTail extends TimelineHitCircle {

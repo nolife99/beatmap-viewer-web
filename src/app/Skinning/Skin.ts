@@ -1,16 +1,16 @@
 import { parse } from 'js-ini';
 import { Rectangle, Texture } from 'pixi.js';
-import type SkinningConfig from '../Config/SkinningConfig.ts';
+import SkinningConfig from '../Config/SkinningConfig.ts';
 import { inject } from '../Context.ts';
-import type { Resource } from '../ZipHandler/index.ts';
-import type SkinManager, { SkinMetadata } from './SkinManager.ts';
+import { Resource } from '../ZipHandler/index.ts';
+import SkinManager, { SkinMetadata } from './SkinManager.ts';
 
 const sanitizeINI = (str: string) =>
 	str
-	.split('\n')
-	.filter((line) => /(^\[.*\])|(^(\s|\t)*[a-zA-Z0-9]+\s*:.*)/g.test(line))
-	.join('\n')
-	.replaceAll(/((\/\/)|(;)|(==)).*/g, '');
+		.split('\n')
+		.filter((line) => /(^\[.*\])|(^(\s|\t)*[a-zA-Z0-9]+\s*:.*)/g.test(line))
+		.join('\n')
+		.replaceAll(/((\/\/)|(;)|(==)).*/g, '');
 
 export type SkinConfig = {
 	General: {
@@ -494,11 +494,11 @@ export default class Skin {
 
 			const entries = new Set(
 				this.resources
-				?.keys()
-				.filter((filename) => regex.test(filename))
-				.map((filename) =>
-					filename.replaceAll('@2x', '').replaceAll('.png', '')
-				)
+					?.keys()
+					.filter((filename) => regex.test(filename))
+					.map((filename) =>
+						filename.replaceAll('@2x', '').replaceAll('.png', '')
+					)
 			);
 
 			if (entries.size === 0) continue;
@@ -572,8 +572,8 @@ export default class Skin {
 		for (const [filenameBase, items] of animatedGroups) {
 			const sorted = items.toSorted((a, b) => (a.order ?? 0) - (b.order ?? 0));
 			const textures = sorted
-			.map((item) => resolveFrame(item.key, item.scale))
-			.filter((texture): texture is Texture => texture !== undefined);
+				.map((item) => resolveFrame(item.key, item.scale))
+				.filter((texture): texture is Texture => texture !== undefined);
 
 			if (textures.length > 0) {
 				this.animatedTextures.set(filenameBase, textures);
@@ -584,21 +584,21 @@ export default class Skin {
 	private async loadHitsounds() {
 		const audioContext = new AudioContext();
 		const hitSounds = ['drum', 'normal', 'soft']
-		.map((hitSample) =>
-			[
-				'hitclap',
-				'hitfinish',
-				'hitnormal',
-				'hitwhistle',
-				'sliderslide',
-				'slidertick',
-				'sliderwhistle'
-			].map((hitSound) => `${hitSample}-${hitSound}`)
-		)
-		.reduce<string[]>((accm, curr) => {
-			accm.push(...curr);
-			return accm;
-		}, []);
+			.map((hitSample) =>
+				[
+					'hitclap',
+					'hitfinish',
+					'hitnormal',
+					'hitwhistle',
+					'sliderslide',
+					'slidertick',
+					'sliderwhistle'
+				].map((hitSound) => `${hitSample}-${hitSound}`)
+			)
+			.reduce<string[]>((accm, curr) => {
+				accm.push(...curr);
+				return accm;
+			}, []);
 
 		await Promise.all(
 			hitSounds.map(async (filename) => {

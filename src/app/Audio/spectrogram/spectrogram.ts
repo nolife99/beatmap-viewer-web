@@ -20,6 +20,8 @@
 
 // @ts-nocheck https://github.com/wavesurfer-js/wavesurfer.js
 
+import BasePlugin from 'wavesurfer.js/dist/base-plugin.js';
+import createElement from 'wavesurfer.js/dist/dom.js';
 // Import centralized FFT functionality
 import FFT, {
 	applyFilterBank,
@@ -31,8 +33,6 @@ import FFT, {
 	setupColorMap,
 	unitType
 } from 'wavesurfer.js/dist/fft.js';
-import BasePlugin from 'wavesurfer.js/dist/base-plugin.js';
-import createElement from 'wavesurfer.js/dist/dom.js';
 
 import SpectrogramWorker from './spectrogram-worker.ts?worker&inline';
 
@@ -771,27 +771,27 @@ class SpectrogramPlugin extends BasePlugin<SpectrogramPluginEvents, SpectrogramP
 		this.pendingBitmaps.add(bitmapPromise);
 
 		bitmapPromise
-		.then((bitmap) => {
-			// Remove from pending set
-			this.pendingBitmaps.delete(bitmapPromise);
+			.then((bitmap) => {
+				// Remove from pending set
+				this.pendingBitmaps.delete(bitmapPromise);
 
-			// Check if canvas is still valid before drawing
-			if (ctx.canvas.parentNode) {
-				const drawHeight = (height * rMax1) / rMax;
-				const drawY = yOffset + height * (1 - rMax1 / rMax);
+				// Check if canvas is still valid before drawing
+				if (ctx.canvas.parentNode) {
+					const drawHeight = (height * rMax1) / rMax;
+					const drawY = yOffset + height * (1 - rMax1 / rMax);
 
-				ctx.drawImage(bitmap, 0, drawY, canvasWidth, drawHeight);
+					ctx.drawImage(bitmap, 0, drawY, canvasWidth, drawHeight);
 
-				// Clean up bitmap to free memory
-				if ('close' in bitmap) {
-					bitmap.close();
+					// Clean up bitmap to free memory
+					if ('close' in bitmap) {
+						bitmap.close();
+					}
 				}
-			}
-		})
-		.catch(() => {
-			// Clean up on error
-			this.pendingBitmaps.delete(bitmapPromise);
-		});
+			})
+			.catch(() => {
+				// Clean up on error
+				this.pendingBitmaps.delete(bitmapPromise);
+			});
 	}
 
 	private getWidth() {

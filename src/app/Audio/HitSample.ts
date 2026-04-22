@@ -1,9 +1,9 @@
-import type { HitSample as Sample, SamplePoint } from 'osu-classes';
-import type BeatmapSet from '../BeatmapSet/index.ts';
-import type AudioConfig from '../Config/AudioConfig.ts';
-import type SampleManager from '../BeatmapSet/SampleManager.ts';
+import { HitSample as Sample, SamplePoint } from 'osu-classes';
+import Audio from '.';
+import BeatmapSet from '../BeatmapSet/index.ts';
+import SampleManager from '../BeatmapSet/SampleManager.ts';
+import AudioConfig from '../Config/AudioConfig.ts';
 import { inject, ScopedClass } from '../Context.ts';
-import type Audio from '.';
 
 export default class HitSample extends ScopedClass {
 	localGainNode?: GainNode;

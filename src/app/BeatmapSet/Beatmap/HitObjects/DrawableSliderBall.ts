@@ -1,15 +1,15 @@
-import type { Slider } from 'osu-standard-stable';
+import { Slider } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
-import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
-import type GameplayConfig from '../../../Config/GameplayConfig.ts';
+import Beatmap from '..';
+import ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import GameplayConfig from '../../../Config/GameplayConfig.ts';
 import { type Context, inject } from '../../../Context.ts';
 import { update as argonUpdate } from '../../../Skinning/Argon/ArgonSliderBall.ts';
 import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacySliderBall.ts';
-import type Skin from '../../../Skinning/Skin.ts';
-import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
-import type Beatmap from '..';
+import Skin from '../../../Skinning/Skin.ts';
+import Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
 import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
-import type DrawableSlider from './DrawableSlider.ts';
+import DrawableSlider from './DrawableSlider.ts';
 
 export default class DrawableSliderBall extends AnimatedSkinnableElement {
 	container: Container;
@@ -124,27 +124,27 @@ export default class DrawableSliderBall extends AnimatedSkinnableElement {
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 
 		const tintByDiff =
-			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) -
+			1 &&
 			inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 			beatmap?.randomColor;
 
 		if (skin.config.General.Argon) {
-			this.slidernd.tint =
-				tintByDiff ? beatmap.randomColor : this.context.consume<DrawableSlider>('slider')?.getColor(skin) ??
-					0xffffff;
+			this.slidernd.tint = tintByDiff
+				? beatmap.randomColor
+				: this.context.consume<DrawableSlider>('slider')?.getColor(skin) ??
+				0xffffff;
 			this.sliderb.tint = 0xffffff;
 			this.slidernd.visible = true;
 			this.sliderspec.visible = false;
 		}
 
 		if (!skin.config.General.Argon) {
-			const beatmapHasSliderB =
-				this.context
+			const beatmapHasSliderB = this.context
 					.consume<Skin>('beatmapSkin')
 					?.animatedTextures.has('sliderb') ||
 				this.context.consume<Skin>('beatmapSkin')?.textures.has('sliderb');
-			const hasSliderB =
-				this.context
+			const hasSliderB = this.context
 					.consume<Skin>('beatmapSkin')
 					?.animatedTextures.has('sliderb') ||
 				skin.animatedTextures.has('sliderb') ||
@@ -160,8 +160,9 @@ export default class DrawableSliderBall extends AnimatedSkinnableElement {
 				(skin !== this.skinManager?.defaultSkin || beatmapHasSliderB)
 			);
 
-			this.sliderb.tint =
-				tintByDiff ? beatmap.randomColor : skin.config.General.AllowSliderBallTint &&
+			this.sliderb.tint = tintByDiff
+				? beatmap.randomColor
+				: skin.config.General.AllowSliderBallTint &&
 				(inject<GameplayConfig>('config/gameplay')?.tintSliderBall ||
 					skin === this.skinManager?.defaultSkin)
 					? (this.context.consume<DrawableSlider>('slider')?.getColor(skin) ??
@@ -199,8 +200,7 @@ export default class DrawableSliderBall extends AnimatedSkinnableElement {
 			1000 / 60
 		);
 
-		const frameIndex =
-			Math.floor((time - slider.startTime) / frameDelay) %
+		const frameIndex = Math.floor((time - slider.startTime) / frameDelay) %
 			this.texturesList.length;
 		this.sliderb.texture = this.texturesList[frameIndex];
 
@@ -214,12 +214,14 @@ export default class DrawableSliderBall extends AnimatedSkinnableElement {
 
 	destroy() {
 		this.container.destroy();
-		if (this.skinEventCallback)
+		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
-		if (this.gameplaysEventCallback)
+		}
+		if (this.gameplaysEventCallback) {
 			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
 				'change',
 				this.gameplaysEventCallback
 			);
+		}
 	}
 }

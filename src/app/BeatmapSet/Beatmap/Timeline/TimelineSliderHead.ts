@@ -1,10 +1,9 @@
-import type { Slider, SliderHead } from 'osu-standard-stable';
-import type Skin from '../../../Skinning/Skin.ts';
-import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
-import DrawableDefaults from '../HitObjects/DrawableDefaults.ts';
-import type DrawableSlider from '../HitObjects/DrawableSlider.ts';
-import TimelineHitCircle from './TimelineHitCircle.ts';
+import { Slider, SliderHead } from 'osu-standard-stable';
 import { Color } from 'pixi.js';
+import Skin, { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import DrawableDefaults from '../HitObjects/DrawableDefaults.ts';
+import DrawableSlider from '../HitObjects/DrawableSlider.ts';
+import TimelineHitCircle from './TimelineHitCircle.ts';
 
 export default class TimelineSliderHead extends TimelineHitCircle {
 	constructor(object: SliderHead, parent: Slider) {
@@ -56,7 +55,7 @@ export default class TimelineSliderHead extends TimelineHitCircle {
 
 		const col = new Color(color);
 		if (!col) return;
-		
+
 		const lumi =
 			0.299 * col.red +
 			0.587 * col.green +

@@ -1,17 +1,17 @@
 import { HitResult, type HitSample as Sample, type LegacyReplayFrame, Vector2 } from 'osu-classes';
-import type { Slider, SliderTick } from 'osu-standard-stable';
+import { Slider, SliderTick } from 'osu-standard-stable';
 import { Sprite } from 'pixi.js';
-import type BeatmapSet from '../../index.ts';
-import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import Beatmap from '..';
+import HitSample from '../../../Audio/HitSample.ts';
+import ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
 import { inject } from '../../../Context.ts';
 import { update } from '../../../Skinning/Legacy/LegacySliderTick.ts';
-import type Skin from '../../../Skinning/Skin.ts';
-import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
-import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
-import HitSample from '../../../Audio/HitSample.ts';
-import type Beatmap from '..';
+import Skin from '../../../Skinning/Skin.ts';
+import ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
+import Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
+import BeatmapSet from '../../index.ts';
 import DrawableHitObject from './DrawableHitObject.ts';
-import type DrawableSlider from './DrawableSlider.ts';
+import DrawableSlider from './DrawableSlider.ts';
 
 export default class DrawableSliderTick extends DrawableHitObject {
 	container: Sprite;
@@ -40,8 +40,9 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		const distFromStart = object.startPosition.distance(parent.startPosition);
 		const distFromEnd = object.endPosition.distance(parent.endPosition);
 
-		if (distFromStart < parent.radius || distFromEnd < parent.radius)
+		if (distFromStart < parent.radius || distFromEnd < parent.radius) {
 			this.container.visible = false;
+		}
 
 		const clonedSample = sample.clone();
 		clonedSample.hitSound = 'slidertick';
@@ -69,8 +70,9 @@ export default class DrawableSliderTick extends DrawableHitObject {
 			const distFromStart = object.startPosition.distance(parent.startPosition);
 			const distFromEnd = object.endPosition.distance(parent.endPosition);
 
-			if (distFromStart < parent.radius || distFromEnd < parent.radius)
+			if (distFromStart < parent.radius || distFromEnd < parent.radius) {
 				this.container.visible = false;
+			}
 		}
 
 		if (this.hitSound) {
@@ -104,7 +106,8 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 
 		const tintByDiff =
-			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) -
+			1 &&
 			inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 			beatmap?.randomColor;
 
@@ -128,8 +131,9 @@ export default class DrawableSliderTick extends DrawableHitObject {
 				this.object.startTime < time &&
 				time - beatmap.previousTime < 30
 			)
-		)
+		) {
 			return;
+		}
 
 		const currentSamplePoint = beatmap.getNearestSamplePoint(
 			this.object.startTime
@@ -153,11 +157,12 @@ export default class DrawableSliderTick extends DrawableHitObject {
 			(frames) => frames.startTime <= this.object.startTime
 		);
 
-		if (!frame || !(frame.mouseLeft || frame.mouseRight))
+		if (!frame || !(frame.mouseLeft || frame.mouseRight)) {
 			return {
 				value: HitResult.SmallTickMiss,
 				hitTime: Infinity
 			};
+		}
 
 		const position = new Vector2(
 			this.object.startX + this.object.stackedOffset.x,
@@ -171,11 +176,12 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		const radius = 64 * this.object.scale * 2.4;
 		const dist = pointer.distance(position);
 
-		if (dist > radius)
+		if (dist > radius) {
 			return {
 				value: HitResult.SmallTickMiss,
 				hitTime: Infinity
 			};
+		}
 
 		return {
 			value: HitResult.SmallTickHit,
@@ -185,12 +191,14 @@ export default class DrawableSliderTick extends DrawableHitObject {
 
 	destroy() {
 		this.container.destroy();
-		if (this.skinEventCallback)
+		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
-		if (this.gameplaysEventCallback)
+		}
+		if (this.gameplaysEventCallback) {
 			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
 				'change',
 				this.gameplaysEventCallback
 			);
+		}
 	}
 }

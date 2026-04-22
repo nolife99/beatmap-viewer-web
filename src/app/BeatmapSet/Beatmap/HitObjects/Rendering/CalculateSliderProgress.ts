@@ -1,5 +1,5 @@
-import { type SliderPath, Vector2 } from 'osu-classes';
 import pool from '@stdlib/array-pool';
+import { type SliderPath, Vector2 } from 'osu-classes';
 
 export type SliderProgressResult = {
 	points: Vector2[];
@@ -15,16 +15,16 @@ export default function calculateSliderProgress(
 	const calcPath = path.calculatedPath;
 	const pathLen = calcPath.length;
 
-	const d0: number = path["_progressToDistance"](p0);
-	const d1: number = path["_progressToDistance"](p1);
+	const d0: number = path['_progressToDistance'](p0);
+	const d1: number = path['_progressToDistance'](p1);
 
-	const cumLengths: number[] = path["_cumulativeLength"];
+	const cumLengths: number[] = path['_cumulativeLength'];
 
 	const startIdx = lowerBound(cumLengths, d0, 0, pathLen);
 	const endIdx = upperBound(cumLengths, d1, startIdx, pathLen);
 
-	const pStart: Vector2 = path["_interpolateVertices"](startIdx, d0);
-	const pEnd: Vector2 = path["_interpolateVertices"](endIdx, d1);
+	const pStart: Vector2 = path['_interpolateVertices'](startIdx, d0);
+	const pEnd: Vector2 = path['_interpolateVertices'](endIdx, d1);
 
 	const numPoints = endIdx - startIdx + 2;
 	let finalLen = 0;

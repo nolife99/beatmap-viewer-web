@@ -1,18 +1,19 @@
-import type { Slider } from 'osu-standard-stable';
+import { Slider } from 'osu-standard-stable';
 import { Sprite } from 'pixi.js';
-import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import Beatmap from '..';
+import ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
 import { inject } from '../../../Context.ts';
 import { update as argonUpdate } from '../../../Skinning/Argon/ArgonSliderFollowCircle.ts';
 import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacySliderFollowCircle.ts';
-import type Skin from '../../../Skinning/Skin.ts';
+import Skin from '../../../Skinning/Skin.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
-import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
+import Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
 import { Clamp } from '../../../utils.ts';
-import type Beatmap from '..';
 import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
-import type DrawableSlider from './DrawableSlider.ts';
+import DrawableSlider from './DrawableSlider.ts';
 
-export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement {
+export default class DrawableSliderFollowCircle
+	extends AnimatedSkinnableElement {
 	container;
 	updateFn = legacyUpdate;
 
@@ -81,7 +82,8 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 
 		const tintByDiff =
-			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) - 1 &&
+			(inject<Gameplays>('ui/main/viewer/gameplays')?.gameplays.size ?? 1) -
+			1 &&
 			inject<ExperimentalConfig>('config/experimental')?.overlapGameplays &&
 			beatmap?.randomColor;
 
@@ -99,8 +101,7 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 		const startTime = this.object.startTime;
 
 		const currentSkin = this.skinManager?.getCurrentSkin();
-		const frameLength =
-			1000 /
+		const frameLength = 1000 /
 			(currentSkin?.config.General.AnimationFrameRate ??
 				this.texturesList.length);
 		const frameIndex = Clamp(
@@ -113,12 +114,14 @@ export default class DrawableSliderFollowCircle extends AnimatedSkinnableElement
 
 	destroy() {
 		this.container.destroy();
-		if (this.skinEventCallback)
+		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
-		if (this.gameplaysEventCallback)
+		}
+		if (this.gameplaysEventCallback) {
 			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
 				'change',
 				this.gameplaysEventCallback
 			);
+		}
 	}
 }

@@ -1,16 +1,16 @@
-import type BeatmapSet from '../BeatmapSet/index.ts';
-import type AudioConfig from '../Config/AudioConfig.ts';
-import { inject, ScopedClass } from '../Context.ts';
-import SpectrogramProcessor from './SpectrogramProcessor.ts';
 import { SoundTouchNode } from '@soundtouchjs/audio-worklet';
 import soundTouchProcessor from '../../assets/soundtouch-processor.js?url';
+import BeatmapSet from '../BeatmapSet/index.ts';
+import AudioConfig from '../Config/AudioConfig.ts';
+import { inject, ScopedClass } from '../Context.ts';
+import SpectrogramProcessor from './SpectrogramProcessor.ts';
 
 export const audioContext = new AudioContext;
 audioContext.audioWorklet.addModule(soundTouchProcessor as URL);
 
 if ('audioSession' in navigator) {
-    // @ts-expect-error WebKit only API
-    navigator.audioSession.type = 'playback';
+	// @ts-expect-error WebKit only API
+	navigator.audioSession.type = 'playback';
 }
 
 export default class Audio extends ScopedClass {
@@ -59,7 +59,8 @@ export default class Audio extends ScopedClass {
 			const checkTimeBefore = ctx.currentTime;
 			setTimeout(() => {
 				if (this.state === 'PLAYING' && ctx.currentTime === checkTimeBefore) {
-					this.beatmapSet.toggle().then(() => ctx.suspend().catch(() => {}));
+					this.beatmapSet.toggle().then(() => ctx.suspend().catch(() => {
+					}));
 				}
 			}, 100);
 		}

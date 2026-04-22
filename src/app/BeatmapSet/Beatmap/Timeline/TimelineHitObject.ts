@@ -1,6 +1,6 @@
-import type { StandardHitObject } from 'osu-standard-stable';
+import { StandardHitObject } from 'osu-standard-stable';
 import { Container } from 'pixi.js';
-import type TimelineConfig from '../../../Config/TimelineConfig.ts';
+import TimelineConfig from '../../../Config/TimelineConfig.ts';
 import { inject } from '../../../Context.ts';
 import { DEFAULT_SCALE } from '../../../UI/main/viewer/Timeline/index.ts';
 import SkinnableElement from '../HitObjects/SkinnableElement.ts';

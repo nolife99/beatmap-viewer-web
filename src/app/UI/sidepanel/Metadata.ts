@@ -1,10 +1,10 @@
-import type { LayoutOptions } from '@pixi/layout';
+import { LayoutOptions } from '@pixi/layout';
 import { LayoutContainer } from '@pixi/layout/components';
-import type { BeatmapMetadataSection } from 'osu-classes';
+import { BeatmapMetadataSection } from 'osu-classes';
 import { BitmapText, type TextStyle, type TextStyleOptions } from 'pixi.js';
-import type ColorConfig from '../../Config/ColorConfig.ts';
+import ColorConfig from '../../Config/ColorConfig.ts';
 import { inject } from '../../Context.ts';
-import type ResponsiveHandler from '../../ResponsiveHandler.ts';
+import ResponsiveHandler from '../../ResponsiveHandler.ts';
 
 export const defaultStyle: TextStyle | TextStyleOptions | undefined = {
 	fontFamily: 'Rubik',

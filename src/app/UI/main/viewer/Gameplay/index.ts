@@ -1,4 +1,4 @@
-import type { LayoutOptions } from '@pixi/layout';
+import { LayoutOptions } from '@pixi/layout';
 import { LayoutContainer } from '@pixi/layout/components';
 import { Tween } from '@tweenjs/tween.js';
 import { Vector2 } from 'osu-classes';
@@ -13,16 +13,16 @@ import {
 	type TextStyleOptions,
 	Texture
 } from 'pixi.js';
-import type Audio from '../../../../Audio/index.ts';
-import type BeatmapSet from '../../../../BeatmapSet/index.ts';
-import type Beatmap from '../../../../BeatmapSet/Beatmap/index.ts';
+import Audio from '../../../../Audio/index.ts';
 import DrawableHitCircle from '../../../../BeatmapSet/Beatmap/HitObjects/DrawableHitCircle.ts';
 import DrawableSlider from '../../../../BeatmapSet/Beatmap/HitObjects/DrawableSlider.ts';
-import type BackgroundConfig from '../../../../Config/BackgroundConfig.ts';
-import type ColorConfig from '../../../../Config/ColorConfig.ts';
-import type ExperimentalConfig from '../../../../Config/ExperimentalConfig.ts';
-import type FullscreenConfig from '../../../../Config/FullscreenConfig.ts';
-import type GameplayConfig from '../../../../Config/GameplayConfig.ts';
+import Beatmap from '../../../../BeatmapSet/Beatmap/index.ts';
+import BeatmapSet from '../../../../BeatmapSet/index.ts';
+import BackgroundConfig from '../../../../Config/BackgroundConfig.ts';
+import ColorConfig from '../../../../Config/ColorConfig.ts';
+import ExperimentalConfig from '../../../../Config/ExperimentalConfig.ts';
+import FullscreenConfig from '../../../../Config/FullscreenConfig.ts';
+import GameplayConfig from '../../../../Config/GameplayConfig.ts';
 import { inject, ScopedClass } from '../../../../Context.ts';
 import { tweenGroup } from '../../../animation/AnimationController.ts';
 import Easings from '../../../Easings.ts';
@@ -101,8 +101,8 @@ export default class Gameplay extends ScopedClass {
 			}
 		});
 		this.selector = new Graphics()
-		.rect(0, 0, 1, 1)
-		.fill({ color: 0xffffff, alpha: 0.3 });
+			.rect(0, 0, 1, 1)
+			.fill({ color: 0xffffff, alpha: 0.3 });
 		this.selector.cacheAsTexture(true);
 
 		this.objectsContainer = new Container({
@@ -166,23 +166,23 @@ export default class Gameplay extends ScopedClass {
 				const tween = new Tween({
 					value: this.background.alpha
 				})
-				.easing(Easings.Out)
-				.to(
-					{
-						value: isBreak ? 0.6 : 1
-					},
-					1000
-				)
-				.onUpdate(({ value }) => {
-					this.background.alpha = value;
-				})
-				.onComplete(() => {
-					tweenGroup.remove(tween);
-				})
-				.onStop(() => {
-					tweenGroup.remove(tween);
-				})
-				.start();
+					.easing(Easings.Out)
+					.to(
+						{
+							value: isBreak ? 0.6 : 1
+						},
+						1000
+					)
+					.onUpdate(({ value }) => {
+						this.background.alpha = value;
+					})
+					.onComplete(() => {
+						tweenGroup.remove(tween);
+					})
+					.onStop(() => {
+						tweenGroup.remove(tween);
+					})
+					.start();
 
 				tweenGroup.add(tween);
 				this._currentTween = tween;
@@ -250,7 +250,7 @@ export default class Gameplay extends ScopedClass {
 
 		this.grid.clear();
 		this.grid.roundRect(0, 0, width, height, cornerRadius)
-		.stroke({ color, width: 2, alignment: 0.5 });
+			.stroke({ color, width: 2, alignment: 0.5 });
 
 		for (let i = unit; i < width - 1; i += unit) {
 			this.grid.rect(i - 0.5, 0, 1, height).fill(color);
@@ -272,23 +272,23 @@ export default class Gameplay extends ScopedClass {
 		};
 
 		this.grid
-		.moveTo(0, halfUnit).lineTo(0, cornerRadius)
-		.arc(cornerRadius, cornerRadius, cornerRadius, Math.PI, -Math.PI / 2)
-		.lineTo(halfUnit, 0).stroke(cornerStroke)
+			.moveTo(0, halfUnit).lineTo(0, cornerRadius)
+			.arc(cornerRadius, cornerRadius, cornerRadius, Math.PI, -Math.PI / 2)
+			.lineTo(halfUnit, 0).stroke(cornerStroke)
 
-		.moveTo(width - halfUnit, 0).lineTo(width - cornerRadius, 0)
-		.arc(width - cornerRadius, cornerRadius, cornerRadius, -Math.PI / 2, 0)
-		.lineTo(width, halfUnit).stroke(cornerStroke)
+			.moveTo(width - halfUnit, 0).lineTo(width - cornerRadius, 0)
+			.arc(width - cornerRadius, cornerRadius, cornerRadius, -Math.PI / 2, 0)
+			.lineTo(width, halfUnit).stroke(cornerStroke)
 
-		.moveTo(width, height - halfUnit).lineTo(width, height - cornerRadius)
-		.arc(width - cornerRadius, height - cornerRadius, cornerRadius, 0, Math.PI / 2)
-		.lineTo(width - halfUnit, height).stroke(cornerStroke)
+			.moveTo(width, height - halfUnit).lineTo(width, height - cornerRadius)
+			.arc(width - cornerRadius, height - cornerRadius, cornerRadius, 0, Math.PI / 2)
+			.lineTo(width - halfUnit, height).stroke(cornerStroke)
 
-		.moveTo(halfUnit, height).lineTo(cornerRadius, height)
-		.arc(cornerRadius, height - cornerRadius, cornerRadius, Math.PI / 2, Math.PI)
-		.lineTo(0, height - halfUnit).stroke(cornerStroke)
+			.moveTo(halfUnit, height).lineTo(cornerRadius, height)
+			.arc(cornerRadius, height - cornerRadius, cornerRadius, Math.PI / 2, Math.PI)
+			.lineTo(0, height - halfUnit).stroke(cornerStroke)
 
-		.cacheAsTexture(true);
+			.cacheAsTexture(true);
 	}
 
 	loadEventListeners() {

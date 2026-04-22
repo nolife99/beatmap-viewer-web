@@ -1,4 +1,4 @@
-import type { Application } from 'pixi.js';
+import { Application } from 'pixi.js';
 import { inject } from './Context.ts';
 
 type ResponsiveCallback = (direction: 'landscape' | 'portrait') => void;

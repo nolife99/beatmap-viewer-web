@@ -2,12 +2,12 @@ import { HitResult, type LegacyReplayFrame, type Score } from 'osu-classes';
 import { ScoreDecoder } from 'osu-parsers';
 import { Slider, Spinner } from 'osu-standard-stable';
 import { Sprite } from 'pixi.js';
+import Beatmap from '.';
 import SkinningConfig from '../../Config/SkinningConfig.ts';
 import { inject } from '../../Context.ts';
 import { BLANK_TEXTURE } from '../../Skinning/Skin.ts';
-import type SkinManager from '../../Skinning/SkinManager.ts';
+import SkinManager from '../../Skinning/SkinManager.ts';
 import { binarySearch, Clamp } from '../../utils.ts';
-import type Beatmap from '.';
 import DrawableSlider from './HitObjects/DrawableSlider.ts';
 
 export type BaseObjectEvaluation = {
@@ -35,8 +35,8 @@ export default class Replay {
 	constructor() {
 		this.cursor.texture =
 			inject<SkinManager>('skinManager')
-			?.getCurrentSkin()
-			.getTexture('cursor') ?? BLANK_TEXTURE;
+				?.getCurrentSkin()
+				.getTexture('cursor') ?? BLANK_TEXTURE;
 		this.cursor.scale.set(
 			inject<SkinningConfig>('config/skinning')?.cursorSize ?? 1
 		);
@@ -53,8 +53,8 @@ export default class Replay {
 		for (const trail of this.trails) {
 			trail.texture =
 				inject<SkinManager>('skinManager')
-				?.getCurrentSkin()
-				.getTexture('cursortrail') ?? BLANK_TEXTURE;
+					?.getCurrentSkin()
+					.getTexture('cursortrail') ?? BLANK_TEXTURE;
 			trail.scale.set(
 				inject<SkinningConfig>('config/skinning')?.cursorSize ?? 1
 			);

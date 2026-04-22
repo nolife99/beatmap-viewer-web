@@ -1,9 +1,9 @@
 import IntervalTree, { type IntervalInput, Node } from '@flatten-js/interval-tree';
 
 type HitObjectMini = {
-  startTime: number;
-  endTime: number;
-  timePreempt: number;
+	startTime: number;
+	endTime: number;
+	timePreempt: number;
 };
 
 const objectsTree = new IntervalTree<number>();
@@ -21,145 +21,145 @@ let preempt = 1200;
 let playbackRate = 1;
 
 function getCurrentTime() {
-  return currentTime + (performance.now() - startTime) * playbackRate;
+	return currentTime + (performance.now() - startTime) * playbackRate;
 }
 
 function loop() {
-  if (objects.length === 0) return;
+	if (objects.length === 0) return;
 
-  const currentTime = getCurrentTime();
-  const interval = [currentTime - 800, currentTime + preempt] as IntervalInput;
+	const currentTime = getCurrentTime();
+	const interval = [currentTime - 800, currentTime + preempt] as IntervalInput;
 
-  const _objects = findRange(objectsTree, interval);
-  const _connectors = findRange(connectorsTree, interval);
+	const _objects = findRange(objectsTree, interval);
+	const _connectors = findRange(connectorsTree, interval);
 
-  postMessage({
-    type: "update",
-    objects: _objects,
-    connectors: _connectors,
-    currentTime,
-    previousTime,
-  });
+	postMessage({
+		type: 'update',
+		objects: _objects,
+		connectors: _connectors,
+		currentTime,
+		previousTime
+	});
 
-  previousTime = currentTime;
+	previousTime = currentTime;
 }
 
 const nodeStack: Node<number>[] = [];
 const stateStack: number[] = [];
 
 export function findRange(tree: IntervalTree<number>, interval: IntervalInput) {
-  const res = new Set<number>();
+	const res = new Set<number>();
 
-  const node = tree.root;
-  if (node == null || node === tree.nil_node) {
-    return res;
-  }
+	const node = tree.root;
+	if (node == null || node === tree.nil_node) {
+		return res;
+	}
 
-  nodeStack.push(node);
-  stateStack.push(0);
+	nodeStack.push(node);
+	stateStack.push(0);
 
-  const search_node = new Node(interval);
-  while (nodeStack.length > 0) {
-    const current = nodeStack[nodeStack.length - 1];
-    const state = stateStack[stateStack.length - 1];
+	const search_node = new Node(interval);
+	while (nodeStack.length > 0) {
+		const current = nodeStack[nodeStack.length - 1];
+		const state = stateStack[stateStack.length - 1];
 
-    if (current === tree.nil_node) {
-      nodeStack.pop();
-      stateStack.pop();
-      continue;
-    }
+		if (current === tree.nil_node) {
+			nodeStack.pop();
+			stateStack.pop();
+			continue;
+		}
 
-    if (state === 0) {
-      stateStack[stateStack.length - 1] = 1;
+		if (state === 0) {
+			stateStack[stateStack.length - 1] = 1;
 
-      const shouldGoLeft = current.left !== tree.nil_node &&
-        !current.not_intersect_left_subtree(search_node);
-      if (shouldGoLeft) {
-        nodeStack.push(current.left!);
-        stateStack.push(0);
-      }
-    } else if (state === 1) {
-      if (current.intersect(search_node)) {
-        for (const v of current.item.values) {
-          res.add(v);
-        }
-      }
+			const shouldGoLeft = current.left !== tree.nil_node &&
+				!current.not_intersect_left_subtree(search_node);
+			if (shouldGoLeft) {
+				nodeStack.push(current.left!);
+				stateStack.push(0);
+			}
+		} else if (state === 1) {
+			if (current.intersect(search_node)) {
+				for (const v of current.item.values) {
+					res.add(v);
+				}
+			}
 
-      stateStack[stateStack.length - 1] = 2;
+			stateStack[stateStack.length - 1] = 2;
 
-      const shouldGoRight = current.right !== tree.nil_node &&
-        !current.not_intersect_right_subtree(search_node);
-      if (shouldGoRight) {
-        nodeStack.push(current.right!);
-        stateStack.push(0);
-      }
-    } else {
-      nodeStack.pop();
-      stateStack.pop();
-    }
-  }
+			const shouldGoRight = current.right !== tree.nil_node &&
+				!current.not_intersect_right_subtree(search_node);
+			if (shouldGoRight) {
+				nodeStack.push(current.right!);
+				stateStack.push(0);
+			}
+		} else {
+			nodeStack.pop();
+			stateStack.pop();
+		}
+	}
 
-  nodeStack.length = 0;
-  stateStack.length = 0;
+	nodeStack.length = 0;
+	stateStack.length = 0;
 
-  return res;
+	return res;
 }
 
 function initTree(tree: IntervalTree, objects: HitObjectMini[]) {
-  tree.clear();
+	tree.clear();
 
-  objects.forEach((object, i) =>
-    tree.insert(
-      [object.startTime, (object.endTime ?? object.startTime) + 800],
-      i,
-    )
-  );
+	objects.forEach((object, i) =>
+		tree.insert(
+			[object.startTime, (object.endTime ?? object.startTime) + 800],
+			i
+		)
+	);
 }
 
 // biome-ignore lint/suspicious/noGlobalAssign: Shut!
 onmessage = (event) => {
-  switch (event.data.type) {
-    case "init": {
-      objects = event.data.objects;
-      connectors = event.data.connectors;
+	switch (event.data.type) {
+		case 'init': {
+			objects = event.data.objects;
+			connectors = event.data.connectors;
 
-      initTree(objectsTree, objects);
-      initTree(connectorsTree, connectors);
+			initTree(objectsTree, objects);
+			initTree(connectorsTree, connectors);
 
-      loop();
-      break;
-    }
-    case "preempt": {
-      preempt = event.data.preempt;
-      break;
-    }
-    case "start": {
-      startTime = performance.now();
+			loop();
+			break;
+		}
+		case 'preempt': {
+			preempt = event.data.preempt;
+			break;
+		}
+		case 'start': {
+			startTime = performance.now();
 
-      interval = setInterval(loop);
-      break;
-    }
-    case "stop": {
-      currentTime += (performance.now() - startTime) * playbackRate;
+			interval = setInterval(loop);
+			break;
+		}
+		case 'stop': {
+			currentTime += (performance.now() - startTime) * playbackRate;
 
-      clearInterval(interval);
-      break;
-    }
-    case "seek": {
-      currentTime = event.data.time;
-      startTime = performance.now();
+			clearInterval(interval);
+			break;
+		}
+		case 'seek': {
+			currentTime = event.data.time;
+			startTime = performance.now();
 
-      loop();
-      break;
-    }
-    case "destroy": {
-      clearInterval(interval);
-      close();
-      break;
-    }
-    case "playbackRate": {
-      playbackRate = event.data.playbackRate;
-      break;
-    }
-  }
+			loop();
+			break;
+		}
+		case 'destroy': {
+			clearInterval(interval);
+			close();
+			break;
+		}
+		case 'playbackRate': {
+			playbackRate = event.data.playbackRate;
+			break;
+		}
+	}
 };

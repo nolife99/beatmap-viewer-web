@@ -1,6 +1,6 @@
-import type { SliderRepeat } from 'osu-standard-stable';
+import { SliderRepeat } from 'osu-standard-stable';
 import { Graphics, GraphicsContext, Sprite } from 'pixi.js';
-import type Skin from '../../../Skinning/Skin.ts';
+import Skin from '../../../Skinning/Skin.ts';
 import TimelineSliderTail from './TimelineSliderTail.ts';
 
 const ctx = new GraphicsContext().circle(0, 0, 15).fill([0, 0, 0, 0.3]);

@@ -1,34 +1,34 @@
 import { HitResult, HitSample as Sample, LegacyReplayFrame, Vector2 } from 'osu-classes';
 import { type Slider, SliderHead, SliderRepeat, SliderTail, SliderTick, StandardHitObject } from 'osu-standard-stable';
 import { Container, Graphics, RenderLayer } from 'pixi.js';
-import type BeatmapSet from '../../index.ts';
-import type ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
-import type GameplayConfig from '../../../Config/GameplayConfig.ts';
-import type SkinningConfig from '../../../Config/SkinningConfig.ts';
+import Beatmap from '..';
+import HitSample from '../../../Audio/HitSample.ts';
+import ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
+import GameplayConfig from '../../../Config/GameplayConfig.ts';
+import SkinningConfig from '../../../Config/SkinningConfig.ts';
 import { type Context, inject } from '../../../Context.ts';
 import { refreshColor as argonRefreshColor } from '../../../Skinning/Argon/ArgonSlider.ts';
 import { refreshColor as legacyRefreshColor } from '../../../Skinning/Legacy/LegacySlider.ts';
-import type Skin from '../../../Skinning/Skin.ts';
-import type SkinManager from '../../../Skinning/SkinManager.ts';
-import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
-import type Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
-import HitSample from '../../../Audio/HitSample.ts';
+import { sharedUpdate } from '../../../Skinning/Shared/Slider.ts';
+import Skin from '../../../Skinning/Skin.ts';
+import SkinManager from '../../../Skinning/SkinManager.ts';
+import ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
+import Gameplays from '../../../UI/main/viewer/Gameplay/Gameplays.ts';
 import { Clamp } from '../../../utils.ts';
-import type Beatmap from '..';
-import type { SliderEvaluation } from '../Replay.ts';
+import BeatmapSet from '../../index.ts';
+import { SliderEvaluation } from '../Replay.ts';
 import TimelineSlider from '../Timeline/TimelineSlider.ts';
-import calculateSliderProgress, { type SliderProgressResult } from './Rendering/CalculateSliderProgress.ts';
-import type DrawableHitCircle from './DrawableHitCircle.ts';
+import DrawableHitCircle from './DrawableHitCircle.ts';
 import DrawableHitObject, { type IHasApproachCircle } from './DrawableHitObject.ts';
 import DrawableJudgement from './DrawableJudgement.ts';
 import DrawableSliderBall from './DrawableSliderBall.ts';
-import SliderBodyRenderer, { type SliderUniformPatch } from './Rendering/SliderBodyRenderer.ts';
 import DrawableSliderFollowCircle from './DrawableSliderFollowCircle.ts';
 import DrawableSliderHead from './DrawableSliderHead.ts';
 import DrawableSliderRepeat from './DrawableSliderRepeat.ts';
 import DrawableSliderTail, { TAIL_LENIENCY } from './DrawableSliderTail.ts';
 import DrawableSliderTick from './DrawableSliderTick.ts';
-import { sharedUpdate } from '../../../Skinning/Shared/Slider.ts';
+import calculateSliderProgress, { type SliderProgressResult } from './Rendering/CalculateSliderProgress.ts';
+import SliderBodyRenderer, { type SliderUniformPatch } from './Rendering/SliderBodyRenderer.ts';
 
 export default class DrawableSlider
 	extends DrawableHitObject
@@ -66,47 +66,47 @@ export default class DrawableSlider
 		let idx = -1;
 		this.drawableCircles.push(
 			...object.nestedHitObjects
-			.filter((object) => object instanceof StandardHitObject)
-			.map((object) => {
-				if (object instanceof SliderTick) {
-					return new DrawableSliderTick(
-						object,
-						this.object,
-						this.object.samples.find(
-							(sample) => sample.hitSound === 'Normal'
-						)!
-					).hook(this.context);
-				}
+				.filter((object) => object instanceof StandardHitObject)
+				.map((object) => {
+					if (object instanceof SliderTick) {
+						return new DrawableSliderTick(
+							object,
+							this.object,
+							this.object.samples.find(
+								(sample) => sample.hitSound === 'Normal'
+							)!
+						).hook(this.context);
+					}
 
-				idx++;
+					idx++;
 
-				if (object instanceof SliderRepeat) {
-					return new DrawableSliderRepeat(
-						object,
-						this.object,
-						this.object.nodeSamples[idx]
-					).hook(this.context);
-				}
+					if (object instanceof SliderRepeat) {
+						return new DrawableSliderRepeat(
+							object,
+							this.object,
+							this.object.nodeSamples[idx]
+						).hook(this.context);
+					}
 
-				if (object instanceof SliderTail) {
-					return new DrawableSliderTail(
-						object,
-						this.object,
-						this.object.nodeSamples[idx]
-					).hook(this.context);
-				}
+					if (object instanceof SliderTail) {
+						return new DrawableSliderTail(
+							object,
+							this.object,
+							this.object.nodeSamples[idx]
+						).hook(this.context);
+					}
 
-				if (object instanceof SliderHead) {
-					return new DrawableSliderHead(
-						object,
-						this.object,
-						this.object.nodeSamples[idx]
-					).hook(this.context);
-				}
+					if (object instanceof SliderHead) {
+						return new DrawableSliderHead(
+							object,
+							this.object,
+							this.object.nodeSamples[idx]
+						).hook(this.context);
+					}
 
-				return null;
-			})
-			.filter((object) => object !== null)
+					return null;
+				})
+				.filter((object) => object !== null)
 		);
 
 		this.context.provide('slider', this);
@@ -117,9 +117,9 @@ export default class DrawableSlider
 		this.wrapper.addChild(
 			this.renderer.body,
 			...this.drawableCircles
-			.slice(1)
-			.toReversed()
-			.map((circle) => circle.container),
+				.slice(1)
+				.toReversed()
+				.map((circle) => circle.container),
 			this.followCircle.container,
 			this.ball.container,
 			this.drawableCircles[0].container,
@@ -435,7 +435,7 @@ export default class DrawableSlider
 		const comboIndex = this.object.comboIndexWithOffsets % skin.colorsLength;
 		const key = `Combo${comboIndex + 1}` as keyof typeof skin.config.Colours;
 		const color = skin.config.Colours[key] ?? skin.config.Colours.Combo1;
-		
+
 		return `rgb(${color})`;
 	}
 

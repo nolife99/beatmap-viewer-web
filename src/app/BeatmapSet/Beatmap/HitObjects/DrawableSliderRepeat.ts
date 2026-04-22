@@ -1,9 +1,9 @@
-import type { HitSample as Sample } from 'osu-classes';
-import type { Slider, SliderHead, SliderRepeat, StandardHitObject } from 'osu-standard-stable';
+import { HitSample as Sample } from 'osu-classes';
+import { Slider, SliderHead, SliderRepeat, StandardHitObject } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
 import { update as argonUpdate } from '../../../Skinning/Argon/ArgonReverseArrow.ts';
 import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacyReverseArrow.ts';
-import type Skin from '../../../Skinning/Skin.ts';
+import Skin from '../../../Skinning/Skin.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import DrawableSliderTail from './DrawableSliderTail.ts';
 
@@ -46,7 +46,11 @@ export default class DrawableSliderRepeat extends DrawableSliderTail {
 		super.object = val;
 	}
 
-	override updateObjects(object: SliderHead, parent: Slider, samples: Sample[]): void {
+	override updateObjects(
+		object: SliderHead,
+		parent: Slider,
+		samples: Sample[]
+	): void {
 		super.updateObjects(object, parent, samples);
 		this.parent = parent;
 		this.updateRotation();

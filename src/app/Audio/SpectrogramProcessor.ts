@@ -1,7 +1,7 @@
 import { Texture } from 'pixi.js';
 import WaveSurfer from 'wavesurfer.js';
 import { inject } from '../Context.ts';
-import type SpectrogramContainer from '../UI/sidepanel/Modding/Spectrogram.ts';
+import SpectrogramContainer from '../UI/sidepanel/Modding/Spectrogram.ts';
 import SpectrogramPlugin from './spectrogram/spectrogram.ts';
 
 const sampleRate = 40000;
@@ -81,8 +81,8 @@ export default class SpectrogramProcessor {
 
 		spectrogram.on('ready', () => {
 			const canvas: HTMLCanvasElement | null | undefined = document
-			.querySelector('#a > div')
-			?.shadowRoot?.querySelector('.wrapper > div:last-child canvas');
+				.querySelector('#a > div')
+				?.shadowRoot?.querySelector('.wrapper > div:last-child canvas');
 
 			if (!canvas) return;
 
@@ -91,7 +91,7 @@ export default class SpectrogramProcessor {
 				waveSurfer.destroy();
 
 				inject<SpectrogramContainer>('ui/sidepanel/modding/spectrogram')
-				?.setTexture(Texture.from(canvas));
+					?.setTexture(Texture.from(canvas));
 			});
 		}, { once: true });
 

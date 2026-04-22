@@ -1,12 +1,12 @@
-import type { Vector2 } from 'osu-classes';
-import type { Slider, StandardHitObject } from 'osu-standard-stable';
+import { Vector2 } from 'osu-classes';
+import { Slider, StandardHitObject } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
+import { Context } from '../../../Context.ts';
 import { update } from '../../../Skinning/Shared/FollowPoints.ts';
-import type Skin from '../../../Skinning/Skin.ts';
+import Skin from '../../../Skinning/Skin.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import { Clamp } from '../../../utils.ts';
 import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
-import type { Context } from '../../../Context.ts';
 
 export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 	container: Container = new Container();
@@ -46,8 +46,7 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		this.startObject = startObject;
 		this.endObject = endObject;
 
-		this.startTime =
-			(this.startObject as unknown as Slider).endTime ??
+		this.startTime = (this.startObject as unknown as Slider).endTime ??
 			this.startObject.startTime;
 		this.endTime = this.endObject.startTime;
 
@@ -71,11 +70,14 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 			sprite.destroy();
 		}
 
-		const numberOfSprites =
-			Math.floor(this.distance) <= 80 ? 0 : Math.floor((this.distance - 48) / (512 / 16));
+		const numberOfSprites = Math.floor(this.distance) <= 80
+			? 0
+			: Math.floor((this.distance - 48) / (512 / 16));
 
 		for (let i = 0; i < numberOfSprites; i++) {
-			this.container.addChild(new Sprite({ anchor: 0.5, x: (1.5 + i) * (512 / 16) }));
+			this.container.addChild(
+				new Sprite({ anchor: 0.5, x: (1.5 + i) * (512 / 16) })
+			);
 		}
 
 		this.texturesList = this.skinManager
@@ -116,7 +118,8 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 	destroy() {
 		this.container.destroy({ children: true });
 
-		if (this.skinEventCallback)
+		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
+		}
 	}
 }

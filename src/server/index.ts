@@ -1,4 +1,4 @@
-import type { ViteDevServer } from 'vite';
+import { ViteDevServer } from 'vite';
 
 const isProduction = Deno.env.get('NODE_ENV') === 'production';
 const htmlTemplate = isProduction
@@ -30,7 +30,10 @@ async function handleDownload(req: Request): Promise<Response> {
 
 		const response = await fetch(body.url);
 		if (!response.ok) {
-			return new Response(`Failed to fetch: ${response.status} ${response.statusText}`, { status: 500 });
+			return new Response(
+				`Failed to fetch: ${response.status} ${response.statusText}`,
+				{ status: 500 }
+			);
 		}
 
 		return new Response(response.body);
@@ -63,11 +66,11 @@ Deno.serve({
 	if (req.method === 'GET' && url.pathname === '/') {
 		const beatmapId = url.searchParams.getAll('b');
 		let data: {
-			artist: string,
-			title: string,
-			cover: string,
-			creator: string,
-			difficulty: string
+			artist: string;
+			title: string;
+			cover: string;
+			creator: string;
+			difficulty: string;
 		} | undefined;
 
 		if (beatmapId.length > 0) {
@@ -94,7 +97,8 @@ Deno.serve({
 			template = await vite.transformIndexHtml(req.url, raw);
 		}
 
-		const metaTags = data ? `
+		const metaTags = data
+			? `
 			<meta property="og:title" content="${data.artist} - ${data.title} | JoSu! - osu! Beatmap Viewer" />
 			<meta name="twitter:title" content="${data.artist} - ${data.title} | JoSu! - osu! Beatmap Viewer" />
 			<meta property="og:type" content="website" />
@@ -102,7 +106,8 @@ Deno.serve({
 			<meta name="twitter:description" content="Difficulty: ${data.difficulty} - Mapset by ${data.creator}" />
 			<meta property="og:image" content="${data.cover}" />
 			<meta name="twitter:image" content="${data.cover}" />
-		` : `
+		`
+			: `
 			<meta property="og:title" content="JoSu! - osu! Beatmap Viewer" />
 			<meta name="twitter:title" content="JoSu! - osu! Beatmap Viewer" />
 			<meta property="og:type" content="website" />
@@ -131,11 +136,14 @@ Deno.serve({
 			// File not found, fall through to 404
 		}
 	} else if (vite) {
-		return fetch(`http://localhost:${vite.config.server.port}${url.pathname}${url.search}`, {
-			method: req.method,
-			headers: req.headers,
-			body: req.body
-		});
+		return fetch(
+			`http://localhost:${vite.config.server.port}${url.pathname}${url.search}`,
+			{
+				method: req.method,
+				headers: req.headers,
+				body: req.body
+			}
+		);
 	}
 
 	return new Response('Not Found', { status: 404, headers: corsHeaders });

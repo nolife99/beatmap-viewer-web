@@ -1,8 +1,8 @@
-import type Audio from '../Audio/index.ts';
-import type BeatmapSet from '../BeatmapSet/index.ts';
-import type BackgroundConfig from '../Config/BackgroundConfig.ts';
+import Audio from '../Audio/index.ts';
+import BeatmapSet from '../BeatmapSet/index.ts';
+import BackgroundConfig from '../Config/BackgroundConfig.ts';
 import { inject } from '../Context.ts';
-import type Background from '../UI/main/viewer/Background.ts';
+import Background from '../UI/main/viewer/Background.ts';
 import { MessageType, type WorkerPayload } from './types.ts';
 
 // @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix

@@ -1,10 +1,9 @@
-import type { Circle } from 'osu-standard-stable';
+import { Circle } from 'osu-standard-stable';
 import { Color, Sprite } from 'pixi.js';
-import type { Context } from '../../../Context.ts';
-import type Skin from '../../../Skinning/Skin.ts';
-import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import { Context } from '../../../Context.ts';
+import Skin, { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import DrawableDefaults from '../HitObjects/DrawableDefaults.ts';
-import type DrawableHitCircle from '../HitObjects/DrawableHitCircle.ts';
+import DrawableHitCircle from '../HitObjects/DrawableHitCircle.ts';
 import TimelineHitObject from './TimelineHitObject.ts';
 
 export default class TimelineHitCircle extends TimelineHitObject {

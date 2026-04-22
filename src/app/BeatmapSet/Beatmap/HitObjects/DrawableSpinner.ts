@@ -1,16 +1,16 @@
-import type { Slider, Spinner } from 'osu-standard-stable';
-import type BeatmapSet from '../../index.ts';
+import { HitResult, type LegacyReplayFrame } from 'osu-classes';
+import { Slider, Spinner } from 'osu-standard-stable';
+import Beatmap from '..';
 import { inject } from '../../../Context.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
-import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
-import type Beatmap from '..';
-import type TimelineHitCircle from '../Timeline/TimelineHitCircle.ts';
+import ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
+import { Clamp } from '../../../utils.ts';
+import BeatmapSet from '../../index.ts';
+import TimelineHitCircle from '../Timeline/TimelineHitCircle.ts';
 import TimelineSlider from '../Timeline/TimelineSlider.ts';
 import DrawableHitCircle from './DrawableHitCircle.ts';
 import { TAIL_LENIENCY } from './DrawableSliderTail.ts';
 import DrawableSpinnerApproachCircle from './DrawableSpinnerApproachCircle.ts';
-import { HitResult, type LegacyReplayFrame } from 'osu-classes';
-import { Clamp } from '../../../utils.ts';
 
 export default class DrawableSpinner extends DrawableHitCircle {
 	constructor(object: Spinner) {

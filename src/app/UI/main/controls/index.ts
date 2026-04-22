@@ -1,135 +1,135 @@
 import { LayoutContainer } from '@pixi/layout/components';
 import { Color } from 'pixi.js';
-import type ColorConfig from '../../../Config/ColorConfig.ts';
-import type FullscreenConfig from '../../../Config/FullscreenConfig.ts';
+import ColorConfig from '../../../Config/ColorConfig.ts';
+import FullscreenConfig from '../../../Config/FullscreenConfig.ts';
 import { inject, provide } from '../../../Context.ts';
-import type ResponsiveHandler from '../../../ResponsiveHandler.ts';
+import ResponsiveHandler from '../../../ResponsiveHandler.ts';
+import ZContainer from '../../../UI/core/ZContainer.ts';
 import Fullscreen from './Fullscreen.ts';
 import Metadata from './Metadata.ts';
 import Play from './Play.ts';
 import ProgressBar from './ProgressBar.ts';
 import Timestamp from './Timestamp.ts';
-import ZContainer from '../../../UI/core/ZContainer.ts';
 
 export default class Controls {
-  container = new ZContainer({
-    label: "controls",
-    layout: {
-      width: "100%",
-      height: 60,
-      flexGrow: 0,
-      backgroundColor: new Color(
-        inject<ColorConfig>("config/color")?.color.crust,
-      ).setAlpha(0.7),
-      flexDirection: "row",
-    },
-    zIndex: 9999,
-  });
+	container = new ZContainer({
+		label: 'controls',
+		layout: {
+			width: '100%',
+			height: 60,
+			flexGrow: 0,
+			backgroundColor: new Color(
+				inject<ColorConfig>('config/color')?.color.crust
+			).setAlpha(0.7),
+			flexDirection: 'row'
+		},
+		zIndex: 9999
+	});
 
-  open = false;
+	open = false;
 
-  constructor() {
-    const timestamp = provide("ui/main/controls/timestamp", new Timestamp());
-    const metadata = provide("ui/main/controls/metadata", new Metadata());
-    const play = provide("ui/main/controls/play", new Play());
-    const progressBar = provide("ui/main/controls/progress", new ProgressBar());
-    const fullscreen = provide("ui/main/controls/fullscreen", new Fullscreen());
+	constructor() {
+		const timestamp = provide('ui/main/controls/timestamp', new Timestamp());
+		const metadata = provide('ui/main/controls/metadata', new Metadata());
+		const play = provide('ui/main/controls/play', new Play());
+		const progressBar = provide('ui/main/controls/progress', new ProgressBar());
+		const fullscreen = provide('ui/main/controls/fullscreen', new Fullscreen());
 
-    const restContainer = provide(
-      "ui/main/controls/rest",
-      new LayoutContainer({
-        layout: {
-          flex: 1,
-          height: "100%",
-        },
-      }),
-    );
-    restContainer.addChild(
-      metadata.container,
-      play.container,
-      progressBar.container,
-      fullscreen.container,
-    );
+		const restContainer = provide(
+			'ui/main/controls/rest',
+			new LayoutContainer({
+				layout: {
+					flex: 1,
+					height: '100%'
+				}
+			})
+		);
+		restContainer.addChild(
+			metadata.container,
+			play.container,
+			progressBar.container,
+			fullscreen.container
+		);
 
-    this.container.addChild(timestamp.container, restContainer);
+		this.container.addChild(timestamp.container, restContainer);
 
-    this.container.addEventListener("pointertap", (event) => {
-      event.stopPropagation();
-    });
+		this.container.addEventListener('pointertap', (event) => {
+			event.stopPropagation();
+		});
 
-    inject<ColorConfig>("config/color")?.onChange("color", ({ crust }) => {
-      this.container.layout = {
-        backgroundColor: new Color(crust).setAlpha(0.),
-      };
-    });
+		inject<ColorConfig>('config/color')?.onChange('color', ({ crust }) => {
+			this.container.layout = {
+				backgroundColor: new Color(crust).setAlpha(0.)
+			};
+		});
 
-    inject<FullscreenConfig>("config/fullscreen")?.onChange(
-      "fullscreen",
-      (isFullscreen) => {
-        const direction = inject<ResponsiveHandler>("responsiveHandler")
-          ?.direction;
+		inject<FullscreenConfig>('config/fullscreen')?.onChange(
+			'fullscreen',
+			(isFullscreen) => {
+				const direction = inject<ResponsiveHandler>('responsiveHandler')
+					?.direction;
 
-        this.container.layout = {
-          position: isFullscreen && direction === "landscape"
-            ? "absolute"
-            : "relative",
-          bottom: isFullscreen ? 0 : undefined,
-          height: isFullscreen && direction === "landscape"
-            ? 0
-            : direction === "portrait"
-            ? "auto"
-            : 60,
-        };
-        this.container.visible = !isFullscreen;
-        this.open = !isFullscreen;
-        this.container.alpha = direction === "portrait" && isFullscreen ? 0 : 1;
-      },
-    );
+				this.container.layout = {
+					position: isFullscreen && direction === 'landscape'
+						? 'absolute'
+						: 'relative',
+					bottom: isFullscreen ? 0 : undefined,
+					height: isFullscreen && direction === 'landscape'
+						? 0
+						: direction === 'portrait'
+							? 'auto'
+							: 60
+				};
+				this.container.visible = !isFullscreen;
+				this.open = !isFullscreen;
+				this.container.alpha = direction === 'portrait' && isFullscreen ? 0 : 1;
+			}
+		);
 
-    inject<ResponsiveHandler>("responsiveHandler")?.on(
-      "layout",
-      (direction) => {
-        const isFullscreen = inject<FullscreenConfig>("config/fullscreen")
-          ?.fullscreen;
+		inject<ResponsiveHandler>('responsiveHandler')?.on(
+			'layout',
+			(direction) => {
+				const isFullscreen = inject<FullscreenConfig>('config/fullscreen')
+					?.fullscreen;
 
-        switch (direction) {
-          case "landscape": {
-            this.container.layout = {
-              flexDirection: "row",
-              height: 60,
-            };
-            restContainer.layout = {
-              flex: 1,
-              height: "100%",
-            };
-            this.container.layout = {
-              position: isFullscreen ? "absolute" : "relative",
-            };
-            this.container.visible = !isFullscreen;
-            this.open = !isFullscreen;
-            this.container.alpha = 1;
-            break;
-          }
-          case "portrait": {
-            this.container.layout = {
-              flexDirection: "column",
-              height: "auto",
-            };
-            restContainer.layout = {
-              flex: undefined,
-              height: 60,
-            };
+				switch (direction) {
+					case 'landscape': {
+						this.container.layout = {
+							flexDirection: 'row',
+							height: 60
+						};
+						restContainer.layout = {
+							flex: 1,
+							height: '100%'
+						};
+						this.container.layout = {
+							position: isFullscreen ? 'absolute' : 'relative'
+						};
+						this.container.visible = !isFullscreen;
+						this.open = !isFullscreen;
+						this.container.alpha = 1;
+						break;
+					}
+					case 'portrait': {
+						this.container.layout = {
+							flexDirection: 'column',
+							height: 'auto'
+						};
+						restContainer.layout = {
+							flex: undefined,
+							height: 60
+						};
 
-            this.container.layout = {
-              position: "relative",
-            };
-            this.container.visible = !isFullscreen;
-            this.open = !isFullscreen;
-            this.container.alpha = isFullscreen ? 0 : 1;
-            break;
-          }
-        }
-      },
-    );
-  }
+						this.container.layout = {
+							position: 'relative'
+						};
+						this.container.visible = !isFullscreen;
+						this.open = !isFullscreen;
+						this.container.alpha = isFullscreen ? 0 : 1;
+						break;
+					}
+				}
+			}
+		);
+	}
 }

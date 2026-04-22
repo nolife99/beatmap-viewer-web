@@ -1,6 +1,6 @@
-import type { TimingPoint } from 'osu-classes';
+import { TimingPoint } from 'osu-classes';
 import { Container, Graphics, Text } from 'pixi.js';
-import type TimelineConfig from '../../../Config/TimelineConfig.ts';
+import TimelineConfig from '../../../Config/TimelineConfig.ts';
 import { inject } from '../../../Context.ts';
 import { DEFAULT_SCALE } from '../../../UI/main/viewer/Timeline/index.ts';
 
@@ -30,15 +30,15 @@ export default class TimelineTimingPoint {
 		const height = text.height;
 
 		graphics
-		.rect(0, 40 - (height + 4), width + 10, height + 4)
-		.fill(0xf54254)
-		.moveTo(0, -40)
-		.lineTo(0, 40)
-		.stroke({
-			color: 0xffffff,
-			width: 2,
-			cap: 'round'
-		});
+			.rect(0, 40 - (height + 4), width + 10, height + 4)
+			.fill(0xf54254)
+			.moveTo(0, -40)
+			.lineTo(0, 40)
+			.stroke({
+				color: 0xffffff,
+				width: 2,
+				cap: 'round'
+			});
 
 		this.container.addChild(graphics, text);
 

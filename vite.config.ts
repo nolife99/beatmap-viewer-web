@@ -1,9 +1,9 @@
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, HmrOptions } from 'vite';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import { viteSingleFile } from 'vite-plugin-singlefile';
 import crossOriginIsolation from 'vite-plugin-cross-origin-isolation';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import RemoteAssets from 'vite-plugin-remote-assets';
+import { viteSingleFile } from 'vite-plugin-singlefile';
 
 const vitePort = 5173;
 
@@ -15,7 +15,9 @@ let hmrConfig: HmrOptions;
 
 if (isCodespace) {
 	hmrConfig = {
-		host: `${Deno.env.get('CODESPACE_NAME')}-${vitePort}.${Deno.env.get('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN')}`,
+		host: `${Deno.env.get('CODESPACE_NAME')}-${vitePort}.${
+			Deno.env.get('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN')
+		}`,
 		clientPort: 443,
 		protocol: 'wss'
 	};
@@ -38,18 +40,25 @@ export default defineConfig({
 			}
 		}
 	},
-	plugins: [tailwindcss(), nodePolyfills(), RemoteAssets(), viteSingleFile(), crossOriginIsolation(), {
-		name: 'remove-eruda',
-		transformIndexHtml(html) {
-			if (Deno.env.get('NODE_ENV') === 'production') {
-				return html.replace(
-					/<script src="\/\/cdn\.jsdelivr\.net\/npm\/eruda"><\/script>\s*<script>eruda\.init\(\);<\/script>/g,
-					''
-				);
+	plugins: [
+		tailwindcss(),
+		nodePolyfills(),
+		RemoteAssets(),
+		viteSingleFile(),
+		crossOriginIsolation(),
+		{
+			name: 'remove-eruda',
+			transformIndexHtml(html) {
+				if (Deno.env.get('NODE_ENV') === 'production') {
+					return html.replace(
+						/<script src="\/\/cdn\.jsdelivr\.net\/npm\/eruda"><\/script>\s*<script>eruda\.init\(\);<\/script>/g,
+						''
+					);
+				}
+				return html;
 			}
-			return html;
 		}
-	}],
+	],
 	build: {
 		target: 'es6',
 		assetsInlineLimit: Number.MAX_SAFE_INTEGER,

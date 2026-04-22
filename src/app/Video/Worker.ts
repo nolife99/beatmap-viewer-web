@@ -136,8 +136,8 @@ class VideoEngine {
 		this.frameRate = +frameRateStr.split('/')[0] / +frameRateStr.split('/')[1];
 
 		const reader = this.demuxer
-		.readMediaPacket('video', 0, undefined, AVSeekFlag.AVSEEK_FLAG_BACKWARD)
-		.getReader();
+			.readMediaPacket('video', 0, undefined, AVSeekFlag.AVSEEK_FLAG_BACKWARD)
+			.getReader();
 
 		console.time('Reading Video Chunks');
 		while (true) {

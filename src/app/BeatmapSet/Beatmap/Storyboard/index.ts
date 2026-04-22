@@ -1,16 +1,16 @@
 import IntervalTree from '@flatten-js/interval-tree';
-import type { Storyboard as StoryboardData } from '@rian8337/osu-base';
 import {
+	Storyboard as StoryboardData,
 	StoryboardAnimation as StoryboardAnimationData,
 	StoryboardDecoder,
 	StoryboardLayerType,
 	StoryboardSprite as StoryboardSpriteData
 } from '@rian8337/osu-base';
 import { Assets, Container, Graphics, GraphicsContext, Rectangle, type Texture } from 'pixi.js';
-import type BeatmapSet from '../../index.ts';
-import type BackgroundConfig from '../../../Config/BackgroundConfig.ts';
+import BackgroundConfig from '../../../Config/BackgroundConfig.ts';
 import { inject, ScopedClass } from '../../../Context.ts';
-import type { Resource } from '../../../ZipHandler/index.ts';
+import { Resource } from '../../../ZipHandler/index.ts';
+import BeatmapSet from '../../index.ts';
 import { StoryboardAnimation } from './StoryboardAnimation.ts';
 import StoryboardSprite from './StoryboardSprite.ts';
 
@@ -94,8 +94,9 @@ export default class Storyboard extends ScopedClass {
 			if (
 				// biome-ignore lint/style/noNonNullAssertion: Always have extension
 				!['png', 'jpg', 'jpeg'].includes(key.split('.').at(-1)!.toLowerCase())
-			)
+			) {
 				return;
+			}
 
 			const url = URL.createObjectURL(resource!);
 			try {

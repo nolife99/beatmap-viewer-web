@@ -1,4 +1,4 @@
-import type { Resource } from './ZipHandler/index.ts';
+import { Resource } from './ZipHandler/index.ts';
 
 async function tryFetchBlob(url: string): Promise<Blob | null> {
 	try {

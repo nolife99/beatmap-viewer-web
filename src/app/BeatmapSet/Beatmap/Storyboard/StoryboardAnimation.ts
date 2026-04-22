@@ -1,10 +1,10 @@
-import type { Texture } from 'pixi.js';
-import StoryboardSprite from './StoryboardSprite.ts';
 import {
 	AnimationLoopType,
 	type StoryboardAnimation as StoryboardAnimationData,
 	type StoryboardLayerType
 } from '@rian8337/osu-base';
+import { Texture } from 'pixi.js';
+import StoryboardSprite from './StoryboardSprite.ts';
 
 export class StoryboardAnimation extends StoryboardSprite {
 	private _textureArr: Texture[] = [];

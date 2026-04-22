@@ -1,68 +1,68 @@
-import type DrawableSlider from '../../BeatmapSet/Beatmap/HitObjects/DrawableSlider.ts';
-import type DrawableSliderFollowCircle from '../../BeatmapSet/Beatmap/HitObjects/DrawableSliderFollowCircle.ts';
+import DrawableSlider from '../../BeatmapSet/Beatmap/HitObjects/DrawableSlider.ts';
+import DrawableSliderFollowCircle from '../../BeatmapSet/Beatmap/HitObjects/DrawableSliderFollowCircle.ts';
 import Easings from '../../UI/Easings.ts';
 
 export const update = (drawable: DrawableSliderFollowCircle, time: number) => {
-  const slider = drawable.context.consume<DrawableSlider>("drawable");
-  const currentTrackingFrame = slider?.evaluation?.trackingStates.findLast(
-    (frame) => frame[0].startTime <= time,
-  );
+	const slider = drawable.context.consume<DrawableSlider>('drawable');
+	const currentTrackingFrame = slider?.evaluation?.trackingStates.findLast(
+		(frame) => frame[0].startTime <= time
+	);
 
-  const startTime = currentTrackingFrame?.[0].startTime ??
-    drawable.object.startTime;
-  const endTime = currentTrackingFrame?.[1].startTime ??
-    drawable.object.endTime;
+	const startTime = currentTrackingFrame?.[0].startTime ??
+		drawable.object.startTime;
+	const endTime = currentTrackingFrame?.[1].startTime ??
+		drawable.object.endTime;
 
-  const duration = endTime - startTime;
-  const scaleInDuration = Math.min(180, duration);
-  const fadeInDuration = Math.min(60, duration);
-  const outDuration = 200;
+	const duration = endTime - startTime;
+	const scaleInDuration = Math.min(180, duration);
+	const fadeInDuration = Math.min(60, duration);
+	const outDuration = 200;
 
-  if (
-    time < startTime || time > endTime + outDuration ||
-    slider?.evaluation?.trackingStates.length === 0
-  ) {
-    drawable.container.visible = false;
-    return;
-  }
+	if (
+		time < startTime || time > endTime + outDuration ||
+		slider?.evaluation?.trackingStates.length === 0
+	) {
+		drawable.container.visible = false;
+		return;
+	}
 
-  drawable.container.visible = true;
+	drawable.container.visible = true;
 
-  if (time >= startTime && time < startTime + scaleInDuration) {
-    const opacity = Math.min(
-      1,
-      Math.max(0, (time - startTime) / fadeInDuration),
-    );
-    const scale = Math.min(
-      1,
-      Math.max(0, (time - startTime) / scaleInDuration),
-    );
+	if (time >= startTime && time < startTime + scaleInDuration) {
+		const opacity = Math.min(
+			1,
+			Math.max(0, (time - startTime) / fadeInDuration)
+		);
+		const scale = Math.min(
+			1,
+			Math.max(0, (time - startTime) / scaleInDuration)
+		);
 
-    drawable.container.scale.set(
-      (0.5 + 0.5 * Easings.Out(scale)) * drawable.object.scale,
-    );
-    drawable.container.alpha = opacity;
+		drawable.container.scale.set(
+			(0.5 + 0.5 * Easings.Out(scale)) * drawable.object.scale
+		);
+		drawable.container.alpha = opacity;
 
-    return;
-  }
+		return;
+	}
 
-  if (time >= startTime + scaleInDuration && time <= endTime) {
-    drawable.container.scale.set(1 * drawable.object.scale);
-    drawable.container.alpha = 1;
+	if (time >= startTime + scaleInDuration && time <= endTime) {
+		drawable.container.scale.set(1 * drawable.object.scale);
+		drawable.container.alpha = 1;
 
-    return;
-  }
+		return;
+	}
 
-  if (time > endTime) {
-    const opacity = 1 -
-      Math.min(1, Math.max(0, (time - endTime) / outDuration));
-    const scale = Math.min(1, Math.max(0, (time - endTime) / outDuration));
+	if (time > endTime) {
+		const opacity = 1 -
+			Math.min(1, Math.max(0, (time - endTime) / outDuration));
+		const scale = Math.min(1, Math.max(0, (time - endTime) / outDuration));
 
-    drawable.container.scale.set(
-      (1 - 0.2 * Easings.Out(scale)) * drawable.object.scale,
-    );
-    drawable.container.alpha = Easings.In(opacity);
+		drawable.container.scale.set(
+			(1 - 0.2 * Easings.Out(scale)) * drawable.object.scale
+		);
+		drawable.container.alpha = Easings.In(opacity);
 
-    return;
-  }
+		return;
+	}
 };

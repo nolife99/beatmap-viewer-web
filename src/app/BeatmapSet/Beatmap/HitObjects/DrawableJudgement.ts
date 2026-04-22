@@ -1,15 +1,15 @@
 import { HitResult } from 'osu-classes';
-import type { Slider, Spinner } from 'osu-standard-stable';
+import { Slider, Spinner } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
 import { inject } from '../../../Context.ts';
 import { update as argonUpdate } from '../../../Skinning/Argon/ArgonJudgement.ts';
 import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacyJudgement.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
-import type SkinManager from '../../../Skinning/SkinManager.ts';
+import SkinManager from '../../../Skinning/SkinManager.ts';
 import { Clamp } from '../../../utils.ts';
-import type { BaseObjectEvaluation } from '../Replay.ts';
+import { BaseObjectEvaluation } from '../Replay.ts';
 import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
-import type DrawableHitObject from './DrawableHitObject.ts';
+import DrawableHitObject from './DrawableHitObject.ts';
 
 export default class DrawableJudgement extends AnimatedSkinnableElement {
 	container: Container;
@@ -40,8 +40,9 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 		this.texturesList = [BLANK_TEXTURE];
 
 		inject<SkinManager>('skinManager')?.addSkinChangeListener((skin) => {
-			this.updateFn =
-				skin.metadata?.type === 'ARGON' ? argonUpdate : legacyUpdate;
+			this.updateFn = skin.metadata?.type === 'ARGON'
+				? argonUpdate
+				: legacyUpdate;
 
 			if (!this.evaluation) return;
 
@@ -124,8 +125,7 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 
 		if (!this.evaluation) return;
 
-		const startTime =
-			(this.drawable.object as Slider | Spinner).endTime ??
+		const startTime = (this.drawable.object as Slider | Spinner).endTime ??
 			Math.min(
 				this.evaluation.hitTime,
 				this.drawable.object.startTime +

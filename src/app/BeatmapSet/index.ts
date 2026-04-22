@@ -1,36 +1,36 @@
 import { Tween } from '@tweenjs/tween.js';
-import type { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
+import { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
 import { Application, Assets, type FederatedWheelEvent, Texture } from 'pixi.js';
+
+import extraMode from '../../assets/extra-mode.svg?raw';
 import Audio, { audioContext } from '../Audio/index.ts';
-import type AudioConfig from '../Config/AudioConfig.ts';
-import type BackgroundConfig from '../Config/BackgroundConfig.ts';
-import type ExperimentalConfig from '../Config/ExperimentalConfig.ts';
-import type TimelineConfig from '../Config/TimelineConfig.ts';
+import AudioConfig from '../Config/AudioConfig.ts';
+import BackgroundConfig from '../Config/BackgroundConfig.ts';
+import ExperimentalConfig from '../Config/ExperimentalConfig.ts';
+import TimelineConfig from '../Config/TimelineConfig.ts';
+import { inject, provide, ScopedClass } from '../Context.ts';
 import Skin from '../Skinning/Skin.ts';
 import { tweenGroup } from '../UI/animation/AnimationController.ts';
 import Easings from '../UI/Easings.ts';
-import type Loading from '../UI/loading/index.ts';
-import type Play from '../UI/main/controls/Play.ts';
-import type ProgressBar from '../UI/main/controls/ProgressBar.ts';
-import type Timestamp from '../UI/main/controls/Timestamp.ts';
-import type Background from '../UI/main/viewer/Background.ts';
-import type Gameplays from '../UI/main/viewer/Gameplay/Gameplays.ts';
-import type Timeline from '../UI/main/viewer/Timeline/index.ts';
-import type Metadata from '../UI/sidepanel/Metadata.ts';
-import type DifficultyGraph from '../UI/sidepanel/Modding/DifficultyGraph.ts';
-import type Spectrogram from '../UI/sidepanel/Modding/Spectrogram.ts';
-import type Timing from '../UI/sidepanel/Timing/index.ts';
+import Loading from '../UI/loading/index.ts';
+import Play from '../UI/main/controls/Play.ts';
+import ProgressBar from '../UI/main/controls/ProgressBar.ts';
+import Timestamp from '../UI/main/controls/Timestamp.ts';
+import Background from '../UI/main/viewer/Background.ts';
+import Gameplays from '../UI/main/viewer/Gameplay/Gameplays.ts';
+import Timeline from '../UI/main/viewer/Timeline/index.ts';
+import Metadata from '../UI/sidepanel/Metadata.ts';
+import DifficultyGraph from '../UI/sidepanel/Modding/DifficultyGraph.ts';
+import Spectrogram from '../UI/sidepanel/Modding/Spectrogram.ts';
+import Timing from '../UI/sidepanel/Timing/index.ts';
 import { getDiffColour, loadColorPalette } from '../utils.ts';
 import Video from '../Video/index.ts';
-import { inject, provide, ScopedClass } from '../Context.ts';
-import type { Resource } from '../ZipHandler/index.ts';
+import { Resource } from '../ZipHandler/index.ts';
+import DrawableHitCircle from './Beatmap/HitObjects/DrawableHitCircle.ts';
+import DrawableSlider from './Beatmap/HitObjects/DrawableSlider.ts';
 import Beatmap from './Beatmap/index.ts';
-import type DrawableHitCircle from './Beatmap/HitObjects/DrawableHitCircle.ts';
-import type DrawableSlider from './Beatmap/HitObjects/DrawableSlider.ts';
 import Storyboard from './Beatmap/Storyboard/index.ts';
 import SampleManager from './SampleManager.ts';
-
-import extraMode from '../../assets/extra-mode.svg?raw';
 
 export default class BeatmapSet extends ScopedClass {
 	difficulties: Beatmap[] = [];

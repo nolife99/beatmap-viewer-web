@@ -1,15 +1,15 @@
 import { HitResult, type HitSample as Sample, type LegacyReplayFrame, Vector2 } from 'osu-classes';
-import type { Slider, SliderTail } from 'osu-standard-stable';
-import type BeatmapSet from '../../index.ts';
+import { Slider, SliderTail } from 'osu-standard-stable';
+import Beatmap from '..';
+import HitSample from '../../../Audio/HitSample.ts';
 import { inject } from '../../../Context.ts';
 import { update } from '../../../Skinning/Argon/ArgonSliderTail.ts';
-import type Skin from '../../../Skinning/Skin.ts';
+import Skin from '../../../Skinning/Skin.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
-import type ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
-import HitSample from '../../../Audio/HitSample.ts';
-import type Beatmap from '..';
-import DrawableSliderHead from './DrawableSliderHead.ts';
+import ProgressBar from '../../../UI/main/controls/ProgressBar.ts';
 import { Clamp } from '../../../utils.ts';
+import BeatmapSet from '../../index.ts';
+import DrawableSliderHead from './DrawableSliderHead.ts';
 
 export const TAIL_LENIENCY = 36;
 export default class DrawableSliderTail extends DrawableSliderHead {
@@ -39,8 +39,7 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 			this.tailUpdateFn = null;
 		}
 
-		const hitCircle =
-			skin.getTexture(
+		const hitCircle = skin.getTexture(
 				'sliderendcircle',
 				!skin.config.General.Argon
 					? this.context.consume<Skin>('beatmapSkin')
@@ -87,8 +86,9 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 				this.object.startTime + offset < time &&
 				time - beatmap.previousTime < 30
 			)
-		)
+		) {
 			return;
+		}
 
 		const currentSamplePoint = beatmap.getNearestSamplePoint(
 			this.object.startTime + offset
@@ -102,11 +102,12 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 			(frames) => frames.startTime <= this.object.startTime
 		);
 
-		if (!frame || !(frame.mouseLeft || frame.mouseRight))
+		if (!frame || !(frame.mouseLeft || frame.mouseRight)) {
 			return {
 				value: HitResult.LargeTickMiss,
 				hitTime: Infinity
 			};
+		}
 
 		const completionProgress = Clamp(
 			(this.object.startTime - this.parent.startTime) / this.parent.duration
@@ -126,11 +127,12 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 			position.add(this.parent.stackedOffset).add(this.parent.startPosition)
 		);
 
-		if (dist > radius)
+		if (dist > radius) {
 			return {
 				value: HitResult.LargeTickMiss,
 				hitTime: Infinity
 			};
+		}
 
 		return {
 			value: HitResult.LargeTickHit,

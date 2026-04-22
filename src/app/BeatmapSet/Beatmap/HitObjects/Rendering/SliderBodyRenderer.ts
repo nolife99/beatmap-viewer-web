@@ -1,4 +1,5 @@
-﻿import {
+﻿import pool from '@stdlib/array-pool';
+import {
 	AlphaFilter,
 	Application,
 	Buffer,
@@ -14,11 +15,10 @@
 	UniformGroup,
 	UPDATE_PRIORITY
 } from 'pixi.js';
-import pool from '@stdlib/array-pool';
-import type RendererConfig from '../../../../Config/RendererConfig.ts';
+import RendererConfig from '../../../../Config/RendererConfig.ts';
 import { inject } from '../../../../Context.ts';
 import { darken, lighten } from '../../../../utils.ts';
-import type { SliderProgressResult } from './CalculateSliderProgress.ts';
+import { SliderProgressResult } from './CalculateSliderProgress.ts';
 import fragment from './Shaders/sliderShader.frag?raw';
 import vertex from './Shaders/sliderShader.vert?raw';
 import gpuSrc from './Shaders/sliderShader.wgsl?raw';
@@ -62,9 +62,9 @@ function createBodyGeometry() {
 			},
 			aSegment: {
 				buffer: new Buffer({
-					data: new Float32Array([]), 
-					usage: BufferUsage.VERTEX | BufferUsage.COPY_DST, 
-					shrinkToFit: false 
+					data: new Float32Array([]),
+					usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
+					shrinkToFit: false
 				}),
 				format: 'float32x4',
 				instance: true

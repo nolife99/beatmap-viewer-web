@@ -1,9 +1,10 @@
-import type { Spinner } from 'osu-standard-stable';
+import { Spinner } from 'osu-standard-stable';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import { Clamp } from '../../../utils.ts';
 import DrawableApproachCircle from './DrawableApproachCircle.ts';
 
-export default class DrawableSpinnerApproachCircle extends DrawableApproachCircle {
+export default class DrawableSpinnerApproachCircle
+	extends DrawableApproachCircle {
 	constructor(object: Spinner) {
 		super(object);
 		this.container.visible = true;

@@ -1,162 +1,162 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import type BeatmapSet from '../../BeatmapSet/index.ts';
-import type FullscreenConfig from '../../Config/FullscreenConfig.ts';
-import type TimelineConfig from '../../Config/TimelineConfig.ts';
+import BeatmapSet from '../../BeatmapSet/index.ts';
+import FullscreenConfig from '../../Config/FullscreenConfig.ts';
+import TimelineConfig from '../../Config/TimelineConfig.ts';
 import { inject, provide } from '../../Context.ts';
-import type ResponsiveHandler from '../../ResponsiveHandler.ts';
+import ResponsiveHandler from '../../ResponsiveHandler.ts';
 import Easings from '../Easings.ts';
 import Controls from './controls/index.ts';
 import Viewer from './viewer/index.ts';
 
 export default class Main {
-  container = new LayoutContainer({
-    layout: {
-      position: "relative",
-      flex: 1,
-      height: "100%",
-      boxSizing: "border-box",
-      flexDirection: "column",
-    },
-  });
+	container = new LayoutContainer({
+		layout: {
+			position: 'relative',
+			flex: 1,
+			height: '100%',
+			boxSizing: 'border-box',
+			flexDirection: 'column'
+		}
+	});
 
-  constructor() {
-    const controls = provide("ui/main/controls", new Controls());
-    const viewer = provide("ui/main/viewer", new Viewer(controls));
+	constructor() {
+		const controls = provide('ui/main/controls', new Controls());
+		const viewer = provide('ui/main/viewer', new Viewer(controls));
 
-    this.container.addChild(viewer.container);
+		this.container.addChild(viewer.container);
 
-    inject<ResponsiveHandler>("responsiveHandler")?.on(
-      "layout",
-      (direction) => {
-        const isFullscreen = inject<FullscreenConfig>("config/fullscreen")
-          ?.fullscreen;
+		inject<ResponsiveHandler>('responsiveHandler')?.on(
+			'layout',
+			(direction) => {
+				const isFullscreen = inject<FullscreenConfig>('config/fullscreen')
+					?.fullscreen;
 
-        switch (direction) {
-          case "landscape": {
-            this.container.removeChild(controls.container);
-            viewer.container.addChild(controls.container);
-            break;
-          }
-          case "portrait": {
-            if (!isFullscreen) {
-              this.container.removeChild(controls.container);
-              viewer.container.addChild(controls.container);
-              break;
-            }
+				switch (direction) {
+					case 'landscape': {
+						this.container.removeChild(controls.container);
+						viewer.container.addChild(controls.container);
+						break;
+					}
+					case 'portrait': {
+						if (!isFullscreen) {
+							this.container.removeChild(controls.container);
+							viewer.container.addChild(controls.container);
+							break;
+						}
 
-            viewer.container.removeChild(controls.container);
-            this.container.addChild(controls.container);
-          }
-        }
-      },
-    );
+						viewer.container.removeChild(controls.container);
+						this.container.addChild(controls.container);
+					}
+				}
+			}
+		);
 
-    this.container.addEventListener(
-      "wheel",
-      (event) => {
-        if (event.altKey) {
-          return;
-        }
+		this.container.addEventListener(
+			'wheel',
+			(event) => {
+				if (event.altKey) {
+					return;
+				}
 
-        if (event.ctrlKey) {
-          inject<TimelineConfig>("config/timeline")?.handleWheel(event);
-          return;
-        }
+				if (event.ctrlKey) {
+					inject<TimelineConfig>('config/timeline')?.handleWheel(event);
+					return;
+				}
 
-        inject<BeatmapSet>("beatmapset")?.handleWheel(event);
-      },
-      {
-        capture: true,
-        passive: false,
-      },
-    );
+				inject<BeatmapSet>('beatmapset')?.handleWheel(event);
+			},
+			{
+				capture: true,
+				passive: false
+			}
+		);
 
-    this.container.addEventListener("pointertap", () => {
-      if (!inject<FullscreenConfig>("config/fullscreen")?.fullscreen) return;
-      if (
-        inject<ResponsiveHandler>("responsiveHandler")?.direction ===
-          "landscape"
-      ) {
-        return;
-      }
+		this.container.addEventListener('pointertap', () => {
+			if (!inject<FullscreenConfig>('config/fullscreen')?.fullscreen) return;
+			if (
+				inject<ResponsiveHandler>('responsiveHandler')?.direction ===
+				'landscape'
+			) {
+				return;
+			}
 
-      controls.open = !controls.open;
+			controls.open = !controls.open;
 
-      if (controls.open) {
-        controls.container.visible = true;
-        controls.container.triggerAnimation(
-          "alpha",
-          controls.container.alpha ?? 0,
-          1,
-          (val) => {
-            controls.container.alpha = val;
-          },
-          200,
-          Easings.InOut,
-        );
-      }
+			if (controls.open) {
+				controls.container.visible = true;
+				controls.container.triggerAnimation(
+					'alpha',
+					controls.container.alpha ?? 0,
+					1,
+					(val) => {
+						controls.container.alpha = val;
+					},
+					200,
+					Easings.InOut
+				);
+			}
 
-      if (!controls.open) {
-        controls.container.triggerAnimation(
-          "alpha",
-          controls.container.alpha ?? 1,
-          0,
-          (val) => {
-            controls.container.alpha = val;
-          },
-          200,
-          Easings.InOut,
-          () => {
-            controls.container.visible = false;
-          },
-        );
-      }
-    });
+			if (!controls.open) {
+				controls.container.triggerAnimation(
+					'alpha',
+					controls.container.alpha ?? 1,
+					0,
+					(val) => {
+						controls.container.alpha = val;
+					},
+					200,
+					Easings.InOut,
+					() => {
+						controls.container.visible = false;
+					}
+				);
+			}
+		});
 
-    this.container.addEventListener("pointermove", (event) => {
-      if (!inject<FullscreenConfig>("config/fullscreen")?.fullscreen) return;
-      if (
-        inject<ResponsiveHandler>("responsiveHandler")?.direction === "portrait"
-      ) {
-        return;
-      }
+		this.container.addEventListener('pointermove', (event) => {
+			if (!inject<FullscreenConfig>('config/fullscreen')?.fullscreen) return;
+			if (
+				inject<ResponsiveHandler>('responsiveHandler')?.direction === 'portrait'
+			) {
+				return;
+			}
 
-      const pos = this.container.toLocal(event.global);
-      const height = this.container.layout?.computedLayout.height ?? 0;
-      const shouldShowControls = height - pos.y < 60;
+			const pos = this.container.toLocal(event.global);
+			const height = this.container.layout?.computedLayout.height ?? 0;
+			const shouldShowControls = height - pos.y < 60;
 
-      if (shouldShowControls === controls.open) return;
-      controls.open = shouldShowControls;
+			if (shouldShowControls === controls.open) return;
+			controls.open = shouldShowControls;
 
-      if (controls.open) {
-        controls.container.visible = true;
-        controls.container.triggerAnimation(
-          "height",
-          controls.container.layout?.computedLayout.height ?? 0,
-          60,
-          (val) => {
-            controls.container.layout = { height: val };
-          },
-          200,
-          Easings.InOut,
-        );
-      }
+			if (controls.open) {
+				controls.container.visible = true;
+				controls.container.triggerAnimation(
+					'height',
+					controls.container.layout?.computedLayout.height ?? 0,
+					60,
+					(val) => {
+						controls.container.layout = { height: val };
+					},
+					200,
+					Easings.InOut
+				);
+			}
 
-      if (!controls.open) {
-        controls.container.triggerAnimation(
-          "height",
-          controls.container.layout?.computedLayout.height ?? 60,
-          0,
-          (val) => {
-            controls.container.layout = { height: val };
-          },
-          200,
-          Easings.InOut,
-          () => {
-            controls.container.visible = false;
-          },
-        );
-      }
-    });
-  }
+			if (!controls.open) {
+				controls.container.triggerAnimation(
+					'height',
+					controls.container.layout?.computedLayout.height ?? 60,
+					0,
+					(val) => {
+						controls.container.layout = { height: val };
+					},
+					200,
+					Easings.InOut,
+					() => {
+						controls.container.visible = false;
+					}
+				);
+			}
+		});
+	}
 }
