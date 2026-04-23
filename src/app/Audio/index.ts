@@ -1,16 +1,115 @@
-import { SoundTouchNode } from '@soundtouchjs/audio-worklet';
-import soundTouchProcessor from '../../assets/soundtouch-processor.js?url';
+import { FFFSType, FFmpeg } from '@ffmpeg/ffmpeg';
+import { toBlobURL } from '@ffmpeg/util';
 import BeatmapSet from '../BeatmapSet/index.ts';
 import AudioConfig from '../Config/AudioConfig.ts';
 import { inject, ScopedClass } from '../Context.ts';
-import SpectrogramProcessor from './SpectrogramProcessor.ts';
 
-export const audioContext = new AudioContext;
-audioContext.audioWorklet.addModule(soundTouchProcessor as URL);
+export const audioContext = new AudioContext();
 
 if ('audioSession' in navigator) {
 	// @ts-expect-error WebKit only API
 	navigator.audioSession.type = 'playback';
+}
+
+const FFMPEG_BASE_URL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.10/dist/esm';
+const DESYNC_THRESHOLD_MS = 10;
+const DESYNC_FRAME_LIMIT = 60;
+const DESYNC_GUARD_MS = 250;
+
+const SUPPORTS_OGG = typeof document !== 'undefined'
+	? document.createElement('audio').canPlayType('audio/ogg') !== ''
+	: false;
+
+const MAX_THREADS = typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+	? Math.min(navigator.hardwareConcurrency, 8).toString()
+	: '4';
+
+const ffmpegPromise = (async () => {
+	const ffmpeg = new FFmpeg();
+	ffmpeg.on('log', ({ message }) => {
+		console.log(message);
+	});
+
+	await ffmpeg.load({
+		coreURL: await toBlobURL(`${FFMPEG_BASE_URL}/ffmpeg-core.js`, 'text/javascript'),
+		wasmURL: await toBlobURL(`${FFMPEG_BASE_URL}/ffmpeg-core.wasm`, 'application/wasm'),
+		workerURL: await toBlobURL(`${FFMPEG_BASE_URL}/ffmpeg-core.worker.js`, 'text/javascript'),
+	});
+
+	return ffmpeg;
+})();
+
+async function isLikelyMp3(blob: Blob) {
+	if (blob.type === 'audio/mpeg' || blob.type === 'audio/mp3') return true;
+
+	const header = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+	if (header.length >= 3 && header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33)
+		return true;
+
+	for (let i = 0; i + 1 < header.length; i++) {
+		if (header[i] === 0xff && (header[i + 1] & 0xe0) === 0xe0) return true;
+	}
+
+	return false;
+}
+
+async function isLikelyOgg(blob: Blob) {
+	if (blob.type === 'audio/ogg' || blob.type === 'application/ogg') return true;
+
+	if (blob instanceof File && blob.name.toLowerCase().endsWith('.ogg')) return true;
+	const header = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+
+	return header.length >= 4 &&
+		header[0] === 0x4f && // O
+		header[1] === 0x67 && // g
+		header[2] === 0x67 && // g
+		header[3] === 0x53;
+}
+
+async function transcode(blob: Blob) {
+	const ffmpeg = await ffmpegPromise;
+
+	const mountPoint = `/${crypto.randomUUID()}`;
+	const outputName = `${crypto.randomUUID()}.m4a`;
+
+	await ffmpeg.createDir(mountPoint);
+
+	const inputName = blob instanceof File ? blob.name : crypto.randomUUID();
+	await ffmpeg.mount(
+		FFFSType.WORKERFS,
+		blob instanceof File
+			? { files: [blob] }
+			: { blobs: [{ name: inputName, data: blob }] },
+		mountPoint,
+	);
+
+	try {
+		const ffmpegArgs = [
+			'-i', `${mountPoint}/${inputName}`,
+			'-vn',
+			'-c:a', 'aac',
+			'-b:a', '192k',
+			'-aac_coder', 'fast',
+			'-ar', '44100',
+			'-ac', '2',
+			'-threads', MAX_THREADS,
+			'-movflags', '+faststart',
+			outputName
+		];
+
+		const exitCode = await ffmpeg.exec(ffmpegArgs);
+
+		if (exitCode !== 0) {
+			throw new Error(`ffmpeg exited with code ${exitCode}`);
+		}
+
+		const data = await ffmpeg.readFile(outputName);
+		return new Blob([data as unknown as ArrayBuffer], { type: 'audio/mp4' });
+	} finally {
+		await ffmpeg.deleteFile(outputName);
+		await ffmpeg.unmount(mountPoint);
+		await ffmpeg.deleteDir(mountPoint);
+	}
 }
 
 export default class Audio extends ScopedClass {
@@ -18,11 +117,14 @@ export default class Audio extends ScopedClass {
 	init = false;
 	private localGainNode: GainNode;
 	private previousTimestamp = 0;
-	private startTime = 0;
-	private audioBuffer?: AudioBuffer;
-	private sourceNode?: AudioBufferSourceNode;
-	private soundTouchNode?: SoundTouchNode;
+	private mediaSyncGuardUntil = 0;
 	private desyncedFrames = 0;
+	private mediaElement?: HTMLAudioElement;
+	private mediaSourceNode?: MediaElementAudioSourceNode;
+	private mediaObjectUrl?: string;
+	private durationMs = 0;
+	private loadingPromise?: Promise<void>;
+	private loadVersion = 0;
 
 	constructor(private masterNode: AudioNode, private beatmapSet: BeatmapSet) {
 		super();
@@ -30,6 +132,7 @@ export default class Audio extends ScopedClass {
 		this.localGainNode = masterNode.context.createGain();
 		this.localGainNode.gain.value =
 			inject<AudioConfig>('config/audio')?.musicVolume ?? 0.8;
+		this.localGainNode.connect(this.masterNode);
 
 		inject<AudioConfig>('config/audio')?.onChange('musicVolume', (val) => {
 			this.localGainNode.gain.value = val;
@@ -38,6 +141,72 @@ export default class Audio extends ScopedClass {
 
 	private _currentTime = 0;
 
+	private get activeMediaTimeMs() {
+		return (this.mediaElement?.currentTime ?? 0) * 1000;
+	}
+
+	private applyPlaybackRate() {
+		if (!this.mediaElement) return;
+
+		this.mediaElement.playbackRate = this.playbackRate;
+		this.mediaElement.defaultPlaybackRate = this.playbackRate;
+
+		const media = this.mediaElement as HTMLAudioElement & {
+			preservesPitch?: boolean;
+			mozPreservesPitch?: boolean;
+			webkitPreservesPitch?: boolean;
+		};
+
+		media.preservesPitch = true;
+		media.mozPreservesPitch = true;
+		media.webkitPreservesPitch = true;
+
+		this.mediaElement.currentTime = this._currentTime / 1000;
+	}
+
+	private disposeMediaElement() {
+		if (this.mediaElement) {
+			this.mediaElement.onended = null;
+			this.mediaElement.onloadedmetadata = null;
+			this.mediaElement.pause();
+			this.mediaElement.removeAttribute('src');
+			this.mediaElement.load();
+			this.mediaElement = undefined;
+		}
+
+		if (this.mediaSourceNode) {
+			this.mediaSourceNode.disconnect();
+			this.mediaSourceNode = undefined;
+		}
+
+		if (this.mediaObjectUrl) {
+			URL.revokeObjectURL(this.mediaObjectUrl);
+			this.mediaObjectUrl = undefined;
+		}
+	}
+
+	private waitForCanPlayThrough(media: HTMLAudioElement) {
+		if (Number.isFinite(media.duration) && media.duration > 0) return new Promise<void>(resolve => resolve());
+
+		return new Promise<void>((resolve, reject) => {
+			const cleanup = () => {
+				media.removeEventListener('canplaythrough', onLoaded);
+				media.removeEventListener('error', onError);
+			};
+			const onLoaded = () => {
+				cleanup();
+				resolve();
+			};
+			const onError = () => {
+				cleanup();
+				reject(media.error ?? new Error('Failed to load audio metadata'));
+			};
+
+			media.addEventListener('canplaythrough', onLoaded, { once: true });
+			media.addEventListener('error', onError, { once: true });
+		});
+	}
+
 	get currentTime() {
 		if (this.state === 'STOPPED') return this._currentTime;
 
@@ -45,31 +214,22 @@ export default class Audio extends ScopedClass {
 			this._currentTime +
 			(performance.now() - this.previousTimestamp) * this.playbackRate;
 
-		const offset =
-			(performance.now() -
-				this.previousTimestamp -
-				(this.masterNode.context.currentTime * 1000 - this.startTime)) *
-			this.playbackRate;
+		const mediaNow = this.activeMediaTimeMs;
 
-		if (Math.abs(offset) > 10) this.desyncedFrames++;
-		else this.desyncedFrames = 0;
+		if (performance.now() >= this.mediaSyncGuardUntil) {
+			const offset = mediaNow - now;
 
-		const ctx = this.masterNode.context;
-		if (ctx instanceof AudioContext && this.state === 'PLAYING') {
-			const checkTimeBefore = ctx.currentTime;
-			setTimeout(() => {
-				if (this.state === 'PLAYING' && ctx.currentTime === checkTimeBefore) {
-					this.beatmapSet.toggle().then(() => ctx.suspend().catch(() => {
-					}));
-				}
-			}, 100);
-		}
+			if (Math.abs(offset) > DESYNC_THRESHOLD_MS * this.playbackRate) this.desyncedFrames++;
+			else this.desyncedFrames = 0;
 
-		if (this.desyncedFrames > 20) {
-			this.desyncedFrames = 0;
-
-			this.beatmapSet.seek(now);
-			console.warn(`Audio desynced: ${offset.toFixed()}ms`);
+			if (this.desyncedFrames > DESYNC_FRAME_LIMIT) {
+				this.desyncedFrames = 0;
+				this._currentTime = now;
+				this.previousTimestamp = performance.now();
+				this.mediaSyncGuardUntil = performance.now() + DESYNC_GUARD_MS;
+				this.beatmapSet.seek(now);
+				console.warn(`Audio desynced: ${offset.toFixed()}ms`);
+			}
 		}
 
 		if (now > this.duration) {
@@ -88,9 +248,16 @@ export default class Audio extends ScopedClass {
 		if (previousState === 'PLAYING') this.pause();
 
 		this._currentTime =
-			val > (this.audioBuffer?.duration ?? 0) * 1000 || val < 0
+			val > this.duration || val < 0
 				? 0
 				: val;
+
+		if (this.mediaElement) {
+			this.mediaElement.currentTime = this._currentTime / 1000;
+		}
+
+		this.mediaSyncGuardUntil = performance.now() + DESYNC_GUARD_MS;
+		this.desyncedFrames = 0;
 
 		if (previousState === 'PLAYING') this.play();
 	}
@@ -100,23 +267,76 @@ export default class Audio extends ScopedClass {
 	}
 
 	get duration() {
-		return (this.audioBuffer?.duration ?? 0) * 1000;
+		return this.durationMs;
 	}
 
 	async createBufferNode(blob: Blob) {
-		const ctx = this.masterNode.context;
+		if (this.state === 'PLAYING') this.pause();
 
-		const data = await ctx.decodeAudioData(await blob.arrayBuffer());
-		this.audioBuffer = data;
+		const loadVersion = ++this.loadVersion;
 
-		new SpectrogramProcessor(data);
+		this.loadingPromise = (async () => {
+			this.disposeMediaElement();
+			this.init = false;
+			this._currentTime = 0;
+			this.durationMs = 0;
+			this.desyncedFrames = 0;
+			this.mediaSyncGuardUntil = 0;
 
-		const sizePerChannel = data.length * 4 / (1024 * 1024);
-		const sizeMb = sizePerChannel * data.numberOfChannels;
+			const isMp3 = await isLikelyMp3(blob);
+			const isOgg = await isLikelyOgg(blob);
 
-		console.log(`Audio buffer size: ${sizeMb.toFixed()}MB (${sizePerChannel.toFixed()}MB per channel)`);
+			let sourceBlob = blob;
 
-		this.init = true;
+			if (isMp3) {
+				sourceBlob = await transcode(blob);
+			} else if (isOgg && !SUPPORTS_OGG) {
+				sourceBlob = await transcode(blob);
+			}
+
+			const media = document.createElement('audio');
+			media.preload = 'auto';
+			media.loop = false;
+
+			this.mediaObjectUrl = URL.createObjectURL(sourceBlob);
+			media.src = this.mediaObjectUrl;
+			media.currentTime = 0;
+
+			await this.waitForCanPlayThrough(media);
+
+			if (loadVersion !== this.loadVersion) {
+				if (this.mediaObjectUrl) {
+					URL.revokeObjectURL(this.mediaObjectUrl);
+					this.mediaObjectUrl = undefined;
+				}
+				return;
+			}
+
+			this.mediaElement = media;
+			this.applyPlaybackRate();
+			this.durationMs = Number.isFinite(media.duration) ? media.duration * 1000 : 0;
+
+			const ctx = this.masterNode.context as AudioContext;
+			this.mediaSourceNode = ctx.createMediaElementSource(media);
+			this.mediaSourceNode.connect(this.localGainNode);
+
+			media.onended = () => {
+				if (this.state === 'PLAYING') {
+					this.state = 'STOPPED';
+					this._currentTime = this.duration;
+					this.desyncedFrames = 0;
+					this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
+				}
+			};
+
+			this.init = true;
+		})();
+
+		try {
+			await this.loadingPromise;
+		} finally {
+			this.loadingPromise = undefined;
+		}
 	}
 
 	async toggle(event: UIEvent | null) {
@@ -135,42 +355,20 @@ export default class Audio extends ScopedClass {
 		if (this.state === 'PLAYING')
 			throw new Error('Already playing');
 
-		if (!this.audioBuffer)
+		if (this.loadingPromise)
+			throw new Error('Audio is still loading');
+
+		if (!this.mediaElement || !this.mediaSourceNode)
 			throw new Error('Audio not initialized');
 
 		this.state = 'PLAYING';
-
-		const ctx = this.masterNode.context;
-
-		this.sourceNode = ctx.createBufferSource();
-		this.sourceNode.buffer = this.audioBuffer;
-		this.sourceNode.loop = false;
-
-		const offsetSec = this._currentTime / 1000;
-
-		if (this.playbackRate !== 1) {
-			this.soundTouchNode = new SoundTouchNode(ctx);
-			this.sourceNode.playbackRate.value = this.playbackRate;
-			this.soundTouchNode.playbackRate.value = this.playbackRate;
-			this.soundTouchNode.pitch.value = 1;
-
-			this.sourceNode.connect(this.soundTouchNode);
-			this.soundTouchNode.connect(this.localGainNode);
-		} else {
-			this.sourceNode.connect(this.localGainNode);
-		}
-
-		this.localGainNode.connect(this.masterNode);
-		this.sourceNode.start(0, offsetSec);
-
-		this.startTime = ctx.currentTime * 1000;
+		this.applyPlaybackRate();
+		this.mediaElement.currentTime = this._currentTime / 1000;
 		this.previousTimestamp = performance.now();
+		this.mediaSyncGuardUntil = this.previousTimestamp + DESYNC_GUARD_MS;
+		this.desyncedFrames = 0;
 
-		this.sourceNode.onended = () => {
-			if (this.state === 'PLAYING') {
-				this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
-			}
-		};
+		this.mediaElement.play().catch(() => { });
 	}
 
 	pause() {
@@ -178,26 +376,24 @@ export default class Audio extends ScopedClass {
 			throw new Error('Already stopped');
 
 		this.state = 'STOPPED';
+		this.desyncedFrames = 0;
+		this.mediaSyncGuardUntil = 0;
 
-		this._currentTime +=
-			(performance.now() - this.previousTimestamp) * this.playbackRate;
-
-		if (this.sourceNode) {
-			this.sourceNode.onended = null;
-			this.sourceNode.stop();
-			this.sourceNode.disconnect();
-			this.sourceNode = undefined;
+		if (this.mediaElement) {
+			this.mediaElement.pause();
+			this._currentTime = Math.min(this.duration, this.activeMediaTimeMs);
+		} else {
+			this._currentTime +=
+				(performance.now() - this.previousTimestamp) * this.playbackRate;
 		}
-		if (this.soundTouchNode) {
-			this.soundTouchNode.disconnect();
-			this.soundTouchNode = undefined;
-		}
-		this.localGainNode.disconnect();
 	}
 
 	destroy() {
 		if (this.state === 'PLAYING') this.pause();
-		this.audioBuffer = undefined;
+		this.loadVersion++;
+		this.disposeMediaElement();
+		this.localGainNode.disconnect();
+		this.durationMs = 0;
 		this.init = false;
 	}
 }

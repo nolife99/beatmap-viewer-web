@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@deno/vite-plugin": "^2.0.2",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@flatten-js/interval-tree": "2.0.3",
     "@pixi/layout": "^3.1.0",
     "@rian8337/osu-base": "^3.3.0",
@@ -28,6 +30,7 @@
     "js-ini": "^1.6.0",
     "lightningcss": "^1.32.0",
     "node-vibrant": "^4.0.3",
+    "ogv": "^1.9.0",
     "osu-classes": "npm:@fukutotojido/osu-classes",
     "osu-parsers": "^4.1.7",
     "osu-standard-stable": "^5.0.1",
