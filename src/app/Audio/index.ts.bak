@@ -1,5 +1,15 @@
-import { FFFSType, FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL } from '@ffmpeg/util';
+﻿import {
+	ALL_FORMATS,
+	BlobSource,
+	BufferTarget,
+	Conversion,
+	Input,
+	Mp4OutputFormat,
+	Output,
+	canEncodeAudio,
+	QUALITY_MEDIUM, WebMOutputFormat
+} from 'mediabunny';
+import { registerAacEncoder } from '@mediabunny/aac-encoder';
 import BeatmapSet from '../BeatmapSet/index.ts';
 import AudioConfig from '../Config/AudioConfig.ts';
 import { inject, ScopedClass } from '../Context.ts';
@@ -12,7 +22,6 @@ if ('audioSession' in navigator) {
 	navigator.audioSession.type = 'playback';
 }
 
-const FFMPEG_BASE_URL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt/dist/esm';
 const DESYNC_THRESHOLD_MS = 10;
 const DESYNC_FRAME_LIMIT = 60;
 const DESYNC_GUARD_MS = 250;
@@ -20,21 +29,6 @@ const DESYNC_GUARD_MS = 250;
 const SUPPORTS_OGG = typeof document !== 'undefined'
 	? document.createElement('audio').canPlayType('audio/ogg') !== ''
 	: false;
-
-const ffmpegPromise = (async () => {
-	const ffmpeg = new FFmpeg();
-	ffmpeg.on('log', ({ message }) => {
-		console.log(message);
-	});
-
-	await ffmpeg.load({
-		coreURL: await toBlobURL(`${FFMPEG_BASE_URL}/ffmpeg-core.js`, 'text/javascript'),
-		wasmURL: await toBlobURL(`${FFMPEG_BASE_URL}/ffmpeg-core.wasm`, 'application/wasm'),
-		workerURL: await toBlobURL(`${FFMPEG_BASE_URL}/ffmpeg-core.worker.js`, 'text/javascript'),
-	});
-
-	return ffmpeg;
-})();
 
 async function isLikelyMp3(blob: Blob) {
 	if (blob.type === 'audio/mpeg' || blob.type === 'audio/mp3') return true;
@@ -64,56 +58,65 @@ async function isLikelyOgg(blob: Blob) {
 }
 
 async function transcode(blob: Blob) {
-	const ffmpeg = await ffmpegPromise;
+	const input = new Input({
+		source: new BlobSource(blob),
+		formats: ALL_FORMATS,
+	});
 
-	const mountPoint = `/${crypto.randomUUID()}`;
-	const outputName = crypto.randomUUID();
+	const target = new BufferTarget();
+	const format = new WebMOutputFormat();
 
-	await ffmpeg.createDir(mountPoint);
+	const output = new Output({
+		format,
+		target,
+	});
 
-	const inputName = blob instanceof File ? blob.name : crypto.randomUUID();
-	await ffmpeg.mount(
-		FFFSType.WORKERFS,
-		blob instanceof File
-			? { files: [blob] }
-			: { blobs: [{ name: inputName, data: blob }] },
-		mountPoint,
-	);
+	let audioCodec: 'opus' | 'aac';
 
-	const onProgress = ({ progress }: { progress: number }) => {
-		inject<Loading>('ui/loading')?.setText(`Transcoding audio... ${(progress * 100).toFixed(2)}%`);
+	if (await canEncodeAudio('opus')) {
+		audioCodec = 'opus';
+	} else {
+		if (!(await canEncodeAudio('aac'))) {
+			registerAacEncoder();
+		}
+		audioCodec = 'aac';
+	}
+
+	const audioConfig: any = {
+		codec: audioCodec,
+		bitrate: QUALITY_MEDIUM,
+		bitrateMode: 'variable',
+		forceTranscode: true,
 	};
 
-	ffmpeg.on('progress', onProgress);
-
-	try {
-		const ffmpegArgs = [
-			'-i', `${mountPoint}/${inputName}`,
-			'-vn',
-			'-c:a', 'libopus',
-			'-b:a', '128k',
-			'-vbr', 'on',
-			'-compression_level', '0',
-			'-application', 'audio',
-			'-f', 'mp4',
-			outputName
-		];
-
-		const exitCode = await ffmpeg.exec(ffmpegArgs);
-
-		if (exitCode !== 0) {
-			throw new Error(`ffmpeg exited with code ${exitCode}`);
-		}
-
-		const data = await ffmpeg.readFile(outputName);
-		return new Blob([data as unknown as ArrayBuffer]);
-	} finally {
-		ffmpeg.off('progress', onProgress);
-
-		await ffmpeg.deleteFile(outputName);
-		await ffmpeg.unmount(mountPoint);
-		await ffmpeg.deleteDir(mountPoint);
+	if (audioCodec === 'opus') {
+		audioConfig.opus = {
+			complexity: 0,
+		};
 	}
+
+	const conversion = await Conversion.init({
+		input,
+		output,
+		audio: audioConfig,
+		video: { discard: true },
+		trim: { start: 0 }
+	});
+
+	if (!conversion.isValid) {
+		throw new Error(`Mediabunny conversion is invalid: ${conversion.discardedTracks.map((track) => track.reason).join(', ')}`);
+	}
+
+	conversion.onProgress = (progress) => {
+		inject<Loading>('ui/loading')?.setText(`Transcoding audio (${audioCodec})... ${(progress * 100).toFixed(2)}%`);
+	};
+
+	await conversion.execute();
+
+	const buffer = output.target.buffer;
+	if (!buffer) throw new Error('Mediabunny conversion completed without output data');
+
+	return new Blob([buffer]);
 }
 
 export default class Audio extends ScopedClass {

@@ -1,10 +1,10 @@
 import { LayoutOptions } from '@pixi/layout';
 import { LayoutContainer } from '@pixi/layout/components';
-import { BeatmapMetadataSection } from 'osu-classes';
 import { BitmapText, type TextStyle, type TextStyleOptions } from 'pixi.js';
 import ColorConfig from '../../Config/ColorConfig.ts';
 import { inject } from '../../Context.ts';
 import ResponsiveHandler from '../../ResponsiveHandler.ts';
+import { StandardBeatmap } from 'osu-standard-stable';
 
 export const defaultStyle: TextStyle | TextStyleOptions | undefined = {
 	fontFamily: 'Rubik',
@@ -165,21 +165,23 @@ export default class Metadata {
 		);
 	}
 
-	updateMetadata(metadata: BeatmapMetadataSection) {
-		this.artist.text = metadata.artist;
-		this.artistUnicode.text = metadata.artistUnicode.replaceAll('、', ', ');
-		this.title.text = metadata.title;
-		this.titleUnicode.text = metadata.titleUnicode;
-		this.version.text = metadata.version;
-		this.source.text = metadata.source;
-		this.tags.text = metadata.tags.join(', ');
+	updateMetadata(metadata: StandardBeatmap) {
+		const meta = metadata.metadata;
+
+		this.artist.text = meta.artist;
+		this.artistUnicode.text = meta.artistUnicode.replaceAll('、', ', ');
+		this.title.text = meta.title;
+		this.titleUnicode.text = meta.titleUnicode;
+		this.version.text = meta.version;
+		this.source.text = meta.source;
+		this.tags.text = meta.tags.join(', ');
 
 		const mapperEl = document.querySelector('#mapper');
 		const titleEl = document.querySelector('#title');
 
 		if (mapperEl)
-			mapperEl.innerHTML = `by <span class="font-medium">${metadata.creator}</span>`;
-		if (titleEl) titleEl.textContent = `${metadata.artist} - ${metadata.title}`;
+			mapperEl.innerHTML = `by <span class="font-medium">${meta.creator}</span>`;
+		if (titleEl) titleEl.textContent = `${meta.artist} - ${meta.title}`;
 	}
 
 	private createContainer(title: string, content: BitmapText) {

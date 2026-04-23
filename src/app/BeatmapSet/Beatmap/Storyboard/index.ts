@@ -165,7 +165,7 @@ export default class Storyboard extends ScopedClass {
 	}
 
 	update(timestamp: number) {
-		if (!inject<BackgroundConfig>('config/background')?.storyboard) return;
+		if (!inject<BackgroundConfig>('config/background')?.storyboard || this.container.destroyed) return;
 		this.fill.alpha = timestamp < this.startTime ? 0 : 1;
 
 		const set = new Set<number>(

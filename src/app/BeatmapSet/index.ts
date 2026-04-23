@@ -181,7 +181,6 @@ export default class BeatmapSet extends ScopedClass {
 
 		if (!audioFile) throw new Error('Cannot find audio in resource?');
 
-		inject<Loading>('ui/loading')?.setText('Loading audio');
 		inject<Spectrogram>('ui/sidepanel/modding/spectrogram')?.unloadTexture();
 
 		this.context.consume<Audio>('audio')?.destroy();
@@ -328,19 +327,17 @@ export default class BeatmapSet extends ScopedClass {
 			this.loadAudio(beatmap),
 			this.loadVideo(beatmap),
 			this.loadBackground(beatmap),
-			storyboard?.loadMaster(beatmap.raw)
+			storyboard?.loadMaster(beatmap.raw).then(() => {
+				storyboard?.checkRemoveBG();
+				storyboard?.sortChildren();
+			})
 		]);
-		storyboard?.checkRemoveBG();
-		storyboard?.sortChildren();
-
-		inject<Metadata>('ui/sidepanel/metadata')?.updateMetadata(
-			beatmap.data.metadata
-		);
+		inject<Metadata>('ui/sidepanel/metadata')?.updateMetadata(beatmap.data);
 
 		await beatmap.loadTimingPoints();
 	}
 
-	async loadBeatmap(beatmap: Beatmap, index?: number) {
+	loadBeatmap(beatmap: Beatmap, index?: number) {
 		inject<Loading>('ui/loading')?.setText('Loading hitObjects');
 
 		inject<Gameplays>('ui/main/viewer/gameplays')?.addGameplay(
@@ -348,11 +345,8 @@ export default class BeatmapSet extends ScopedClass {
 			index
 		);
 
-		await beatmap.loadHitObjects();
 		beatmap.load();
-
-		beatmap.seek(this.context.consume<Audio>('audio')?.currentTime ?? 0);
-		beatmap.toggle();
+		return beatmap.loadHitObjects();
 
 		// console.log(beatmap);
 	}
@@ -365,7 +359,9 @@ export default class BeatmapSet extends ScopedClass {
 		const oldMaster = this.master;
 		const isSwitch = this.slaves.has(beatmap);
 
+		inject<Loading>('ui/loading')?.on();
 		beatmap.container.spinner.spin = true;
+
 		if (isSwitch && oldMaster) {
 			await this.loadPeripherals(beatmap);
 			inject<Gameplays>('ui/main/viewer/gameplays')?.switchGameplay(
@@ -393,6 +389,7 @@ export default class BeatmapSet extends ScopedClass {
 		this.setIds();
 
 		beatmap.container.spinner.spin = false;
+		inject<Loading>('ui/loading')?.off();
 	}
 
 	async loadSlave(idx: number) {

@@ -250,10 +250,11 @@ export default class Beatmap extends ScopedClass {
 		if (async) await this.loadHitObjectsAsync();
 		else this.loadHitObjectsSync();
 
-		console.timeEnd('Constructing hitObjects');
 		this.connectors = (await this.constructConnectors()).filter(
 			(conn) => conn !== null
 		);
+		console.timeEnd('Constructing hitObjects');
+
 		this.worker.postMessage({
 			type: 'init',
 			objects: this.data.hitObjects

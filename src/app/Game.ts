@@ -274,9 +274,7 @@ export class Game {
 		const resources = await ZipHandler.extract(blob);
 		const bms = new BeatmapSet(resources);
 
-		await bms.loadResources();
-		await bms.getDifficulties();
-
+		await Promise.all([bms.loadResources(), bms.getDifficulties()]);
 		return bms;
 	}
 
@@ -569,7 +567,7 @@ export class Game {
 
 				if (idx === -1) continue;
 				if (i === 0) await bms.loadMaster(idx);
-				if (i !== 0) await bms.loadSlave(idx);
+				else if (i !== 0) await bms.loadSlave(idx);
 			}
 
 			if (!bms.master) {
