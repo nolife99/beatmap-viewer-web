@@ -313,6 +313,24 @@ export default class Beatmap extends ScopedClass {
 				}
 			}
 		);
+
+		const audio = this.context.consume<Audio>('audio');
+
+		this.worker.postMessage({
+			type: 'playbackRate',
+			playbackRate:
+				this.context.consume<BeatmapSet>('beatmapset')?.playbackRate ?? 1
+		});
+
+		if (audio?.state === 'PLAYING') {
+			this.worker.postMessage({ type: 'start' });
+		}
+
+		if (audio?.state === 'STOPPED') {
+			this.worker.postMessage({ type: 'stop' });
+		}
+
+		this.seek(audio?.currentTime ?? 0);
 	}
 
 	frame(time: number) {

@@ -96,7 +96,7 @@ export default class Timing {
 
 		this.container.on('wheel', (event) => {
 			const deltaY = event.deltaY;
-			this.scrollTo(this._scrollOffset + deltaY * 15);
+			this.scrollTo(this._scrollOffset + deltaY * 2);
 		});
 
 		this.container.on('pointerdown', (event) => this.handleDragStart(event));

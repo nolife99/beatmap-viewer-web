@@ -3,7 +3,7 @@ import { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
 import { Application, Assets, type FederatedWheelEvent, Texture } from 'pixi.js';
 
 import extraMode from '../../assets/extra-mode.svg?raw';
-import Audio, { audioContext } from '../Audio/index.ts';
+import Audio from '../Audio/index.ts';
 import AudioConfig from '../Config/AudioConfig.ts';
 import BackgroundConfig from '../Config/BackgroundConfig.ts';
 import ExperimentalConfig from '../Config/ExperimentalConfig.ts';
@@ -46,6 +46,7 @@ export default class BeatmapSet extends ScopedClass {
 	_currentNextTick?: number;
 	_currentTween?: Tween;
 	isSeeking = false;
+	audioContext = new AudioContext
 
 	constructor(private resources: Map<string, Resource>) {
 		super();
@@ -91,7 +92,7 @@ export default class BeatmapSet extends ScopedClass {
 
 		console.time('Load hitSamples');
 		const sampleManager = this.context.provide('sampleManager', new SampleManager(this.resources));
-		await sampleManager.load(audioContext);
+		await sampleManager.load(this.audioContext);
 		console.timeEnd('Load hitSamples');
 
 		await this.loadBeatmapSkin();
@@ -185,8 +186,8 @@ export default class BeatmapSet extends ScopedClass {
 
 		this.context.consume<Audio>('audio')?.destroy();
 
-		const gainNode = this.context.provide('masterGainNode', audioContext.createGain());
-		gainNode.connect(audioContext.destination);
+		const gainNode = this.context.provide('masterGainNode', this.audioContext.createGain());
+		gainNode.connect(this.audioContext.destination);
 
 		gainNode.gain.value = inject<AudioConfig>('config/audio')?.masterVolume ?? 0.8;
 		inject<AudioConfig>('config/audio')?.onChange('masterVolume', (val) => {
