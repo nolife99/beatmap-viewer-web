@@ -180,15 +180,11 @@ export default class SpectrogramProcessor {
 		return this.getTexture();
 	}
 
-	cancel() {
-		this.renderToken++;
-	}
-
 	destroy() {
 		this.destroyed = true;
 		this.renderToken++;
 
-		this.texture?.destroy(false);
+		this.texture?.destroy(true);
 		this.texture = undefined;
 
 		pool.free(this.columnAccum);

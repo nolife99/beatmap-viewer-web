@@ -252,7 +252,7 @@ export default class SliderBodyRenderer {
 			const B = points[Math.min(i + 1, pointsCount - 1)];
 
 			const offset = i * 4;
-			staging[offset + 0] = A.x;
+			staging[offset] = A.x;
 			staging[offset + 1] = A.y;
 			staging[offset + 2] = B.x;
 			staging[offset + 3] = B.y;

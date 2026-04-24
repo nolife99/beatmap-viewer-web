@@ -5,7 +5,7 @@ import { inject } from '../../../Context.ts';
 import ResponsiveHandler from '../../../ResponsiveHandler.ts';
 
 export default class Timestamp {
-	container = new LayoutContainer({
+	container: LayoutContainer = new LayoutContainer({
 		label: 'timestamp',
 		layout: {
 			width: 150,
@@ -108,6 +108,7 @@ export default class Timestamp {
 	createDigit(text: string, width = 9) {
 		return new BitmapText({
 			text: text,
+			label: text,
 			style: {
 				fontFamily: 'Rubik',
 				fontSize: 15,
@@ -138,10 +139,10 @@ export default class Timestamp {
 	}
 
 	updateBPM(bpm: number) {
-		this.bpm.text = `${bpm.toFixed(0)}BPM`;
+		this.bpm.text = this.sliderVelocity.label = `${bpm.toFixed(0)}BPM`;
 	}
 
 	updateSliderVelocity(sv: number) {
-		this.sliderVelocity.text = `x${sv.toFixed(2)}`;
+		this.sliderVelocity.text = this.sliderVelocity.label = `x${sv.toFixed(2)}`;
 	}
 }
