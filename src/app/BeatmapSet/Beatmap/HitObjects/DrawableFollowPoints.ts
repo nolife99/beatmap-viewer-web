@@ -3,8 +3,7 @@ import { Slider, StandardHitObject } from 'osu-standard-stable';
 import { Container, Sprite } from 'pixi.js';
 import { Context } from '../../../Context.ts';
 import { update } from '../../../Skinning/Shared/FollowPoints.ts';
-import Skin from '../../../Skinning/Skin.ts';
-import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import Skin, { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import { Clamp } from '../../../utils.ts';
 import AnimatedSkinnableElement from './AnimatedSkinnableElement.ts';
 

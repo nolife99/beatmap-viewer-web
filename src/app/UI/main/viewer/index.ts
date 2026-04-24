@@ -19,7 +19,8 @@ export default class Viewer {
 			flex: 1,
 			flexDirection: 'column',
 			backgroundColor: [0, 0, 0, 0.2],
-			borderRadius: 20
+			borderRadius: 20,
+			overflow: 'hidden'
 		},
 		interactive: true
 	});

@@ -1,16 +1,12 @@
 import pool from '@stdlib/array-pool';
-import {
-	ALL_FORMATS,
-	AudioBufferSink,
-	BlobSource,
-	Input,
-	type InputAudioTrack,
-} from 'mediabunny';
+import { ALL_FORMATS, AudioBufferSink, BlobSource, Input, type InputAudioTrack } from 'mediabunny';
 import BeatmapSet from '../BeatmapSet/index.ts';
 import AudioConfig from '../Config/AudioConfig.ts';
 import { inject, ScopedClass } from '../Context.ts';
 import Loading from '../UI/loading/index.ts';
 import { TimeStretcher } from './TimeStretcher.ts';
+import SpectrogramProcessor from './SpectrogramProcessor.ts';
+import SpectrogramContainer from '../UI/sidepanel/Modding/Spectrogram.ts';
 
 if ('audioSession' in navigator) {
 	// @ts-expect-error WebKit-only API
@@ -49,16 +45,13 @@ export default class Audio extends ScopedClass {
 	private durationMs = 0;
 	private loadingPromise?: Promise<void>;
 	private loadVersion = 0;
-
-	private _currentTime = 0;
 	private encoderDelayMs = 0;
-
 	private schedulerToken = 0;
 	private readonly scheduledNodes: ScheduledNode[] = [];
-
 	private wsolaScheduledUntilSec = 0;
 	private pitchMode: PitchMode = 'preserve';
 	private stretcher?: TimeStretcher;
+	private spectrogram?: SpectrogramProcessor;
 
 	constructor(private masterNode: AudioNode, private beatmapSet: BeatmapSet) {
 		super();
@@ -73,9 +66,7 @@ export default class Audio extends ScopedClass {
 		});
 	}
 
-	private get ctx() {
-		return this.masterNode.context as AudioContext;
-	}
+	private _currentTime = 0;
 
 	get currentTime() {
 		if (this.state === 'STOPPED') return this._currentTime;
@@ -115,6 +106,160 @@ export default class Audio extends ScopedClass {
 		return this.durationMs;
 	}
 
+	private get ctx() {
+		return this.masterNode.context as AudioContext;
+	}
+
+	async createBufferNode(blob: Blob) {
+		if (this.state === 'PLAYING') this.pause();
+		inject<Loading>('ui/loading')?.setText('Loading audio...');
+
+		const loadVersion = ++this.loadVersion;
+
+		this.loadingPromise = (async () => {
+			this.disposeInput();
+
+			this.init = false;
+			this._currentTime = 0;
+			this.durationMs = 0;
+			this.encoderDelayMs = 0;
+			this.mediaSyncGuardUntil = 0;
+
+			const input = new Input({
+				source: new BlobSource(blob),
+				formats: ALL_FORMATS
+			});
+
+			const audioTrack = await input.getPrimaryAudioTrack();
+
+			if (loadVersion !== this.loadVersion) {
+				input.dispose();
+				return;
+			}
+
+			if (!audioTrack) {
+				input.dispose();
+				throw new Error('No primary audio track found');
+			}
+
+			if (!(await audioTrack.canDecode())) {
+				input.dispose();
+				throw new Error('Primary audio track cannot be decoded by this browser');
+			}
+
+			const durationSec = await input.computeDuration();
+
+			if (loadVersion !== this.loadVersion) {
+				input.dispose();
+				return;
+			}
+
+			this.input = input;
+			this.audioTrack = audioTrack;
+			this.sink = new AudioBufferSink(audioTrack);
+			this.durationMs = Number.isFinite(durationSec) ? durationSec * 1000 : 0;
+			this.encoderDelayMs = await getEncoderDelayMs(blob, audioTrack);
+			this.init = true;
+
+			this.spectrogram?.destroy();
+
+			this.spectrogram = new SpectrogramProcessor({
+				sink: this.sink,
+				durationSec,
+				sampleRate: audioTrack.sampleRate,
+				channels: audioTrack.numberOfChannels,
+				width: 400,
+				height: 400,
+				fftSamples: 512,
+				frequencyMin: 0,
+				frequencyMax: audioTrack.sampleRate / 2,
+				scale: 'linear',
+				gainDB: 0,
+				rangeDB: 80,
+				container: '#a',
+				onTextureUpdate: (texture) => {
+					inject<SpectrogramContainer>('ui/sidepanel/modding/spectrogram')?.setTexture(texture);
+				}
+			});
+
+			void this.spectrogram.render();
+		})();
+
+		try {
+			await this.loadingPromise;
+		} finally {
+			this.loadingPromise = undefined;
+		}
+	}
+
+	async toggle(event: UIEvent | null) {
+		if (this.state === 'PLAYING') {
+			this.pause();
+			return;
+		}
+
+		if (event) await this.ctx.resume();
+		this.play();
+	}
+
+	play() {
+		if (this.state === 'PLAYING') throw new Error('Already playing');
+		if (this.loadingPromise) throw new Error('Audio is still loading');
+		if (!this.input || !this.audioTrack || !this.sink) {
+			throw new Error('Audio not initialized');
+		}
+
+		const rate = this.playbackRate;
+		if (!(rate > 0)) throw new Error(`Invalid playback rate: ${rate}`);
+
+		this.state = 'PLAYING';
+		this.stopScheduledNodes();
+
+		this.previousTimestamp = performance.now();
+		this.mediaSyncGuardUntil = this.previousTimestamp + DESYNC_GUARD_MS;
+		this.wsolaScheduledUntilSec = this.ctx.currentTime;
+
+		const token = ++this.schedulerToken;
+
+		void this.ctx.resume().then(() => {
+			if (token !== this.schedulerToken || this.state !== 'PLAYING') return;
+
+			this.runAudioIterator(token).catch((err) => {
+				console.error('Audio scheduler failed:', err);
+				if (this.state === 'PLAYING') this.pause();
+			});
+		});
+	}
+
+	pause() {
+		if (this.state === 'STOPPED') throw new Error('Already stopped');
+
+		this._currentTime = Math.min(
+			this.duration,
+			this._currentTime + (performance.now() - this.previousTimestamp) * this.playbackRate
+		);
+
+		this.state = 'STOPPED';
+		this.mediaSyncGuardUntil = 0;
+
+		void this.stopIterator();
+		this.stopScheduledNodes();
+		this.wsolaScheduledUntilSec = this.ctx.currentTime;
+		this.stretcher = undefined;
+	}
+
+	destroy() {
+		if (this.state === 'PLAYING') this.pause();
+
+		this.loadVersion++;
+		this.disposeInput();
+		this.localGainNode.disconnect();
+
+		this.durationMs = 0;
+		this.encoderDelayMs = 0;
+		this.init = false;
+	}
+
 	private createStretcher(rate: number) {
 		this.stretcher = undefined;
 
@@ -124,7 +269,7 @@ export default class Audio extends ScopedClass {
 		this.stretcher = new TimeStretcher(
 			this.audioTrack.numberOfChannels,
 			this.audioTrack.sampleRate,
-			1 / rate,
+			1 / rate
 		);
 	}
 
@@ -209,7 +354,7 @@ export default class Audio extends ScopedClass {
 
 	private createAudioBufferFromChannels(
 		channels: Float32Array[],
-		sampleRate: number,
+		sampleRate: number
 	): AudioBuffer | null {
 		const frameCount = channels[0]?.length ?? 0;
 		if (frameCount <= 0) return null;
@@ -226,7 +371,7 @@ export default class Audio extends ScopedClass {
 	private scheduleBuffer(
 		buffer: AudioBuffer,
 		idealStartSec: number,
-		playbackRate = 1,
+		playbackRate = 1
 	): number {
 		const now = this.ctx.currentTime;
 		let startAt = idealStartSec;
@@ -257,7 +402,7 @@ export default class Audio extends ScopedClass {
 
 		this.scheduledNodes.push({
 			node,
-			stopAtContextSec: stopAt,
+			stopAtContextSec: stopAt
 		});
 
 		node.onended = () => node.disconnect();
@@ -355,133 +500,9 @@ export default class Audio extends ScopedClass {
 		this.input?.dispose();
 		this.input = undefined;
 		this.stretcher = undefined;
-	}
 
-	async createBufferNode(blob: Blob) {
-		if (this.state === 'PLAYING') this.pause();
-		inject<Loading>('ui/loading')?.setText('Loading audio...');
-
-		const loadVersion = ++this.loadVersion;
-
-		this.loadingPromise = (async () => {
-			this.disposeInput();
-
-			this.init = false;
-			this._currentTime = 0;
-			this.durationMs = 0;
-			this.encoderDelayMs = 0;
-			this.mediaSyncGuardUntil = 0;
-
-			const input = new Input({
-				source: new BlobSource(blob),
-				formats: ALL_FORMATS,
-			});
-
-			const audioTrack = await input.getPrimaryAudioTrack();
-
-			if (loadVersion !== this.loadVersion) {
-				input.dispose();
-				return;
-			}
-
-			if (!audioTrack) {
-				input.dispose();
-				throw new Error('No primary audio track found');
-			}
-
-			if (!(await audioTrack.canDecode())) {
-				input.dispose();
-				throw new Error('Primary audio track cannot be decoded by this browser');
-			}
-
-			const durationSec = await input.computeDuration();
-
-			if (loadVersion !== this.loadVersion) {
-				input.dispose();
-				return;
-			}
-
-			this.input = input;
-			this.audioTrack = audioTrack;
-			this.sink = new AudioBufferSink(audioTrack);
-			this.durationMs = Number.isFinite(durationSec) ? durationSec * 1000 : 0;
-			this.encoderDelayMs = await getEncoderDelayMs(blob, audioTrack);
-			this.init = true;
-		})();
-
-		try {
-			await this.loadingPromise;
-		} finally {
-			this.loadingPromise = undefined;
-		}
-	}
-
-	async toggle(event: UIEvent | null) {
-		if (this.state === 'PLAYING') {
-			this.pause();
-			return;
-		}
-
-		if (event) await this.ctx.resume();
-		this.play();
-	}
-
-	play() {
-		if (this.state === 'PLAYING') throw new Error('Already playing');
-		if (this.loadingPromise) throw new Error('Audio is still loading');
-		if (!this.input || !this.audioTrack || !this.sink) {
-			throw new Error('Audio not initialized');
-		}
-
-		const rate = this.playbackRate;
-		if (!(rate > 0)) throw new Error(`Invalid playback rate: ${rate}`);
-
-		this.state = 'PLAYING';
-		this.stopScheduledNodes();
-
-		this.previousTimestamp = performance.now();
-		this.mediaSyncGuardUntil = this.previousTimestamp + DESYNC_GUARD_MS;
-		this.wsolaScheduledUntilSec = this.ctx.currentTime;
-
-		const token = ++this.schedulerToken;
-
-		void this.ctx.resume().then(() => {
-			if (token !== this.schedulerToken || this.state !== 'PLAYING') return;
-
-			this.runAudioIterator(token).catch((err) => {
-				console.error('Audio scheduler failed:', err);
-				if (this.state === 'PLAYING') this.pause();
-			});
-		});
-	}
-
-	pause() {
-		if (this.state === 'STOPPED') throw new Error('Already stopped');
-
-		this._currentTime = Math.min(
-			this.duration,
-			this._currentTime + (performance.now() - this.previousTimestamp) * this.playbackRate,
-		);
-
-		this.state = 'STOPPED';
-		this.mediaSyncGuardUntil = 0;
-
-		void this.stopIterator();
-		this.stopScheduledNodes();
-		this.wsolaScheduledUntilSec = this.ctx.currentTime;
-		this.stretcher = undefined;
-	}
-
-	destroy() {
-		if (this.state === 'PLAYING') this.pause();
-
-		this.loadVersion++;
-		this.disposeInput();
-		this.localGainNode.disconnect();
-
-		this.durationMs = 0;
-		this.encoderDelayMs = 0;
-		this.init = false;
+		this.spectrogram?.destroy();
+		this.spectrogram = undefined;
 	}
 }
 

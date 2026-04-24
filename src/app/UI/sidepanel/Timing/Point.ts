@@ -1,5 +1,5 @@
 import { ControlPoint, ControlPointType, DifficultyPoint, type SamplePoint, TimingPoint } from 'osu-classes';
-import { BitmapText, type ColorSource, Container, Graphics } from 'pixi.js';
+import { type ColorSource, Container, Graphics, Text } from 'pixi.js';
 import ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject } from '../../../Context.ts';
 import { millisecondsToMinutesString } from '../../../utils.ts';
@@ -7,9 +7,9 @@ import { millisecondsToMinutesString } from '../../../utils.ts';
 export default class Point {
 	container: Container;
 	private indicator: Graphics;
-	private timestamp: BitmapText;
-	private content1: BitmapText;
-	private content2: BitmapText;
+	private timestamp: Text;
+	private content1: Text;
+	private content2: Text;
 	private color: Graphics;
 
 	private accent: ColorSource;
@@ -48,7 +48,7 @@ export default class Point {
 			if (!this.indicator.visible) this.unselect();
 		});
 
-		this.timestamp = new BitmapText({
+		this.timestamp = new Text({
 			text: millisecondsToMinutesString(data.startTime),
 			style: {
 				fontSize: 14,
@@ -59,7 +59,7 @@ export default class Point {
 			layout: false
 		});
 
-		this.content1 = new BitmapText({
+		this.content1 = new Text({
 			text: data.pointType === ControlPointType.TimingPoint
 				? `${Math.round((data as TimingPoint).bpm)} BPM`
 				: data.pointType === ControlPointType.DifficultyPoint
@@ -80,7 +80,7 @@ export default class Point {
 			x: 80
 		});
 
-		this.content2 = new BitmapText({
+		this.content2 = new Text({
 			text: data.pointType === ControlPointType.TimingPoint
 				? `Signature ${(data as TimingPoint).timeSignature}/4`
 				: data.pointType === ControlPointType.DifficultyPoint

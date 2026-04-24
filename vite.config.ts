@@ -68,7 +68,7 @@ export default defineConfig({
 		},
 	],
 	build: {
-		target: 'es6',
+		target: 'es2020',
 		assetsInlineLimit: Number.MAX_SAFE_INTEGER,
 		rolldownOptions: {
 			output: {

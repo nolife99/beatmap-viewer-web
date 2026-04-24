@@ -1,6 +1,6 @@
 import { LayoutOptions } from '@pixi/layout';
 import { LayoutContainer } from '@pixi/layout/components';
-import { BitmapText, type TextStyle, type TextStyleOptions } from 'pixi.js';
+import { Text, type TextStyle, type TextStyleOptions } from 'pixi.js';
 import ColorConfig from '../../Config/ColorConfig.ts';
 import { inject } from '../../Context.ts';
 import ResponsiveHandler from '../../ResponsiveHandler.ts';
@@ -22,7 +22,7 @@ const defaultLayout: Omit<LayoutOptions, 'target'> | null | undefined = {
 export default class Metadata {
 	container: LayoutContainer;
 
-	artist = new BitmapText({
+	artist = new Text({
 		text: '',
 		style: {
 			...defaultStyle,
@@ -32,7 +32,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout
 	});
-	artistUnicode = new BitmapText({
+	artistUnicode = new Text({
 		text: '',
 		style: {
 			...defaultStyle,
@@ -42,7 +42,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout
 	});
-	title = new BitmapText({
+	title = new Text({
 		text: '',
 		style: {
 			...defaultStyle,
@@ -52,7 +52,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout
 	});
-	titleUnicode = new BitmapText({
+	titleUnicode = new Text({
 		text: '',
 		style: {
 			...defaultStyle,
@@ -62,7 +62,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout
 	});
-	version = new BitmapText({
+	version = new Text({
 		text: '',
 		style: {
 			...defaultStyle,
@@ -72,7 +72,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout
 	});
-	source = new BitmapText({
+	source = new Text({
 		text: '',
 		style: {
 			...defaultStyle,
@@ -82,7 +82,7 @@ export default class Metadata {
 		},
 		layout: defaultLayout
 	});
-	tags = new BitmapText({
+	tags = new Text({
 		text: '',
 		style: {
 			...defaultStyle,
@@ -184,8 +184,8 @@ export default class Metadata {
 		if (titleEl) titleEl.textContent = `${meta.artist} - ${meta.title}`;
 	}
 
-	private createContainer(title: string, content: BitmapText) {
-		const titleObject = new BitmapText({
+	private createContainer(title: string, content: Text) {
+		const titleObject = new Text({
 			text: title,
 			style: {
 				...defaultStyle,

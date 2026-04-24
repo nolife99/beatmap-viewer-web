@@ -3,8 +3,7 @@ import { Slider, SliderHead, SliderRepeat, StandardHitObject } from 'osu-standar
 import { Container, Sprite } from 'pixi.js';
 import { update as argonUpdate } from '../../../Skinning/Argon/ArgonReverseArrow.ts';
 import { update as legacyUpdate } from '../../../Skinning/Legacy/LegacyReverseArrow.ts';
-import Skin from '../../../Skinning/Skin.ts';
-import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
+import Skin, { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import DrawableSliderTail from './DrawableSliderTail.ts';
 
 export default class DrawableSliderRepeat extends DrawableSliderTail {

@@ -46,7 +46,7 @@ export default class BeatmapSet extends ScopedClass {
 	_currentNextTick?: number;
 	_currentTween?: Tween;
 	isSeeking = false;
-	audioContext = new AudioContext
+	audioContext = new AudioContext;
 
 	constructor(private resources: Map<string, Resource>) {
 		super();
@@ -137,6 +137,7 @@ export default class BeatmapSet extends ScopedClass {
 				this.difficulties[i].difficultyAttributes.starRating
 			);
 			button.innerHTML = `${extraMode.replace('stroke="white"', `stroke="${color}"`).replace('fill="white"', `fill="${color}"`)}
+
             <span class="flex-1 text-left">${difficulty.data.metadata.version}</span>
             <div>${this.difficulties[i].difficultyAttributes.starRating.toFixed(2)}★</div>`;
 			button.addEventListener('click', () => {
@@ -315,9 +316,9 @@ export default class BeatmapSet extends ScopedClass {
 		const svg = document.querySelector<SVGSVGElement>('#extraMode');
 		if (svg) {
 			const color = getDiffColour(beatmap.difficultyAttributes.starRating);
-			svg.innerHTML = svg.innerHTML
-				.replace(/stroke=".*"/g, `stroke="${color}"`)
-				.replace(/fill=".*"/, `fill="${color}"`);
+			svg.innerHTML = extraMode
+				.replace('stroke="white"', `stroke="${color}"`)
+				.replace('fill="white"', `fill="${color}"`);
 		}
 		const sr = document.querySelector<HTMLSpanElement>('#masterSR');
 		if (sr)

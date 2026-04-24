@@ -48,6 +48,51 @@ export class TimeStretcher {
 		}
 	}
 
+	append(newBuffers: Float32Array[]): Float32Array[] | null {
+		if (this.finalized) {
+			throw new Error('Cannot append more buffers after calling finalize.');
+		}
+
+		for (let i = 0; i < this.numberOfChannels; i++) {
+			const newBuffer = newBuffers[i];
+			const requiredLength = this.bufferEndIndex + newBuffer.length;
+			let currentLength = this.buffers[i].length;
+
+			while (currentLength < requiredLength) {
+				currentLength *= 2;
+			}
+
+			if (currentLength !== this.buffers[i].length) {
+				const largerBuffer = new Float32Array(currentLength);
+				largerBuffer.set(this.buffers[i], 0);
+				this.buffers[i] = largerBuffer;
+			}
+
+			this.buffers[i].set(newBuffer, this.bufferEndIndex);
+		}
+
+		this.bufferEndIndex += newBuffers[0].length;
+
+		return this.process();
+	}
+
+	finalize(): Float32Array[] | null {
+		this.finalized = true;
+
+		if (this.bufferEndIndex <= this.tolerance) {
+			return null;
+		}
+
+		this.clearOutputBuffers();
+
+		const synthesisLength = this.bufferEndIndex - this.tolerance;
+		this.ensureOutputBufferLength(synthesisLength);
+
+		this.synthesizeSegment(0, synthesisLength, this.tolerance, 0);
+
+		return this.outputBuffers.map((x) => x.subarray(0, synthesisLength));
+	}
+
 	private ensureOutputBufferLength(requiredLength: number): void {
 		if (requiredLength > this.outputBufferLength) {
 			this.outputBufferLength = requiredLength;
@@ -74,7 +119,7 @@ export class TimeStretcher {
 		i: number,
 		windowSize: number,
 		inputStartPos: number,
-		maxPositiveOffset: number = this.tolerance,
+		maxPositiveOffset: number = this.tolerance
 	): void {
 		const crossCorrelateAllChannels = (k: number): number => {
 			let dot = 0;
@@ -119,7 +164,7 @@ export class TimeStretcher {
 				const gradient = Math.abs(corr - prevCorr);
 				const adaptiveStep = Math.max(
 					minStepSize,
-					Math.min(maxStepSize, Math.floor(maxStepSize * Math.exp(-gradient * 3))),
+					Math.min(maxStepSize, Math.floor(maxStepSize * Math.exp(-gradient * 3)))
 				);
 
 				if (corr > bestCorr) {
@@ -158,34 +203,6 @@ export class TimeStretcher {
 		this.hasDoneOutput = true;
 	}
 
-	append(newBuffers: Float32Array[]): Float32Array[] | null {
-		if (this.finalized) {
-			throw new Error('Cannot append more buffers after calling finalize.');
-		}
-
-		for (let i = 0; i < this.numberOfChannels; i++) {
-			const newBuffer = newBuffers[i];
-			const requiredLength = this.bufferEndIndex + newBuffer.length;
-			let currentLength = this.buffers[i].length;
-
-			while (currentLength < requiredLength) {
-				currentLength *= 2;
-			}
-
-			if (currentLength !== this.buffers[i].length) {
-				const largerBuffer = new Float32Array(currentLength);
-				largerBuffer.set(this.buffers[i], 0);
-				this.buffers[i] = largerBuffer;
-			}
-
-			this.buffers[i].set(newBuffer, this.bufferEndIndex);
-		}
-
-		this.bufferEndIndex += newBuffers[0].length;
-
-		return this.process();
-	}
-
 	private process(): Float32Array[] | null {
 		let synthesisLength = 0;
 
@@ -221,23 +238,6 @@ export class TimeStretcher {
 
 		this.bufferEndIndex -= inputShiftAmount;
 		this.nextOutputBufferShiftAmount = synthesisLength;
-
-		return this.outputBuffers.map((x) => x.subarray(0, synthesisLength));
-	}
-
-	finalize(): Float32Array[] | null {
-		this.finalized = true;
-
-		if (this.bufferEndIndex <= this.tolerance) {
-			return null;
-		}
-
-		this.clearOutputBuffers();
-
-		const synthesisLength = this.bufferEndIndex - this.tolerance;
-		this.ensureOutputBufferLength(synthesisLength);
-
-		this.synthesizeSegment(0, synthesisLength, this.tolerance, 0);
 
 		return this.outputBuffers.map((x) => x.subarray(0, synthesisLength));
 	}
