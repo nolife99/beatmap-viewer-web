@@ -13,18 +13,15 @@
     "jsr:@std/path@^1.1.4": "1.1.4",
     "jsr:@std/streams@^1.1.0": "1.1.0",
     "npm:@deno/vite-plugin@^2.0.2": "2.0.2_vite@8.0.5__@emnapi+core@1.10.0__@emnapi+runtime@1.10.0",
-    "npm:@ffmpeg/ffmpeg@~0.12.15": "0.12.15",
-    "npm:@ffmpeg/util@~0.12.2": "0.12.2",
     "npm:@flatten-js/interval-tree@2.0.3": "2.0.3",
     "npm:@fukutotojido/osu-classes@*": "3.1.4",
-    "npm:@mediabunny/aac-encoder@^1.40.1": "1.40.1_mediabunny@1.40.1",
     "npm:@pixi/layout@^3.1.0": "3.2.0_pixi.js@8.18.1_yoga-layout@3.2.1_@types+react@19.2.14_react@19.2.5",
     "npm:@rian8337/osu-base@^3.3.0": "3.3.0",
     "npm:@soundcut/decode-audio-data-fast@^2.0.1": "2.0.1",
-    "npm:@soundtouchjs/audio-worklet@^1.0.9": "1.0.10",
     "npm:@stdlib/array-pool@~0.3.1": "0.3.1",
     "npm:@tailwindcss/vite@^4.1.12": "4.2.2_vite@8.0.5__@emnapi+core@1.10.0__@emnapi+runtime@1.10.0_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0",
     "npm:@tweenjs/tween.js@25": "25.0.0",
+    "npm:@types/audioworklet@^0.0.98": "0.0.98",
     "npm:@types/d3@^7.4.3": "7.4.3",
     "npm:@zip.js/zip.js@^2.7.60": "2.8.26",
     "npm:d3@^7.9.0": "7.9.0",
@@ -121,18 +118,6 @@
       "dependencies": [
         "tslib"
       ]
-    },
-    "@ffmpeg/ffmpeg@0.12.15": {
-      "integrity": "sha512-1C8Obr4GsN3xw+/1Ww6PFM84wSQAGsdoTuTWPOj2OizsRDLT4CXTaVjPhkw6ARyDus1B9X/L2LiXHqYYsGnRFw==",
-      "dependencies": [
-        "@ffmpeg/types"
-      ]
-    },
-    "@ffmpeg/types@0.12.4": {
-      "integrity": "sha512-k9vJQNBGTxE5AhYDtOYR5rO5fKsspbg51gbcwtbkw2lCdoIILzklulcjJfIDwrtn7XhDeF2M+THwJ2FGrLeV6A=="
-    },
-    "@ffmpeg/util@0.12.2": {
-      "integrity": "sha512-ouyoW+4JB7WxjeZ2y6KpRvB+dLp7Cp4ro8z0HIVpZVCM7AwFlHa0c4R8Y/a4M3wMqATpYKhC7lSFHQ0T11MEDw=="
     },
     "@flatten-js/interval-tree@2.0.3": {
       "integrity": "sha512-Lv3eaITqU20WD+5W8L7JeJdjDXC9hfTUEzY0cRLx/sXj1+P3XdK6Fig4UdxvsekakTK8XeOwnpAKEpTI728U4g==",
@@ -283,12 +268,6 @@
       ],
       "tarball": "https://npm.jsr.io/~/11/@jsr/std__streams/1.0.17.tgz"
     },
-    "@mediabunny/aac-encoder@1.40.1_mediabunny@1.40.1": {
-      "integrity": "sha512-QWEZgEtCycnJA81xuEP7Lo/v56+5OOdeeXZbro4IY24VHiNISZlXBJRV1R5GYIKzW0ZXVJHSAHGUw5kZDep60g==",
-      "dependencies": [
-        "mediabunny"
-      ]
-    },
     "@napi-rs/wasm-runtime@1.1.4_@emnapi+core@1.10.0_@emnapi+runtime@1.10.0": {
       "integrity": "sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow==",
       "dependencies": [
@@ -431,15 +410,6 @@
       "dependencies": [
         "mp3-parser"
       ]
-    },
-    "@soundtouchjs/audio-worklet@1.0.10": {
-      "integrity": "sha512-MfMOhcCss1f0L+6MV38AAD3OFF1S8dNGqr1JhjCnt71osCE1saeU0YfF2EpXgjF0wNGeAS2ekNxiZ3UUPq54Dw==",
-      "dependencies": [
-        "@soundtouchjs/core"
-      ]
-    },
-    "@soundtouchjs/core@1.0.10": {
-      "integrity": "sha512-KeifMox5hFxc4hzdHCG96/84JJbZC6wuNiE33FChHcuM/BjFqDcD6Uli5v2K1cw3mchH5K7rIGXJiQSvHvJkWQ=="
     },
     "@stdlib/array-base-accessor-getter@0.2.3": {
       "integrity": "sha512-/2tQbhLpgBMfAafB9I8MWFkn3dYUUGcUUiZcbPHaAloV22G6W2HU+gUk0l4i++w/34Y9HzxjF1pevMi9wPizMQ==",
@@ -2299,6 +2269,9 @@
         "tslib"
       ]
     },
+    "@types/audioworklet@0.0.98": {
+      "integrity": "sha512-EGjJX+liDRP/r/3FM3D5ylhTKjqYro/UCOSkaflRPSlZjXuu6I85Zx5cjHXEIKGLy78KTmdwvJIvtqRMDv3teg=="
+    },
     "@types/d3-array@3.2.2": {
       "integrity": "sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw=="
     },
@@ -2575,6 +2548,12 @@
       "integrity": "sha512-Q/R6PYhSMWCXEk/IcXbWIzIu7Z4b58ABkGvcdF8Y+q/7g+KnpxKW5x/jfQ/6ciyYSby13wZZoEdNr3QQVgsdBQ==",
       "dependencies": [
         "@vibrant/types"
+      ]
+    },
+    "@vitejs/plugin-basic-ssl@2.3.0_vite@8.0.5__@emnapi+core@1.10.0__@emnapi+runtime@1.10.0": {
+      "integrity": "sha512-bdyo8rB3NnQbikdMpHaML9Z1OZPBu6fFOBo+OtxsBlvMJtysWskmBcnbIDhUqgC8tcxNv/a+BcV5U+2nQMm1OQ==",
+      "dependencies": [
+        "vite"
       ]
     },
     "@webgpu/types@0.1.69": {
@@ -4437,19 +4416,17 @@
     "packageJson": {
       "dependencies": [
         "npm:@deno/vite-plugin@^2.0.2",
-        "npm:@ffmpeg/ffmpeg@~0.12.15",
-        "npm:@ffmpeg/util@~0.12.2",
         "npm:@flatten-js/interval-tree@2.0.3",
         "npm:@fukutotojido/osu-classes@*",
-        "npm:@mediabunny/aac-encoder@^1.40.1",
         "npm:@pixi/layout@^3.1.0",
         "npm:@rian8337/osu-base@^3.3.0",
         "npm:@soundcut/decode-audio-data-fast@^2.0.1",
-        "npm:@soundtouchjs/audio-worklet@^1.0.9",
         "npm:@stdlib/array-pool@~0.3.1",
         "npm:@tailwindcss/vite@^4.1.12",
         "npm:@tweenjs/tween.js@25",
+        "npm:@types/audioworklet@^0.0.98",
         "npm:@types/d3@^7.4.3",
+        "npm:@vitejs/plugin-basic-ssl@^2.3.0",
         "npm:@zip.js/zip.js@^2.7.60",
         "npm:d3@^7.9.0",
         "npm:fast-sort@^3.4.1",

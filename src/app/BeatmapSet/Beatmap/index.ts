@@ -1,3 +1,4 @@
+import extraMode from '../../../assets/extra-mode.svg?raw';
 import { sort } from 'fast-sort';
 import crypto from 'node:crypto';
 import { ControlPoint, ControlPointType } from 'osu-classes';
@@ -675,9 +676,9 @@ export default class Beatmap extends ScopedClass {
 		const svg = document.querySelector<SVGSVGElement>('#extraMode');
 		if (svg) {
 			const color = this.color;
-			svg.innerHTML = svg.innerHTML
-				.replace(/stroke=".*"/g, `stroke="${color}"`)
-				.replace(/fill=".*"/, `fill="${color}"`);
+			svg.innerHTML = extraMode
+				.replace('stroke="white"', `stroke="${color}"`)
+				.replace('fill="white"', `fill="${color}"`);
 		}
 		const sr = document.querySelector<HTMLSpanElement>('#masterSR');
 		if (sr) {
