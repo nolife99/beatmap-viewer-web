@@ -126,12 +126,8 @@ document.body.addEventListener('click', (e) => {
 });
 
 (async () => {
-	try {
-		await navigator.wakeLock.request('screen');
-	} catch {
-		// the wake lock request fails - usually system related, such being low on battery
-	}
-
 	const game = provide('game', new Game());
+
+	await document.fonts.ready;
 	await game.init();
 })();

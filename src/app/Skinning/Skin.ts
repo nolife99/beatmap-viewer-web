@@ -8,7 +8,7 @@ import SkinManager, { SkinMetadata } from './SkinManager.ts';
 const sanitizeINI = (str: string) =>
 	str
 		.split('\n')
-		.filter((line) => /(^\[.*\])|(^(\s|\t)*[a-zA-Z0-9]+\s*:.*)/g.test(line))
+		.filter((line) => /(^\[.*])|(^([\s\t])*[a-zA-Z0-9]+\s*:.*)/g.test(line))
 		.join('\n')
 		.replaceAll(/((\/\/)|(;)|(==)).*/g, '');
 
@@ -619,7 +619,6 @@ export default class Skin {
 						1,
 						audioContext.sampleRate
 					);
-					return;
 				}
 				this.hitsounds.set(filename, audioBuffer);
 			})
