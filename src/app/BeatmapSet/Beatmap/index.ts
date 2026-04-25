@@ -571,8 +571,6 @@ export default class Beatmap extends ScopedClass {
 			Math.ceil(beatmap.hitObjects[0].startTime / sectionLength) *
 			sectionLength;
 
-		const clockRate = beatmap.difficulty.clockRate ?? 1;
-
 		const skills: StandardStrainSkill[] = this.difficultyCalculator[
 			'_createSkills'
 			](beatmap, modsCombination).filter(
@@ -583,7 +581,7 @@ export default class Beatmap extends ScopedClass {
 		const speedStrainPeaks = skills[1]['_strainPeaks'];
 
 		const objs: StandardDifficultyHitObject[] = this.difficultyCalculator
-			['_getDifficultyHitObjects'](beatmap, clockRate);
+			['_getDifficultyHitObjects'](beatmap, 1);
 
 		for (const hitObject of objs) {
 			for (const skill of skills) {

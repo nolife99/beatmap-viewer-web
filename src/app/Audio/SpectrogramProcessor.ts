@@ -136,14 +136,6 @@ export default class SpectrogramProcessor {
 		parent?.appendChild(this.root);
 	}
 
-	get element() {
-		return this.root;
-	}
-
-	getCanvas() {
-		return this.canvas;
-	}
-
 	getTexture() {
 		if (!this.texture) {
 			this.texture = Texture.from(this.canvas);
@@ -203,9 +195,9 @@ export default class SpectrogramProcessor {
 		this.columnAccum.fill(0);
 		this.columnCounts.fill(0);
 
-		this.imageData.data.fill(255);
+		this.fillImageDataBlack();
 		this.ctx.clearRect(0, 0, this.width, this.height);
-		this.ctx.putImageData(this.imageData, 0, 0);
+		this.drawFullFrameWithProgress();
 
 		this.updateTexture();
 	}
@@ -354,18 +346,34 @@ export default class SpectrogramProcessor {
 			this.drawAveragedColumn(x, count);
 		}
 
-		this.ctx.putImageData(
-			this.imageData,
-			0,
-			0,
-			start,
-			0,
-			Math.max(1, end - start),
-			this.height
-		);
-
 		this.lastFlushedColumn = end;
+		this.drawFullFrameWithProgress();
 		this.updateTexture();
+	}
+
+	private fillImageDataBlack() {
+		const data = this.imageData.data;
+
+		for (let i = 0; i < data.length; i += 4) {
+			data[i] = 0;
+			data[i + 1] = 0;
+			data[i + 2] = 0;
+			data[i + 3] = 255;
+		}
+	}
+
+	private drawFullFrameWithProgress() {
+		this.ctx.putImageData(this.imageData, 0, 0);
+		this.drawProgressLine();
+	}
+
+	private drawProgressLine() {
+		if (this.writeColumn >= this.width) return;
+
+		const x = Math.max(0, Math.min(this.width - 1, this.writeColumn));
+
+		this.ctx.fillStyle = '#fff';
+		this.ctx.fillRect(x, 0, 1, this.height);
 	}
 
 	private updateTexture() {

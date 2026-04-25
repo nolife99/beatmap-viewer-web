@@ -199,7 +199,7 @@ export default class BeatmapSet extends ScopedClass {
 			'audio',
 			new Audio(gainNode, this).hook(this.context)
 		);
-		await audio.createBufferNode(audioFile);
+		await audio.createBufferNode(audioFile, beatmap);
 
 		inject<DifficultyGraph>('ui/sidepanel/modding/difficulty')?.setData(
 			beatmap.strains,

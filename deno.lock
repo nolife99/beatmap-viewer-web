@@ -4426,7 +4426,6 @@
         "npm:@tweenjs/tween.js@25",
         "npm:@types/audioworklet@^0.0.98",
         "npm:@types/d3@^7.4.3",
-        "npm:@vitejs/plugin-basic-ssl@^2.3.0",
         "npm:@zip.js/zip.js@^2.7.60",
         "npm:d3@^7.9.0",
         "npm:fast-sort@^3.4.1",

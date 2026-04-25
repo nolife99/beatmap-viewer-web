@@ -3,73 +3,31 @@ import BeatmapSet from '../BeatmapSet/index.ts';
 import AudioConfig from '../Config/AudioConfig.ts';
 import { inject, ScopedClass } from '../Context.ts';
 import Loading from '../UI/loading/index.ts';
+import { TimeStretcher } from './TimeStretcher.ts';
 import SpectrogramProcessor from './SpectrogramProcessor.ts';
 import SpectrogramContainer from '../UI/sidepanel/Modding/Spectrogram.ts';
+import Beatmap from '../BeatmapSet/Beatmap/index.ts';
 
 if ('audioSession' in navigator) {
-	// @ts-expect-error WebKit-only API
+	// @ts-expect-error Safari/WebKit API
 	navigator.audioSession.type = 'playback';
 }
 
-type RendererMessage =
-	| { type: 'ready'; generation: number; bufferedFrames: number }
-	| {
-	type: 'clock';
-	generation: number;
-	mediaMs: number;
-	contextTimeSec: number;
-	bufferedFrames: number;
-	underruns: number;
-	playing: boolean;
-	ended: boolean;
-}
-	| {
-	type: 'underrun';
-	generation: number;
-	mediaMs: number;
-	contextTimeSec: number;
-	bufferedFrames: number;
-	underruns: number;
-}
-	| { type: 'overflow'; generation: number; bufferedFrames: number };
-
-type DecoderMessage =
-	| { type: 'loaded'; loadId: number; sampleRate: number; channels: number }
-	| { type: 'error'; message: string; stack?: string };
-
-type Engine = {
-	node: AudioWorkletNode;
-	worker: Worker;
+type WrappedBufferLike = {
+	buffer: AudioBuffer;
+	timestamp: number;
 };
 
-type PendingDecoderLoad = {
-	id: number;
-	resolve: () => void;
-	reject: (reason?: unknown) => void;
+type ScheduledNode = {
+	node: AudioBufferSourceNode;
+	stopAtContextSec: number;
 };
 
-type PendingReady = {
-	generation: number;
-	resolve: () => void;
-};
+const DESYNC_THRESHOLD_MS = 20;
+const HARD_DESYNC_THRESHOLD_MS = 40;
+const CONTEXT_FREEZE_CHECK_MS = 120;
 
 const EPSILON_RATE = 1e-6;
-
-const SEEK_COOLDOWN_MS = 120;
-const UNDERRUN_SEEK_COOLDOWN_MS = 120;
-
-const CLOCK_STALE_MS = 260;
-const MAX_STALE_EXTRAPOLATE_MS = 120;
-const CLOCK_COMPENSATION_LIMIT_MS = 250;
-const SOFT_REBASE_MS = 10;
-const SOFT_REBASE_BLEND = 0.25;
-
-const CONTEXT_FREEZE_CHECK_MS = 120;
-const CONTEXT_REVIVE_COOLDOWN_MS = 750;
-
-const MIN_START_SEC = 0.035;
-const START_READY_TIMEOUT_MS = 500;
-const FADE_SEC = 0.006;
 
 export default class Audio extends ScopedClass {
 	state: 'PLAYING' | 'STOPPED' = 'STOPPED';
@@ -78,68 +36,69 @@ export default class Audio extends ScopedClass {
 	private readonly localGainNode: GainNode;
 
 	private input?: Input;
+	private audioTrack?: InputAudioTrack;
 	private sink?: AudioBufferSink;
-	private spectrogram?: SpectrogramProcessor;
-
-	private engine?: Engine;
-	private workletModulePromise?: Promise<void>;
-	private loadingPromise?: Promise<void>;
-	private pendingDecoderLoad?: PendingDecoderLoad;
-	private pendingReady?: PendingReady;
-
-	private loadVersion = 0;
-	private loadId = 0;
-	private generation = 0;
+	private audioBufferIterator?: AsyncGenerator<WrappedBufferLike, void, unknown>;
 
 	private durationMs = 0;
 	private encoderDelayMs = 0;
-	private outputChannels = 2;
+	private loadingPromise?: Promise<void>;
+	private loadVersion = 0;
+	private mediaSessionPositionTimer: ReturnType<typeof setInterval> | undefined;
 
 	private _currentTime = 0;
-	private startPending = false;
-	private applyingBeatmapSeek = false;
-
-	private clockBaseMs = 0;
-	private clockBasePerfMs = 0;
-	private clockLastAudioPerfMs = 0;
-	private clockRate = 1;
-
-	private lastSeekMs = 0;
-	private lastUnderrunSeekMs = 0;
+	private previousTimestamp = 0;
+	private contextStartSec = 0;
+	private lastClockCheckMs = 0;
 	private lastContextReviveMs = 0;
+	private desyncedFrames = 0;
+
+	private schedulerToken = 0;
+	private wsolaScheduledUntilSec = 0;
+	private readonly scheduledNodes: ScheduledNode[] = [];
+	private pitchMode: 'preserve' | 'shift' = 'preserve';
+	private stretcher?: TimeStretcher;
+	private spectrogram?: SpectrogramProcessor;
 
 	constructor(private masterNode: AudioNode, private beatmapSet: BeatmapSet) {
 		super();
 
-		this.localGainNode = this.ctx.createGain();
-		this.localGainNode.gain.value = this.configuredVolume();
-		this.localGainNode.connect(masterNode);
+		this.localGainNode = masterNode.context.createGain();
+		this.localGainNode.gain.value =
+			inject<AudioConfig>('config/audio')?.musicVolume ?? 0.8;
+		this.localGainNode.connect(this.masterNode);
 
-		inject<AudioConfig>('config/audio')?.onChange('musicVolume', (value) => {
-			if (this.state === 'PLAYING') this.fadeTo(value);
-			else this.localGainNode.gain.value = value;
+		inject<AudioConfig>('config/audio')?.onChange('musicVolume', (val) => {
+			this.localGainNode.gain.value = val;
 		});
+		this.setupMediaSession();
 	}
 
 	get currentTime() {
 		if (this.state === 'STOPPED') return this._currentTime;
 
-		this.restartIfRateChanged();
-		this.reviveFrozenContextIfNeeded();
+		const now = this.predictedTimeMs();
+		this.guardClock(now);
 
-		const timeMs = this.predictedFrameTimeMs();
-		if (timeMs < this.durationMs) return timeMs;
+		if (now <= this.duration) return now;
 
-		this.finishPlayback();
-		return this.durationMs;
+		if (this.state === 'PLAYING') {
+			this.requestSeek(0);
+			void this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
+		}
+
+		return this.duration;
 	}
 
-	set currentTime(value: number) {
-		const timeMs = this.clampTime(value);
-		this.resetFrameClock(timeMs);
+	set currentTime(val: number) {
+		const wasPlaying = this.state === 'PLAYING';
 
-		if (this.applyingBeatmapSeek) return;
-		if (this.state === 'PLAYING') void this.startAt(timeMs, this.playbackRate, false);
+		if (wasPlaying) this.pause();
+
+		this._currentTime = this.clampTime(val);
+		this.resetClockAnchors();
+
+		if (wasPlaying) this.play();
 	}
 
 	get playbackRate() {
@@ -154,19 +113,19 @@ export default class Audio extends ScopedClass {
 		return this.masterNode.context as AudioContext;
 	}
 
-	async createBufferNode(blob: Blob) {
+	async createBufferNode(blob: Blob, beatmap: Beatmap) {
 		if (this.state === 'PLAYING') this.pause();
 
 		inject<Loading>('ui/loading')?.setText('Loading audio...');
 
-		const version = ++this.loadVersion;
-		const promise = this.load(blob, version);
-		this.loadingPromise = promise;
+		const loadVersion = ++this.loadVersion;
+		const loadingPromise = this.load(blob, loadVersion, beatmap);
+		this.loadingPromise = loadingPromise;
 
 		try {
-			await promise;
+			await loadingPromise;
 		} finally {
-			if (this.loadingPromise === promise) this.loadingPromise = undefined;
+			if (this.loadingPromise === loadingPromise) this.loadingPromise = undefined;
 		}
 	}
 
@@ -183,37 +142,40 @@ export default class Audio extends ScopedClass {
 	async play() {
 		if (this.state === 'PLAYING') throw new Error('Already playing');
 		if (this.loadingPromise) throw new Error('Audio is still loading');
-		if (!this.init) throw new Error('Audio not initialized');
-
-		const rate = this.playbackRate;
-		if (!(rate > 0)) throw new Error(`Invalid playback rate: ${rate}`);
+		if (!this.input || !this.audioTrack || !this.sink) throw new Error('Audio not initialized');
+		if (!(this.playbackRate > 0)) throw new Error(`Invalid playback rate: ${this.playbackRate}`);
 
 		this.state = 'PLAYING';
-		await this.ctx.resume();
+		this.stopScheduledNodes();
+		this.resetClockAnchors();
 
-		try {
-			await this.startAt(this._currentTime, rate, true);
-		} catch (error) {
-			this.state = 'STOPPED';
-			this.startPending = false;
-			throw error;
-		}
+		const token = ++this.schedulerToken;
+
+		await this.ctx.resume();
+		if (token !== this.schedulerToken || this.state !== 'PLAYING') return;
+
+		this.resetClockAnchors();
+		this.updateMediaSessionState();
+
+		this.runAudioIterator(token).catch((err) => {
+			if (token !== this.schedulerToken) return;
+			console.error('Audio scheduler failed:', err);
+			if (this.state === 'PLAYING') this.pause();
+		});
 	}
 
 	pause() {
 		if (this.state === 'STOPPED') throw new Error('Already stopped');
 
-		const timeMs = this.predictedFrameTimeMs();
+		this._currentTime = this.clampTime(this.predictedTimeMs());
 		this.state = 'STOPPED';
-		this.startPending = false;
-		this.resetFrameClock(timeMs);
+		this.desyncedFrames = 0;
 
-		const generation = ++this.generation;
-		this.cancelPendingReady();
-		this.engine?.node.port.postMessage({ type: 'pause', generation });
-		this.engine?.node.port.postMessage(this.rendererResetMessage(generation, timeMs, this.clockRate));
-		this.engine?.worker.postMessage({ type: 'cancel', generation });
-		this.fadeTo(0);
+		void this.stopIterator();
+		this.stopScheduledNodes();
+		this.wsolaScheduledUntilSec = this.ctx.currentTime;
+		this.disposeStretcher();
+		this.updateMediaSessionState();
 	}
 
 	destroy() {
@@ -221,25 +183,24 @@ export default class Audio extends ScopedClass {
 
 		this.loadVersion++;
 		this.disposeInput();
-		this.disposeEngine();
 		this.localGainNode.disconnect();
 
 		this.durationMs = 0;
 		this.encoderDelayMs = 0;
-		this.outputChannels = 2;
 		this.init = false;
-		this.resetFrameClock(0);
+		this._currentTime = 0;
+
+		this.disposeMediaSession();
 	}
 
-	private async load(blob: Blob, version: number) {
+	private async load(blob: Blob, loadVersion: number, beatmap: Beatmap) {
 		this.disposeInput();
-		this.disposeEngine();
 
 		this.init = false;
+		this._currentTime = 0;
 		this.durationMs = 0;
 		this.encoderDelayMs = 0;
-		this.outputChannels = 2;
-		this.resetFrameClock(0);
+		this.desyncedFrames = 0;
 
 		const input = new Input({
 			source: new BlobSource(blob),
@@ -247,7 +208,11 @@ export default class Audio extends ScopedClass {
 		});
 
 		const audioTrack = await input.getPrimaryAudioTrack();
-		if (version !== this.loadVersion) return input.dispose();
+
+		if (loadVersion !== this.loadVersion) {
+			input.dispose();
+			return;
+		}
 
 		if (!audioTrack) {
 			input.dispose();
@@ -260,368 +225,20 @@ export default class Audio extends ScopedClass {
 		}
 
 		const durationSec = await input.computeDuration();
-		if (version !== this.loadVersion) return input.dispose();
+
+		if (loadVersion !== this.loadVersion) {
+			input.dispose();
+			return;
+		}
 
 		this.input = input;
+		this.audioTrack = audioTrack;
 		this.sink = new AudioBufferSink(audioTrack);
 		this.durationMs = Number.isFinite(durationSec) ? durationSec * 1000 : 0;
 		this.encoderDelayMs = await getEncoderDelayMs(blob, audioTrack);
-		this.outputChannels = Math.min(Math.max(audioTrack.numberOfChannels || 2, 1), 2);
-
-		await this.ensureEngine(this.outputChannels);
-		if (version !== this.loadVersion) return;
-
-		await this.loadDecoder(blob);
-		if (version !== this.loadVersion) return;
-
 		this.init = true;
-		this.resetFrameClock(0);
-		this.createSpectrogram(durationSec, audioTrack);
-	}
 
-	private async ensureEngine(outputChannels: number) {
-		this.workletModulePromise ??= this.ctx.audioWorklet.addModule(
-			new URL('./AudioRenderer.worklet.ts', import.meta.url)
-		);
-		await this.workletModulePromise;
-
-		const node = new AudioWorkletNode(this.ctx, 'beatmap-audio-renderer', {
-			numberOfInputs: 0,
-			numberOfOutputs: 1,
-			outputChannelCount: [outputChannels]
-		});
-
-		const worker = new Worker(new URL('./AudioDecoder.worker.ts', import.meta.url), {
-			type: 'module'
-		});
-
-		node.port.onmessage = (event: MessageEvent<RendererMessage>) => {
-			this.handleRendererMessage(event.data);
-		};
-
-		worker.onmessage = (event: MessageEvent<DecoderMessage>) => {
-			this.handleDecoderMessage(event.data);
-		};
-
-		worker.onerror = (event) => {
-			this.failDecoderLoad(event.error ?? new Error(event.message));
-		};
-
-		const channel = new MessageChannel();
-		node.port.postMessage({ type: 'decoder-port', port: channel.port1 }, [channel.port1]);
-		worker.postMessage({ type: 'renderer-port', port: channel.port2 }, [channel.port2]);
-
-		node.connect(this.localGainNode);
-		this.engine = { node, worker };
-	}
-
-	private loadDecoder(blob: Blob) {
-		const engine = this.engine;
-		if (!engine) throw new Error('Audio engine not initialized');
-
-		const loadId = ++this.loadId;
-
-		const promise = new Promise<void>((resolve, reject) => {
-			this.pendingDecoderLoad = { id: loadId, resolve, reject };
-		});
-
-		engine.worker.postMessage({
-			type: 'load',
-			loadId,
-			blob,
-			outputSampleRate: this.ctx.sampleRate,
-			outputChannels: this.outputChannels,
-			encoderDelayMs: this.encoderDelayMs
-		});
-
-		return promise;
-	}
-
-	private async startAt(timeMs: number, rate: number, syncBeatmap: boolean) {
-		const engine = this.engine;
-		if (!engine) throw new Error('Audio engine not initialized');
-		if (!(rate > 0)) throw new Error(`Invalid playback rate: ${rate}`);
-
-		const startMs = this.clampTime(timeMs);
-		const generation = ++this.generation;
-		const ready = this.waitForRendererReady(generation);
-
-		this.startPending = true;
-		this.clockRate = rate;
-		this.resetFrameClock(startMs);
-		this.fadeTo(0);
-
-		engine.node.port.postMessage(this.rendererResetMessage(generation, startMs, rate));
-		engine.worker.postMessage({
-			type: 'seek',
-			generation,
-			timeMs: startMs,
-			rate,
-			preservePitch: true
-		});
-
-		await ready;
-		if (generation !== this.generation || this.state !== 'PLAYING') return;
-
-		await this.ctx.resume();
-		if (generation !== this.generation || this.state !== 'PLAYING') return;
-
-		this.resetFrameClock(startMs);
-		engine.node.port.postMessage({ type: 'play', generation });
-		this.fadeTo(this.configuredVolume());
-		this.startPending = false;
-
-		if (syncBeatmap) this.syncBeatmapSeek(startMs, true);
-	}
-
-	private waitForRendererReady(generation: number) {
-		this.cancelPendingReady();
-
-		return new Promise<void>((resolve) => {
-			const timeout = setTimeout(() => {
-				if (this.pendingReady?.generation === generation) this.resolveRendererReady(generation);
-			}, START_READY_TIMEOUT_MS);
-
-			this.pendingReady = {
-				generation,
-				resolve: () => {
-					clearTimeout(timeout);
-					resolve();
-				}
-			};
-		});
-	}
-
-	private rendererResetMessage(generation: number, baseMediaMs: number, rate: number) {
-		return {
-			type: 'reset' as const,
-			generation,
-			baseMediaMs,
-			rate,
-			sourceChannels: this.outputChannels,
-			minStartFrames: Math.max(256, Math.ceil(MIN_START_SEC * this.ctx.sampleRate))
-		};
-	}
-
-	private restartIfRateChanged() {
-		if (this.state !== 'PLAYING' || this.startPending) return;
-
-		const rate = this.playbackRate;
-		if (!(rate > 0)) return;
-		if (Math.abs(rate - this.clockRate) <= EPSILON_RATE) return;
-
-		void this.startAt(this.predictedFrameTimeMs(), rate, true);
-	}
-
-	private predictedFrameTimeMs(nowPerf = performance.now()) {
-		if (this.state === 'STOPPED' || this.startPending) return this._currentTime;
-
-		let elapsedMs = Math.max(0, nowPerf - this.clockBasePerfMs);
-		if (nowPerf - this.clockLastAudioPerfMs > CLOCK_STALE_MS) {
-			elapsedMs = Math.max(0, this.clockLastAudioPerfMs - this.clockBasePerfMs) + MAX_STALE_EXTRAPOLATE_MS;
-		}
-
-		return this.clampTime(this.clockBaseMs + elapsedMs * this.clockRate);
-	}
-
-	private resetFrameClock(mediaMs: number, perfMs = performance.now()) {
-		const timeMs = this.clampTime(mediaMs);
-
-		this._currentTime = timeMs;
-		this.clockBaseMs = timeMs;
-		this.clockBasePerfMs = perfMs;
-		this.clockLastAudioPerfMs = perfMs;
-	}
-
-	private rebaseFrameClock(mediaMs: number, perfMs = performance.now(), force = false) {
-		let targetMs = this.clampTime(mediaMs);
-
-		if (!force && this.state === 'PLAYING' && !this.startPending) {
-			const predictedMs = this.predictedFrameTimeMs(perfMs);
-			const errorMs = targetMs - predictedMs;
-
-			if (Math.abs(errorMs) <= SOFT_REBASE_MS) {
-				targetMs = predictedMs + errorMs * SOFT_REBASE_BLEND;
-			}
-		}
-
-		this.resetFrameClock(targetMs, perfMs);
-	}
-
-	private mediaMsAtMainThreadNow(message: Extract<RendererMessage, { type: 'clock' | 'underrun' }>) {
-		let mediaMs = message.mediaMs;
-		const contextAdvanceMs = (this.ctx.currentTime - message.contextTimeSec) * 1000;
-
-		if (
-			Number.isFinite(contextAdvanceMs) &&
-			contextAdvanceMs > 0 &&
-			contextAdvanceMs < CLOCK_COMPENSATION_LIMIT_MS
-		) {
-			mediaMs += contextAdvanceMs * this.clockRate;
-		}
-
-		return this.clampTime(mediaMs);
-	}
-
-	private handleRendererMessage(message: RendererMessage) {
-		if (message.generation !== this.generation) return;
-
-		switch (message.type) {
-			case 'ready':
-				this.resolveRendererReady(message.generation);
-				break;
-
-			case 'clock':
-				this.rebaseFrameClock(this.mediaMsAtMainThreadNow(message));
-				if (message.ended && this.state === 'PLAYING' && message.bufferedFrames === 0) this.finishPlayback();
-				break;
-
-			case 'underrun':
-				this.handleUnderrun(this.mediaMsAtMainThreadNow(message));
-				break;
-
-			case 'overflow':
-				console.warn(`Audio renderer queue overflow (${message.bufferedFrames} frames buffered)`);
-				break;
-		}
-	}
-
-	private handleDecoderMessage(message: DecoderMessage) {
-		switch (message.type) {
-			case 'loaded':
-				if (this.pendingDecoderLoad?.id === message.loadId) {
-					this.pendingDecoderLoad.resolve();
-					this.pendingDecoderLoad = undefined;
-				}
-				break;
-
-			case 'error': {
-				const error = new Error(message.message);
-				if (message.stack) error.stack = message.stack;
-
-				this.failDecoderLoad(error);
-				this.cancelPendingReady();
-				this.state = 'STOPPED';
-				this.engine?.node.port.postMessage({ type: 'pause', generation: this.generation });
-				console.error('Audio decoder worker failed:', error);
-				break;
-			}
-		}
-	}
-
-	private resolveRendererReady(generation: number) {
-		if (this.pendingReady?.generation !== generation) return;
-
-		this.pendingReady.resolve();
-		this.pendingReady = undefined;
-	}
-
-	private cancelPendingReady() {
-		this.pendingReady?.resolve();
-		this.pendingReady = undefined;
-	}
-
-	private failDecoderLoad(reason: unknown) {
-		this.pendingDecoderLoad?.reject(reason);
-		this.pendingDecoderLoad = undefined;
-	}
-
-	private handleUnderrun(mediaMs: number) {
-		const now = performance.now();
-		if (now - this.lastUnderrunSeekMs < UNDERRUN_SEEK_COOLDOWN_MS) return;
-
-		this.lastUnderrunSeekMs = now;
-		this.rebaseFrameClock(mediaMs, now, true);
-		this.syncBeatmapSeek(mediaMs);
-	}
-
-	private syncBeatmapSeek(timeMs: number, force = false) {
-		const now = performance.now();
-		if (!force && now - this.lastSeekMs < SEEK_COOLDOWN_MS) return;
-
-		this.lastSeekMs = now;
-		this.applyingBeatmapSeek = true;
-
-		try {
-			this.beatmapSet.seek(this.clampTime(timeMs));
-		} finally {
-			this.applyingBeatmapSeek = false;
-		}
-	}
-
-	private finishPlayback() {
-		if (this.state !== 'PLAYING') return;
-
-		this.syncBeatmapSeek(0, true);
-		void this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
-	}
-
-	private reviveFrozenContextIfNeeded() {
-		if (this.state !== 'PLAYING') return;
-
-		const now = performance.now();
-		if (now - this.clockLastAudioPerfMs <= CLOCK_STALE_MS) return;
-		if (now - this.lastContextReviveMs < CONTEXT_REVIVE_COOLDOWN_MS) return;
-
-		this.lastContextReviveMs = now;
-		this.reviveFrozenContext();
-	}
-
-	private reviveFrozenContext() {
-		const ctx = this.ctx;
-		const before = ctx.currentTime;
-
-		void ctx.resume()
-			.then(() => sleep(CONTEXT_FREEZE_CHECK_MS))
-			.then(() => {
-				if (this.state !== 'PLAYING') return;
-				if (ctx.currentTime !== before) return;
-
-				const timeMs = this.predictedFrameTimeMs();
-				return ctx.suspend()
-					.catch(() => undefined)
-					.then(() => ctx.resume())
-					.then(() => this.startAt(timeMs, this.playbackRate, true));
-			})
-			.catch(() => undefined);
-	}
-
-	private async warmPlayableContext() {
-		const ctx = this.ctx;
-
-		await ctx.resume();
-
-		const before = ctx.currentTime;
-		await sleep(0);
-		await sleep(CONTEXT_FREEZE_CHECK_MS);
-
-		if (ctx.currentTime !== before) return;
-
-		await ctx.suspend().catch(() => undefined);
-		await ctx.resume();
-	}
-
-	private fadeTo(value: number) {
-		const gain = this.localGainNode.gain;
-		const now = this.ctx.currentTime;
-
-		gain.cancelScheduledValues(now);
-		gain.setValueAtTime(gain.value, now);
-		gain.linearRampToValueAtTime(value, now + FADE_SEC);
-	}
-
-	private configuredVolume() {
-		return inject<AudioConfig>('config/audio')?.musicVolume ?? 0.8;
-	}
-
-	private clampTime(ms: number) {
-		if (!Number.isFinite(ms) || ms < 0) return 0;
-		if (this.durationMs > 0 && ms > this.durationMs) return this.durationMs;
-		return ms;
-	}
-
-	private createSpectrogram(durationSec: number, audioTrack: InputAudioTrack) {
-		if (!this.sink) return;
+		this.updateMediaSessionState();
 
 		this.spectrogram?.destroy();
 		this.spectrogram = new SpectrogramProcessor({
@@ -644,31 +261,453 @@ export default class Audio extends ScopedClass {
 		});
 
 		void this.spectrogram.render();
+
+		if ('audioSession' in navigator) {
+			navigator.mediaSession.metadata = new MediaMetadata({
+				title: beatmap.data.metadata.title,
+				artist: beatmap.data.metadata.artistUnicode
+			});
+
+			navigator.mediaSession.setActionHandler('play', () => {
+				void this.play();
+			});
+
+			navigator.mediaSession.setActionHandler('pause', () => {
+				if (this.state === 'PLAYING') this.pause();
+			});
+
+			navigator.mediaSession.setActionHandler('seekto', (details) => {
+				if (typeof details.seekTime === 'number') {
+					this.beatmapSet.seek(details.seekTime * 1000);
+				}
+			});
+		}
+	}
+
+	private predictedTimeMs() {
+		return this._currentTime + (performance.now() - this.previousTimestamp) * this.playbackRate;
+	}
+
+	private clampTime(ms: number) {
+		if (!Number.isFinite(ms) || ms < 0 || ms > this.duration) return 0;
+		return ms;
+	}
+
+	private resetClockAnchors() {
+		this.previousTimestamp = performance.now();
+		this.contextStartSec = this.ctx.currentTime;
+		this.lastClockCheckMs = 0;
+	}
+
+	private guardClock(predictedMs: number) {
+		const nowPerf = performance.now();
+
+		if (nowPerf - this.lastClockCheckMs < 80) return;
+		this.lastClockCheckMs = nowPerf;
+		this.pruneFinishedNodes();
+
+		const perfElapsedMs = nowPerf - this.previousTimestamp;
+		const ctxElapsedMs = (this.ctx.currentTime - this.contextStartSec) * 1000;
+		const driftMs = (perfElapsedMs - ctxElapsedMs) * this.playbackRate;
+		const absDriftMs = Math.abs(driftMs);
+
+		if (absDriftMs <= DESYNC_THRESHOLD_MS) {
+			this.desyncedFrames = 0;
+			return;
+		}
+
+		this.desyncedFrames++;
+
+		if (this.desyncedFrames === 3 || absDriftMs >= HARD_DESYNC_THRESHOLD_MS) {
+			console.warn(`Audio desynced by ${driftMs.toFixed(1)}ms`);
+		}
+
+		if (driftMs > DESYNC_THRESHOLD_MS) this.reviveContext();
+
+		if (this.desyncedFrames >= 20 || absDriftMs >= HARD_DESYNC_THRESHOLD_MS) {
+			this.desyncedFrames = 0;
+			this.requestSeek(predictedMs);
+		}
+	}
+
+	private requestSeek(timeMs: number) {
+		this.beatmapSet.seek(this.clampTime(timeMs));
+	}
+
+	private reviveContext() {
+		const now = performance.now();
+
+		if (now - this.lastContextReviveMs < 750) return;
+		this.lastContextReviveMs = now;
+
+		const ctx = this.ctx;
+		const before = ctx.currentTime;
+
+		void ctx.resume().then(() => sleep(CONTEXT_FREEZE_CHECK_MS)).then(() => {
+			if (this.state !== 'PLAYING') return;
+			if (ctx.currentTime !== before) return;
+
+			return ctx.suspend()
+				.catch(() => undefined)
+				.then(() => ctx.resume())
+				.then(() => this.requestSeek(this.predictedTimeMs()));
+		}).catch(() => undefined);
+	}
+
+	private async warmPlayableContext() {
+		const ctx = this.ctx;
+
+		await ctx.resume();
+
+		const before = ctx.currentTime;
+		void sleep(CONTEXT_FREEZE_CHECK_MS).then(async () => {
+			if (ctx.currentTime !== before) return;
+
+			await ctx.suspend().catch(() => undefined);
+			await ctx.resume();
+		});
+	}
+
+	private createStretcher(rate: number) {
+		this.disposeStretcher();
+
+		if (this.pitchMode !== 'preserve' || Math.abs(rate - 1) <= EPSILON_RATE) return;
+		if (!this.audioTrack) throw new Error('Audio track not initialized');
+
+		this.stretcher = new TimeStretcher(
+			this.audioTrack.numberOfChannels,
+			this.audioTrack.sampleRate,
+			1 / rate
+		);
+	}
+
+	private disposeStretcher() {
+		this.stretcher?.dispose();
+		this.stretcher = undefined;
+	}
+
+	private async runAudioIterator(token: number) {
+		if (!this.sink) throw new Error('Audio sink not initialized');
+
+		const rate = this.playbackRate;
+		if (!(rate > 0)) throw new Error(`Invalid playback rate: ${rate}`);
+
+		await this.stopIterator(false);
+
+		this.pitchMode = 'preserve';
+		this.createStretcher(rate);
+
+		const contextStartSec = this.ctx.currentTime;
+		const sourceStartSec = this._currentTime / 1000 + this.encoderDelayMs / 1000;
+		let scheduledUntilSec = contextStartSec;
+
+		this.audioBufferIterator = this.sink.buffers(sourceStartSec) as AsyncGenerator<
+			WrappedBufferLike,
+			void,
+			unknown
+		>;
+
+		for await (const wrapped of this.audioBufferIterator) {
+			if (token !== this.schedulerToken || this.state !== 'PLAYING') break;
+
+			const currentRate = this.playbackRate;
+			if (Math.abs(currentRate - rate) > EPSILON_RATE) {
+				this._currentTime = this.clampTime(this.predictedTimeMs());
+				this.stopScheduledNodes();
+				this.wsolaScheduledUntilSec = this.ctx.currentTime;
+
+				const newToken = ++this.schedulerToken;
+				void this.runAudioIterator(newToken);
+				return;
+			}
+
+			this.pruneFinishedNodes();
+
+			const idealStartSec = contextStartSec + (wrapped.timestamp - sourceStartSec) / rate;
+			const stopAt = this.scheduleDecodedBuffer(wrapped.buffer, idealStartSec, rate);
+
+			if (stopAt > 0) scheduledUntilSec = Math.max(scheduledUntilSec, stopAt);
+
+			await this.waitForScheduleBudget(token, scheduledUntilSec);
+		}
+	}
+
+	private scheduleDecodedBuffer(buffer: AudioBuffer, idealStartSec: number, rate: number) {
+		if (this.pitchMode === 'preserve' && Math.abs(rate - 1) > EPSILON_RATE) {
+			return this.scheduleStretchedBuffer(buffer, idealStartSec, rate);
+		}
+
+		return this.scheduleBuffer(buffer, idealStartSec, rate);
+	}
+
+	private scheduleStretchedBuffer(buffer: AudioBuffer, idealStartSec: number, rate: number) {
+		if (!this.stretcher) this.createStretcher(rate);
+		if (!this.stretcher) return this.scheduleBuffer(buffer, idealStartSec, rate);
+
+		this.stretcher.factor = 1 / rate;
+
+		const outputChannels = this.stretcher.appendAudioBuffer(buffer);
+		const stretched = outputChannels?.[0]?.length
+			? this.createAudioBufferFromChannels(outputChannels, buffer.sampleRate)
+			: null;
+
+		if (!stretched) return 0;
+
+		const startAt = Math.max(idealStartSec, this.wsolaScheduledUntilSec);
+		const stopAt = this.scheduleBuffer(stretched, startAt, 1);
+
+		if (stopAt > 0) this.wsolaScheduledUntilSec = stopAt;
+		return stopAt;
+	}
+
+	private scheduleBuffer(buffer: AudioBuffer, idealStartSec: number, playbackRate = 1) {
+		const now = this.ctx.currentTime;
+		let startAt = idealStartSec;
+		let offsetSec = 0;
+
+		if (startAt < now) {
+			const lateBySec = now - startAt;
+			offsetSec = lateBySec * playbackRate;
+
+			if (offsetSec >= buffer.duration) return 0;
+			if (lateBySec > 0.08) {
+				console.warn(`Audio scheduler late by ${(lateBySec * 1000).toFixed(1)}ms`);
+			}
+
+			startAt = now;
+		}
+
+		const sourceDurationSec = buffer.duration - offsetSec;
+		const outputDurationSec = sourceDurationSec / playbackRate;
+		const stopAt = startAt + outputDurationSec;
+		const node = this.ctx.createBufferSource();
+
+		node.buffer = buffer;
+		node.playbackRate.value = playbackRate;
+		node.connect(this.localGainNode);
+		node.start(startAt, offsetSec, sourceDurationSec);
+		node.onended = () => node.disconnect();
+
+		this.scheduledNodes.push({ node, stopAtContextSec: stopAt });
+
+		return stopAt;
+	}
+
+	private get scheduleAheadSec() {
+		return document.hidden ? 20 : 0.08;
+	}
+
+	private get schedulerSleepMs() {
+		return document.hidden ? 250 : 8;
+	}
+
+	private async waitForScheduleBudget(token: number, scheduledUntilSec: number) {
+		while (
+			token === this.schedulerToken &&
+			this.state === 'PLAYING' &&
+			scheduledUntilSec - this.ctx.currentTime > this.scheduleAheadSec
+			) {
+			await sleep(this.schedulerSleepMs);
+		}
+	}
+
+	private async stopIterator(incrementToken = true) {
+		if (incrementToken) this.schedulerToken++;
+
+		const iterator = this.audioBufferIterator;
+		this.audioBufferIterator = undefined;
+
+		await iterator?.return?.();
+	}
+
+	private stopScheduledNodes() {
+		for (const { node } of this.scheduledNodes) {
+			try {
+				node.stop();
+			} catch {
+				// Already stopped.
+			}
+
+			node.disconnect();
+		}
+
+		this.scheduledNodes.length = 0;
+	}
+
+	private pruneFinishedNodes() {
+		const now = this.ctx.currentTime;
+		let write = 0;
+
+		for (let i = 0; i < this.scheduledNodes.length; i++) {
+			const item = this.scheduledNodes[i];
+
+			if (item.stopAtContextSec <= now) {
+				item.node.disconnect();
+				continue;
+			}
+
+			this.scheduledNodes[write++] = item;
+		}
+
+		this.scheduledNodes.length = write;
+	}
+
+	private createAudioBufferFromChannels(channels: Float32Array[], sampleRate: number) {
+		const frameCount = channels[0]?.length ?? 0;
+		if (frameCount <= 0) return null;
+
+		const out = this.ctx.createBuffer(channels.length, frameCount, sampleRate);
+
+		for (let ch = 0; ch < channels.length; ch++) {
+			out.copyToChannel(channels[ch] as unknown as Float32Array<ArrayBuffer>, ch);
+		}
+
+		return out;
+	}
+
+	private setupMediaSession() {
+		if (!('mediaSession' in navigator)) return;
+
+		navigator.mediaSession.metadata = new MediaMetadata({
+			title: 'Beatmap audio',
+			artist: '',
+			album: '',
+		});
+
+		navigator.mediaSession.setActionHandler('play', () => {
+			if (this.state !== 'PLAYING') void this.play();
+		});
+
+		navigator.mediaSession.setActionHandler('pause', () => {
+			if (this.state === 'PLAYING') this.pause();
+		});
+
+		navigator.mediaSession.setActionHandler('stop', () => {
+			if (this.state === 'PLAYING') this.pause();
+
+			this._currentTime = 0;
+			this.resetClockAnchors();
+			this.beatmapSet.seek(0);
+			this.updateMediaSessionState();
+		});
+
+		navigator.mediaSession.setActionHandler('seekto', (details) => {
+			if (typeof details.seekTime !== 'number') return;
+
+			const targetMs = this.clampTime(details.seekTime * 1000);
+			this.beatmapSet.seek(targetMs);
+			this.updateMediaSessionState();
+		});
+
+		navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+			const offsetSec = details.seekOffset ?? 10;
+			const targetMs = this.clampTime(this.mediaSessionTimeMs() - offsetSec * 1000);
+
+			this.beatmapSet.seek(targetMs);
+			this.updateMediaSessionState();
+		});
+
+		navigator.mediaSession.setActionHandler('seekforward', (details) => {
+			const offsetSec = details.seekOffset ?? 10;
+			const targetMs = this.clampTime(this.mediaSessionTimeMs() + offsetSec * 1000);
+
+			this.beatmapSet.seek(targetMs);
+			this.updateMediaSessionState();
+		});
+
+		this.updateMediaSessionState();
+	}
+
+	private updateMediaSessionState() {
+		if (!('mediaSession' in navigator)) return;
+
+		navigator.mediaSession.playbackState = this.mediaSessionPlaybackState();
+		this.updateMediaSessionPosition();
+
+		if (this.state === 'PLAYING') {
+			this.startMediaSessionPositionTimer();
+		} else {
+			this.stopMediaSessionPositionTimer();
+		}
+	}
+
+	private mediaSessionPlaybackState(): MediaSessionPlaybackState {
+		if (!this.init || !this.audioTrack || !this.sink) return 'none';
+		return this.state === 'PLAYING' ? 'playing' : 'paused';
+	}
+
+	private updateMediaSessionPosition() {
+		if (!('mediaSession' in navigator)) return;
+		if (!('setPositionState' in navigator.mediaSession)) return;
+		if (!this.init || !(this.durationMs > 0)) return;
+
+		try {
+			navigator.mediaSession.setPositionState({
+				duration: this.durationMs / 1000,
+				playbackRate: this.playbackRate,
+				position: this.mediaSessionTimeMs() / 1000,
+			});
+		} catch {
+			// Safari/Chrome may reject invalid/edge position states during load/teardown
+		}
+	}
+
+	private mediaSessionTimeMs() {
+		return this.state === 'PLAYING'
+			? this.clampTime(this.predictedTimeMs())
+			: this._currentTime;
+	}
+
+	private startMediaSessionPositionTimer() {
+		if (this.mediaSessionPositionTimer !== undefined) return;
+
+		this.mediaSessionPositionTimer = setInterval(() => {
+			this.updateMediaSessionPosition();
+		}, 1000);
+	}
+
+	private stopMediaSessionPositionTimer() {
+		if (this.mediaSessionPositionTimer === undefined) return;
+
+		clearInterval(this.mediaSessionPositionTimer);
+		this.mediaSessionPositionTimer = undefined;
+	}
+
+	private disposeMediaSession() {
+		this.stopMediaSessionPositionTimer();
+
+		if (!('mediaSession' in navigator)) return;
+
+		navigator.mediaSession.playbackState = 'none';
+
+		try {
+			navigator.mediaSession.setPositionState();
+		} catch {
+			// Some browsers do not like clearing position state.
+		}
+
+		navigator.mediaSession.setActionHandler('play', null);
+		navigator.mediaSession.setActionHandler('pause', null);
+		navigator.mediaSession.setActionHandler('stop', null);
+		navigator.mediaSession.setActionHandler('seekto', null);
+		navigator.mediaSession.setActionHandler('seekbackward', null);
+		navigator.mediaSession.setActionHandler('seekforward', null);
 	}
 
 	private disposeInput() {
+		void this.stopIterator();
+		this.stopScheduledNodes();
+
 		this.sink = undefined;
+		this.audioTrack = undefined;
 
 		this.input?.dispose();
 		this.input = undefined;
 
+		this.disposeStretcher();
+
 		this.spectrogram?.destroy();
 		this.spectrogram = undefined;
-	}
-
-	private disposeEngine() {
-		this.cancelPendingReady();
-		this.pendingDecoderLoad?.resolve();
-		this.pendingDecoderLoad = undefined;
-
-		this.engine?.node.port.postMessage({ type: 'dispose' });
-		this.engine?.node.disconnect();
-		this.engine?.worker.postMessage({ type: 'dispose' });
-		this.engine?.worker.terminate();
-		this.engine = undefined;
-
-		this.startPending = false;
-		this.generation++;
 	}
 }
 
@@ -683,8 +722,13 @@ function sleep(ms: number) {
 }
 
 function isMp3Track(blob: Blob, audioTrack: InputAudioTrack) {
-	const codec = ((audioTrack as any).codec || (audioTrack as any).format || blob.type).toLowerCase();
-	return codec.includes('mp3') || codec.includes('mpeg');
+	const codecStr = (
+		(audioTrack as any).codec ||
+		(audioTrack as any).format ||
+		blob.type
+	).toLowerCase();
+
+	return codecStr.includes('mp3') || codecStr.includes('mpeg');
 }
 
 async function getEncoderDelayMs(blob: Blob, audioTrack: InputAudioTrack) {
@@ -712,8 +756,8 @@ async function getEncoderDelayMs(blob: Blob, audioTrack: InputAudioTrack) {
 	const byte1 = view.getUint8(delayPaddingOffset + 1);
 	const encoderDelaySamples = (byte0 << 4) | (byte1 >> 4);
 	const sampleRate = audioTrack.sampleRate || 44100;
-	const delayMs = ((encoderDelaySamples + MP3_DECODER_DELAY_SAMPLES) / sampleRate) * 1000;
+	const delay = ((encoderDelaySamples + MP3_DECODER_DELAY_SAMPLES) / sampleRate) * 1000;
 
-	console.log(`MP3 encoder delay: ${encoderDelaySamples} samples @ ${sampleRate}Hz = ${delayMs.toFixed(2)}ms`);
-	return delayMs;
+	console.log(`MP3 encoder delay: ${encoderDelaySamples} samples @ ${sampleRate}Hz = ${delay.toFixed(2)}ms`);
+	return delay;
 }
