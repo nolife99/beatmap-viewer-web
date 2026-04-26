@@ -1,5 +1,5 @@
 import { TimingPoint } from 'osu-classes';
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, BitmapText } from 'pixi.js';
 import TimelineConfig from '../../../Config/TimelineConfig.ts';
 import { inject } from '../../../Context.ts';
 import { DEFAULT_SCALE } from '../../../UI/main/viewer/Timeline/index.ts';
@@ -10,7 +10,7 @@ export default class TimelineTimingPoint {
 	constructor(public data: TimingPoint) {
 		const graphics = new Graphics;
 
-		const text = new Text({
+		const text = new BitmapText({
 			text: `${data.bpm.toFixed(0)}BPM`,
 			style: {
 				fontFamily: 'Rubik',

@@ -9,7 +9,6 @@ import {
 import { Assets, Container, Graphics, GraphicsContext, Rectangle, type Texture } from 'pixi.js';
 import BackgroundConfig from '../../../Config/BackgroundConfig.ts';
 import { inject, ScopedClass } from '../../../Context.ts';
-import { Resource } from '../../../ZipHandler/index.ts';
 import BeatmapSet from '../../index.ts';
 import { StoryboardAnimation } from './StoryboardAnimation.ts';
 import StoryboardSprite from './StoryboardSprite.ts';
@@ -89,7 +88,7 @@ export default class Storyboard extends ScopedClass {
 		const textureMap = new Map<string, Texture>();
 		const promises = [
 			// biome-ignore lint/style/noNonNullAssertion: Hooked
-			...this.context.consume<Map<string, Resource>>('resources')!
+			...this.context.consume<Map<string, Blob>>('resources')!
 		].map(async ([key, resource]) => {
 			if (
 				// biome-ignore lint/style/noNonNullAssertion: Always have extension

@@ -25,7 +25,6 @@ import Spectrogram from '../UI/sidepanel/Modding/Spectrogram.ts';
 import Timing from '../UI/sidepanel/Timing/index.ts';
 import { getDiffColour, loadColorPalette } from '../utils.ts';
 import Video from '../Video/index.ts';
-import { Resource } from '../ZipHandler/index.ts';
 import DrawableHitCircle from './Beatmap/HitObjects/DrawableHitCircle.ts';
 import DrawableSlider from './Beatmap/HitObjects/DrawableSlider.ts';
 import Beatmap from './Beatmap/index.ts';
@@ -48,7 +47,7 @@ export default class BeatmapSet extends ScopedClass {
 	isSeeking = false;
 	audioContext = new AudioContext;
 
-	constructor(private resources: Map<string, Resource>) {
+	constructor(private resources: Map<string, Blob>) {
 		super();
 		this.playbackRate = inject<ExperimentalConfig>('config/experimental')
 			?.doubleTime
@@ -82,7 +81,7 @@ export default class BeatmapSet extends ScopedClass {
 	async loadBeatmapSkin() {
 		const skin = this.context.provide<Skin>(
 			'beatmapSkin',
-			new Skin(this.context.consume<Map<string, Resource>>('resources'))
+			new Skin(this.context.consume<Map<string, Blob>>('resources'))
 		);
 		await skin.init();
 	}
@@ -178,7 +177,7 @@ export default class BeatmapSet extends ScopedClass {
 		this.audioKey = beatmap.data.general.audioFilename;
 		console.time('Constructing audio');
 		const audioFile = this.context
-			.consume<Map<string, Resource>>('resources')
+			.consume<Map<string, Blob>>('resources')
 			?.get(this.audioKey.toLowerCase());
 
 		if (!audioFile) throw new Error('Cannot find audio in resource?');
@@ -221,7 +220,7 @@ export default class BeatmapSet extends ScopedClass {
 
 		this.videoKey = videoFilePath;
 		const videoResource = this.context
-			.consume<Map<string, Resource>>('resources')
+			.consume<Map<string, Blob>>('resources')
 			?.get(
 				(
 					beatmap.data.events.storyboard?.layers.get('Video')?.elements.at(0)
@@ -254,7 +253,7 @@ export default class BeatmapSet extends ScopedClass {
 		this.backgroundKey = beatmap.data.events.backgroundPath;
 		const background = inject<Background>('ui/main/viewer/background');
 		const backgroundResource = this.context
-			.consume<Map<string, Resource>>('resources')
+			.consume<Map<string, Blob>>('resources')
 			?.get(beatmap.data.events.backgroundPath?.toLowerCase() ?? '');
 
 		if (!backgroundResource) return;
@@ -274,13 +273,13 @@ export default class BeatmapSet extends ScopedClass {
 
 	async loadStoryboard() {
 		const storyboardKey = this.context
-			.consume<Map<string, Resource>>('resources')
+			.consume<Map<string, Blob>>('resources')
 			?.keys()
 			.find((key) => key.includes('.osb'));
 		if (!storyboardKey) return;
 
 		const storyboardFile = this.context
-			.consume<Map<string, Resource>>('resources')
+			.consume<Map<string, Blob>>('resources')
 			?.get(storyboardKey.toLowerCase());
 
 		const storyboard = this.context.provide(

@@ -2,7 +2,6 @@ import { parse } from 'js-ini';
 import { Rectangle, Texture } from 'pixi.js';
 import SkinningConfig from '../Config/SkinningConfig.ts';
 import { inject } from '../Context.ts';
-import { Resource } from '../ZipHandler/index.ts';
 import SkinManager, { SkinMetadata } from './SkinManager.ts';
 
 const sanitizeINI = (str: string) =>
@@ -285,7 +284,7 @@ export default class Skin {
 	private atlasTextures: Texture[] = [];
 
 	constructor(
-		private resources?: Map<string, Resource>,
+		private resources?: Map<string, Blob>,
 		public metadata?: SkinMetadata
 	) {
 	}

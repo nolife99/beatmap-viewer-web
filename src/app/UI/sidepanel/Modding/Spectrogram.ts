@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Container, FillGradient, Graphics, Sprite, Text, type Texture } from 'pixi.js';
+import { Container, FillGradient, Graphics, Sprite, BitmapText, type Texture } from 'pixi.js';
 import ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject } from '../../../Context.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
@@ -84,24 +84,25 @@ export default class Spectrogram {
 		this.container.mask = this.mask;
 
 		this.container.on('layout', (layout) => {
-			const { width } = layout.computedLayout;
-			this.mask.clear().roundRect(0, 0, width, width, 10).fill({
+			const { width, height } = layout.computedLayout;
+			this.mask.clear().roundRect(0, 0, width, height, 10).fill({
 				color: 0x0,
 				alpha: 0.01
 			});
 			this.background
 				.clear()
-				.roundRect(0, 0, width, width, 10)
+				.roundRect(0, 0, width, height, 10)
 				.fill({
 					color: inject<ColorConfig>('config/color')?.color.surface0
 				});
 			this.sprite.width = width;
-			this.sprite.height = width;
+			this.sprite.height = height;
 			this.spinner.x = width / 2;
-			this.spinner.y = width / 2;
-			this.overlay.clear().rect(0, 0, width, width).fill(gradient);
+			this.spinner.y = height / 2;
+			this.overlay.clear().rect(0, 0, width, height).fill(gradient);
 			this.scale.layout = {
-				height: width
+				width: width,
+				height: height
 			};
 		});
 
@@ -176,7 +177,7 @@ export default class Spectrogram {
 
 		return scaleValues.map(
 			(value) =>
-				new Text({
+				new BitmapText({
 					text: value,
 					style: {
 						...defaultStyle,

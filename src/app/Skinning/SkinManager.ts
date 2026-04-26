@@ -1,7 +1,6 @@
 import SkinningConfig from '../Config/SkinningConfig.ts';
 import { inject } from '../Context.ts';
 import { getArgon, getDefaultLegacy, getYugen } from '../Initiator.ts';
-import { Resource } from '../ZipHandler/index.ts';
 import Database from './Database.ts';
 import Skin from './Skin.ts';
 
@@ -10,7 +9,7 @@ export type SkinEventCallback = (skin: Skin) => void;
 export type SkinMetadata = {
 	type: 'DEFAULT' | 'CUSTOM' | 'ARGON';
 	name: string;
-	resources: Map<string, Resource>;
+	resources: Map<string, Blob>;
 };
 
 export default class SkinManager {
@@ -110,7 +109,7 @@ export default class SkinManager {
 		this.emitSkinChange();
 	}
 
-	async addSkin(resources: Map<string, Resource>) {
+	async addSkin(resources: Map<string, Blob>) {
 		const skin = new Skin(resources);
 		await skin.init();
 

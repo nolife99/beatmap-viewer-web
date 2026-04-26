@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Sprite, Text, Texture } from 'pixi.js';
+import { Sprite, BitmapText, Texture } from 'pixi.js';
 import ColorConfig from '../../Config/ColorConfig.ts';
 import { inject, provide } from '../../Context.ts';
 import { Game } from '../../Game.ts';
@@ -79,7 +79,7 @@ export default class SidePanel {
 				},
 				cursor: 'pointer'
 			});
-			const text = new Text({
+			const text = new BitmapText({
 				text: title,
 				style: {
 					fontFamily: 'Rubik',

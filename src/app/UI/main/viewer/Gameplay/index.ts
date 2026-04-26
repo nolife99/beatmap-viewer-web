@@ -9,7 +9,7 @@ import {
 	Rectangle,
 	Sprite,
 	type StrokeStyle,
-	Text,
+	BitmapText,
 	type TextStyleOptions,
 	Texture
 } from 'pixi.js';
@@ -49,16 +49,16 @@ export default class Gameplay extends ScopedClass {
 	objectsContainer: Container;
 	selector: Graphics;
 	selectContainer: Container;
-	diffName!: Text;
+	diffName!: BitmapText;
 	statsContainer!: LayoutContainer;
 	closeButton!: LayoutContainer;
 	spinner: Spinner;
 	cursorLayer: Container;
 
-	csText!: Text;
-	arText!: Text;
-	odText!: Text;
-	hpText!: Text;
+	csText!: BitmapText;
+	arText!: BitmapText;
+	odText!: BitmapText;
+	hpText!: BitmapText;
 
 	selected: Set<number> = new Set();
 	dragWindow: [Vector2, Vector2] = [new Vector2(0, 0), new Vector2(0, 0)];
@@ -513,7 +513,7 @@ export default class Gameplay extends ScopedClass {
 			}
 		});
 
-		this.diffName = new Text({
+		this.diffName = new BitmapText({
 			text: this.beatmap.data.metadata.version,
 			style: {
 				...defaultStyle,

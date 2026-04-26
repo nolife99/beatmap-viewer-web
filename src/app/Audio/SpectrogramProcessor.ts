@@ -352,14 +352,7 @@ export default class SpectrogramProcessor {
 	}
 
 	private fillImageDataBlack() {
-		const data = this.imageData.data;
-
-		for (let i = 0; i < data.length; i += 4) {
-			data[i] = 0;
-			data[i + 1] = 0;
-			data[i + 2] = 0;
-			data[i + 3] = 255;
-		}
+		new Uint32Array(this.imageData.data.buffer).fill(0xff000000);
 	}
 
 	private drawFullFrameWithProgress() {

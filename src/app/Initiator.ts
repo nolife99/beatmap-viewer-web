@@ -1,5 +1,3 @@
-import { Resource } from './ZipHandler/index.ts';
-
 async function tryFetchBlob(url: string): Promise<Blob | null> {
 	try {
 		const res = await fetch(url);
@@ -14,9 +12,9 @@ async function tryFetchBlob(url: string): Promise<Blob | null> {
 async function loadSkinResources(
 	basePath: string,
 	filenames: readonly string[]
-): Promise<Map<string, Resource>> {
+): Promise<Map<string, Blob>> {
 
-	const resources = new Map<string, Resource>();
+	const resources = new Map<string, Blob>();
 
 	await Promise.all(
 		filenames.map(async (filename) => {

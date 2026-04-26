@@ -6,7 +6,6 @@ import ResponsiveHandler from '../../../ResponsiveHandler.ts';
 
 export default class Timestamp {
 	container: LayoutContainer = new LayoutContainer({
-		label: 'timestamp',
 		layout: {
 			width: 150,
 			height: '100%',
@@ -21,8 +20,22 @@ export default class Timestamp {
 		}
 	});
 
-	digitsContainer = new LayoutContainer();
-	digits: BitmapText[] = [];
+	timestampText = new BitmapText({
+		text: '00:00:000',
+		label: 'timestamp-text',
+		style: {
+			fontFamily: 'Rubik',
+			fontSize: 15,
+			fontWeight: '400',
+			fill: inject<ColorConfig>('config/color')?.color.text,
+			align: 'center'
+		},
+		layout: {
+			width: 74,
+			objectFit: 'none',
+			objectPosition: 'center'
+		}
+	});
 
 	timingContainer = new LayoutContainer({
 		layout: {
@@ -30,6 +43,7 @@ export default class Timestamp {
 			alignItems: 'baseline'
 		}
 	});
+
 	bpm = new BitmapText({
 		text: '0BPM',
 		style: {
@@ -44,6 +58,7 @@ export default class Timestamp {
 			objectPosition: 'center'
 		}
 	});
+
 	sliderVelocity = new BitmapText({
 		text: 'x0.00',
 		style: {
@@ -59,33 +74,20 @@ export default class Timestamp {
 		}
 	});
 
-	constructor() {
-		this.digits.push(
-			this.createDigit('0'),
-			this.createDigit('0'),
-			this.createDigit(':', 4),
-			this.createDigit('0'),
-			this.createDigit('0'),
-			this.createDigit(':', 4),
-			this.createDigit('0'),
-			this.createDigit('0'),
-			this.createDigit('0')
-		);
+	private lastTimestampMs = -1;
 
-		this.digitsContainer.addChild(...this.digits);
+	constructor() {
 		this.timingContainer.addChild(this.bpm, this.sliderVelocity);
-		this.container.addChild(this.digitsContainer, this.timingContainer);
+		this.container.addChild(this.timestampText, this.timingContainer);
 
 		inject<ColorConfig>('config/color')?.onChange('color', ({ base, text }) => {
 			this.container.layout = {
 				backgroundColor: new Color(base).setAlpha(0.7)
 			};
+
+			this.timestampText.style.fill = text;
 			this.bpm.style.fill = text;
 			this.sliderVelocity.style.fill = text;
-
-			for (const digit of this.digits) {
-				digit.style.fill = text;
-			}
 		});
 
 		inject<ResponsiveHandler>('responsiveHandler')?.on(
@@ -105,41 +107,27 @@ export default class Timestamp {
 		);
 	}
 
-	createDigit(text: string, width = 9) {
-		return new BitmapText({
-			text: text,
-			label: text,
-			style: {
-				fontFamily: 'Rubik',
-				fontSize: 15,
-				fontWeight: '400',
-				fill: inject<ColorConfig>('config/color')?.color.text,
-				align: 'center'
-			},
-			layout: {
-				width,
-				objectFit: 'none',
-				objectPosition: 'center'
-			}
-		});
-	}
-
 	updateDigit(timestamp: number) {
-		const minutes = Math.floor(timestamp / 60000) % 100;
-		const seconds = Math.floor((timestamp % 60000) / 1000) % 60;
-		const milliseconds = Math.floor(timestamp % 1000);
+		const totalMs = Math.max(0, Math.floor(timestamp));
 
-		this.digits[0].text = Math.floor(minutes / 10);
-		this.digits[1].text = minutes % 10;
-		this.digits[3].text = Math.floor(seconds / 10);
-		this.digits[4].text = seconds % 10;
-		this.digits[6].text = Math.floor(milliseconds / 100);
-		this.digits[7].text = Math.floor((milliseconds % 100) / 10);
-		this.digits[8].text = milliseconds % 10;
+		if (totalMs === this.lastTimestampMs) {
+			return;
+		}
+
+		this.lastTimestampMs = totalMs;
+
+		const minutes = Math.floor(totalMs / 60000) % 100;
+		const seconds = Math.floor(totalMs / 1000) % 60;
+		const milliseconds = totalMs % 1000;
+
+		this.timestampText.text =
+			`${minutes.toString().padStart(2, '0')}:` +
+			`${seconds.toString().padStart(2, '0')}:` +
+			milliseconds.toString().padStart(3, '0');
 	}
 
 	updateBPM(bpm: number) {
-		this.bpm.text = this.sliderVelocity.label = `${bpm.toFixed(0)}BPM`;
+		this.bpm.text = this.bpm.label = `${bpm.toFixed(0)}BPM`;
 	}
 
 	updateSliderVelocity(sv: number) {

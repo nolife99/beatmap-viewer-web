@@ -18,15 +18,11 @@ type WrappedBufferLike = {
 	timestamp: number;
 };
 
-type ScheduledNode = {
-	node: AudioBufferSourceNode;
-	stopAtContextSec: number;
-};
-
 const DESYNC_THRESHOLD_MS = 20;
 const HARD_DESYNC_THRESHOLD_MS = 40;
+const CLOCK_GUARD_INTERVAL_MS = 80;
 const CONTEXT_FREEZE_CHECK_MS = 120;
-
+const CONTEXT_REVIVE_COOLDOWN_MS = 750;
 const EPSILON_RATE = 1e-6;
 
 export default class Audio extends ScopedClass {
@@ -44,7 +40,7 @@ export default class Audio extends ScopedClass {
 	private encoderDelayMs = 0;
 	private loadingPromise?: Promise<void>;
 	private loadVersion = 0;
-	private mediaSessionPositionTimer: ReturnType<typeof setInterval> | undefined;
+	private mediaSessionPositionTimer?: ReturnType<typeof setInterval>;
 
 	private _currentTime = 0;
 	private previousTimestamp = 0;
@@ -55,7 +51,8 @@ export default class Audio extends ScopedClass {
 
 	private schedulerToken = 0;
 	private wsolaScheduledUntilSec = 0;
-	private readonly scheduledNodes: ScheduledNode[] = [];
+	private readonly scheduledNodes = new Set<AudioBufferSourceNode>();
+
 	private pitchMode: 'preserve' | 'shift' = 'preserve';
 	private stretcher?: TimeStretcher;
 	private spectrogram?: SpectrogramProcessor;
@@ -63,7 +60,7 @@ export default class Audio extends ScopedClass {
 	constructor(private masterNode: AudioNode, private beatmapSet: BeatmapSet) {
 		super();
 
-		this.localGainNode = masterNode.context.createGain();
+		this.localGainNode = this.ctx.createGain();
 		this.localGainNode.gain.value =
 			inject<AudioConfig>('config/audio')?.musicVolume ?? 0.8;
 		this.localGainNode.connect(this.masterNode);
@@ -71,6 +68,7 @@ export default class Audio extends ScopedClass {
 		inject<AudioConfig>('config/audio')?.onChange('musicVolume', (val) => {
 			this.localGainNode.gain.value = val;
 		});
+
 		this.setupMediaSession();
 	}
 
@@ -82,11 +80,8 @@ export default class Audio extends ScopedClass {
 
 		if (now <= this.duration) return now;
 
-		if (this.state === 'PLAYING') {
-			this.requestSeek(0);
-			void this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
-		}
-
+		this.requestSeek(0);
+		void this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
 		return this.duration;
 	}
 
@@ -98,7 +93,7 @@ export default class Audio extends ScopedClass {
 		this._currentTime = this.clampTime(val);
 		this.resetClockAnchors();
 
-		if (wasPlaying) this.play();
+		if (wasPlaying) void this.play();
 	}
 
 	get playbackRate() {
@@ -111,6 +106,11 @@ export default class Audio extends ScopedClass {
 
 	private get ctx() {
 		return this.masterNode.context as AudioContext;
+	}
+
+	private assertPlayable() {
+		if (!this.input || !this.audioTrack || !this.sink) throw new Error('Audio not initialized');
+		if (!(this.playbackRate > 0)) throw new Error(`Invalid playback rate: ${this.playbackRate}`);
 	}
 
 	async createBufferNode(blob: Blob, beatmap: Beatmap) {
@@ -142,8 +142,7 @@ export default class Audio extends ScopedClass {
 	async play() {
 		if (this.state === 'PLAYING') throw new Error('Already playing');
 		if (this.loadingPromise) throw new Error('Audio is still loading');
-		if (!this.input || !this.audioTrack || !this.sink) throw new Error('Audio not initialized');
-		if (!(this.playbackRate > 0)) throw new Error(`Invalid playback rate: ${this.playbackRate}`);
+		this.assertPlayable();
 
 		this.state = 'PLAYING';
 		this.stopScheduledNodes();
@@ -152,13 +151,14 @@ export default class Audio extends ScopedClass {
 		const token = ++this.schedulerToken;
 
 		await this.ctx.resume();
-		if (token !== this.schedulerToken || this.state !== 'PLAYING') return;
+		if (!this.isSchedulerActive(token)) return;
 
 		this.resetClockAnchors();
 		this.updateMediaSessionState();
 
-		this.runAudioIterator(token).catch((err) => {
+		void this.runAudioIterator(token).catch((err) => {
 			if (token !== this.schedulerToken) return;
+
 			console.error('Audio scheduler failed:', err);
 			if (this.state === 'PLAYING') this.pause();
 		});
@@ -184,65 +184,76 @@ export default class Audio extends ScopedClass {
 		this.loadVersion++;
 		this.disposeInput();
 		this.localGainNode.disconnect();
-
-		this.durationMs = 0;
-		this.encoderDelayMs = 0;
-		this.init = false;
-		this._currentTime = 0;
-
+		this.resetLoadedState();
 		this.disposeMediaSession();
 	}
 
 	private async load(blob: Blob, loadVersion: number, beatmap: Beatmap) {
 		this.disposeInput();
+		this.resetLoadedState();
 
+		const input = new Input({
+			source: new BlobSource(blob),
+			formats: ALL_FORMATS,
+		});
+
+		const track = await input.getPrimaryAudioTrack();
+		if (this.disposeIfStale(loadVersion, input)) return;
+		if (!track) {
+			input.dispose();
+			throw new Error('No primary audio track found');
+		}
+
+		const canDecode = await track.canDecode();
+		if (this.disposeIfStale(loadVersion, input)) return;
+		if (!canDecode) {
+			input.dispose();
+			throw new Error('Primary audio track cannot be decoded by this browser');
+		}
+
+		const [durationSec, encoderDelayMs] = await Promise.all([
+			input.computeDuration(),
+			getEncoderDelayMs(blob, track),
+		]);
+
+		if (this.disposeIfStale(loadVersion, input)) return;
+
+		this.input = input;
+		this.audioTrack = track;
+		this.sink = new AudioBufferSink(track);
+		this.durationMs = Number.isFinite(durationSec) ? durationSec * 1000 : 0;
+		this.encoderDelayMs = encoderDelayMs;
+		this.init = true;
+
+		if ('mediaSession' in navigator) {
+			navigator.mediaSession.metadata = new MediaMetadata({
+				title: beatmap.data.metadata.title,
+				artist: beatmap.data.metadata.artistUnicode,
+			});
+		}
+
+		this.updateMediaSessionState();
+		this.renderSpectrogram(this.sink, durationSec, track);
+	}
+
+	private resetLoadedState() {
 		this.init = false;
 		this._currentTime = 0;
 		this.durationMs = 0;
 		this.encoderDelayMs = 0;
 		this.desyncedFrames = 0;
+	}
 
-		const input = new Input({
-			source: new BlobSource(blob),
-			formats: ALL_FORMATS
-		});
+	private disposeIfStale(loadVersion: number, input: Input) {
+		if (loadVersion === this.loadVersion) return false;
 
-		const audioTrack = await input.getPrimaryAudioTrack();
-
-		if (loadVersion !== this.loadVersion) {
-			input.dispose();
-			return;
-		}
-
-		if (!audioTrack) {
-			input.dispose();
-			throw new Error('No primary audio track found');
-		}
-
-		if (!(await audioTrack.canDecode())) {
-			input.dispose();
-			throw new Error('Primary audio track cannot be decoded by this browser');
-		}
-
-		const durationSec = await input.computeDuration();
-
-		if (loadVersion !== this.loadVersion) {
-			input.dispose();
-			return;
-		}
-
-		this.input = input;
-		this.audioTrack = audioTrack;
-		this.sink = new AudioBufferSink(audioTrack);
-		this.durationMs = Number.isFinite(durationSec) ? durationSec * 1000 : 0;
-		this.encoderDelayMs = await getEncoderDelayMs(blob, audioTrack);
-		this.init = true;
-
-		this.updateMediaSessionState();
-
+		input.dispose();
+		return true;
+	}
+	private renderSpectrogram(sink: AudioBufferSink, durationSec: number, audioTrack: InputAudioTrack) {
 		this.spectrogram?.destroy();
 		this.spectrogram = new SpectrogramProcessor({
-			sink: this.sink,
+			sink,
 			durationSec,
 			sampleRate: audioTrack.sampleRate,
 			channels: audioTrack.numberOfChannels,
@@ -257,31 +268,10 @@ export default class Audio extends ScopedClass {
 			container: '#a',
 			onTextureUpdate: (texture) => {
 				inject<SpectrogramContainer>('ui/sidepanel/modding/spectrogram')?.setTexture(texture);
-			}
+			},
 		});
 
 		void this.spectrogram.render();
-
-		if ('audioSession' in navigator) {
-			navigator.mediaSession.metadata = new MediaMetadata({
-				title: beatmap.data.metadata.title,
-				artist: beatmap.data.metadata.artistUnicode
-			});
-
-			navigator.mediaSession.setActionHandler('play', () => {
-				void this.play();
-			});
-
-			navigator.mediaSession.setActionHandler('pause', () => {
-				if (this.state === 'PLAYING') this.pause();
-			});
-
-			navigator.mediaSession.setActionHandler('seekto', (details) => {
-				if (typeof details.seekTime === 'number') {
-					this.beatmapSet.seek(details.seekTime * 1000);
-				}
-			});
-		}
 	}
 
 	private predictedTimeMs() {
@@ -289,8 +279,7 @@ export default class Audio extends ScopedClass {
 	}
 
 	private clampTime(ms: number) {
-		if (!Number.isFinite(ms) || ms < 0 || ms > this.duration) return 0;
-		return ms;
+		return Number.isFinite(ms) && ms >= 0 && ms <= this.durationMs ? ms : 0;
 	}
 
 	private resetClockAnchors() {
@@ -300,13 +289,12 @@ export default class Audio extends ScopedClass {
 	}
 
 	private guardClock(predictedMs: number) {
-		const nowPerf = performance.now();
+		const now = performance.now();
 
-		if (nowPerf - this.lastClockCheckMs < 80) return;
-		this.lastClockCheckMs = nowPerf;
-		this.pruneFinishedNodes();
+		if (now - this.lastClockCheckMs < CLOCK_GUARD_INTERVAL_MS) return;
+		this.lastClockCheckMs = now;
 
-		const perfElapsedMs = nowPerf - this.previousTimestamp;
+		const perfElapsedMs = now - this.previousTimestamp;
 		const ctxElapsedMs = (this.ctx.currentTime - this.contextStartSec) * 1000;
 		const driftMs = (perfElapsedMs - ctxElapsedMs) * this.playbackRate;
 		const absDriftMs = Math.abs(driftMs);
@@ -316,9 +304,7 @@ export default class Audio extends ScopedClass {
 			return;
 		}
 
-		this.desyncedFrames++;
-
-		if (this.desyncedFrames === 3 || absDriftMs >= HARD_DESYNC_THRESHOLD_MS) {
+		if (++this.desyncedFrames === 3 || absDriftMs >= HARD_DESYNC_THRESHOLD_MS) {
 			console.warn(`Audio desynced by ${driftMs.toFixed(1)}ms`);
 		}
 
@@ -337,21 +323,23 @@ export default class Audio extends ScopedClass {
 	private reviveContext() {
 		const now = performance.now();
 
-		if (now - this.lastContextReviveMs < 750) return;
+		if (now - this.lastContextReviveMs < CONTEXT_REVIVE_COOLDOWN_MS) return;
 		this.lastContextReviveMs = now;
 
 		const ctx = this.ctx;
 		const before = ctx.currentTime;
 
-		void ctx.resume().then(() => sleep(CONTEXT_FREEZE_CHECK_MS)).then(() => {
-			if (this.state !== 'PLAYING') return;
-			if (ctx.currentTime !== before) return;
+		void ctx.resume()
+			.then(() => sleep(CONTEXT_FREEZE_CHECK_MS))
+			.then(() => {
+				if (this.state !== 'PLAYING' || ctx.currentTime !== before) return;
 
-			return ctx.suspend()
-				.catch(() => undefined)
-				.then(() => ctx.resume())
-				.then(() => this.requestSeek(this.predictedTimeMs()));
-		}).catch(() => undefined);
+				return ctx.suspend()
+					.catch(() => undefined)
+					.then(() => ctx.resume())
+					.then(() => this.requestSeek(this.predictedTimeMs()));
+			})
+			.catch(() => undefined);
 	}
 
 	private async warmPlayableContext() {
@@ -360,12 +348,9 @@ export default class Audio extends ScopedClass {
 		await ctx.resume();
 
 		const before = ctx.currentTime;
-		void sleep(CONTEXT_FREEZE_CHECK_MS).then(async () => {
-			if (ctx.currentTime !== before) return;
-
-			await ctx.suspend().catch(() => undefined);
-			await ctx.resume();
-		});
+		void sleep(CONTEXT_FREEZE_CHECK_MS)
+			.then(() => ctx.currentTime === before ? ctx.suspend().catch(() => undefined) : undefined)
+			.then(() => ctx.currentTime === before ? ctx.resume() : undefined);
 	}
 
 	private createStretcher(rate: number) {
@@ -377,7 +362,7 @@ export default class Audio extends ScopedClass {
 		this.stretcher = new TimeStretcher(
 			this.audioTrack.numberOfChannels,
 			this.audioTrack.sampleRate,
-			1 / rate
+			1 / rate,
 		);
 	}
 
@@ -393,13 +378,12 @@ export default class Audio extends ScopedClass {
 		if (!(rate > 0)) throw new Error(`Invalid playback rate: ${rate}`);
 
 		await this.stopIterator(false);
-
-		this.pitchMode = 'preserve';
 		this.createStretcher(rate);
 
 		const contextStartSec = this.ctx.currentTime;
 		const sourceStartSec = this._currentTime / 1000 + this.encoderDelayMs / 1000;
 		let scheduledUntilSec = contextStartSec;
+		this.wsolaScheduledUntilSec = contextStartSec;
 
 		this.audioBufferIterator = this.sink.buffers(sourceStartSec) as AsyncGenerator<
 			WrappedBufferLike,
@@ -408,20 +392,12 @@ export default class Audio extends ScopedClass {
 		>;
 
 		for await (const wrapped of this.audioBufferIterator) {
-			if (token !== this.schedulerToken || this.state !== 'PLAYING') break;
+			if (!this.isSchedulerActive(token)) break;
 
-			const currentRate = this.playbackRate;
-			if (Math.abs(currentRate - rate) > EPSILON_RATE) {
-				this._currentTime = this.clampTime(this.predictedTimeMs());
-				this.stopScheduledNodes();
-				this.wsolaScheduledUntilSec = this.ctx.currentTime;
-
-				const newToken = ++this.schedulerToken;
-				void this.runAudioIterator(newToken);
+			if (Math.abs(this.playbackRate - rate) > EPSILON_RATE) {
+				this.restartSchedulerFromCurrentClock();
 				return;
 			}
-
-			this.pruneFinishedNodes();
 
 			const idealStartSec = contextStartSec + (wrapped.timestamp - sourceStartSec) / rate;
 			const stopAt = this.scheduleDecodedBuffer(wrapped.buffer, idealStartSec, rate);
@@ -432,12 +408,19 @@ export default class Audio extends ScopedClass {
 		}
 	}
 
-	private scheduleDecodedBuffer(buffer: AudioBuffer, idealStartSec: number, rate: number) {
-		if (this.pitchMode === 'preserve' && Math.abs(rate - 1) > EPSILON_RATE) {
-			return this.scheduleStretchedBuffer(buffer, idealStartSec, rate);
-		}
+	private restartSchedulerFromCurrentClock() {
+		this._currentTime = this.clampTime(this.predictedTimeMs());
+		this.stopScheduledNodes();
+		this.wsolaScheduledUntilSec = this.ctx.currentTime;
 
-		return this.scheduleBuffer(buffer, idealStartSec, rate);
+		const token = ++this.schedulerToken;
+		void this.runAudioIterator(token);
+	}
+
+	private scheduleDecodedBuffer(buffer: AudioBuffer, idealStartSec: number, rate: number) {
+		return this.pitchMode === 'preserve' && Math.abs(rate - 1) > EPSILON_RATE
+			? this.scheduleStretchedBuffer(buffer, idealStartSec, rate)
+			: this.scheduleBuffer(buffer, idealStartSec, rate);
 	}
 
 	private scheduleStretchedBuffer(buffer: AudioBuffer, idealStartSec: number, rate: number) {
@@ -446,15 +429,15 @@ export default class Audio extends ScopedClass {
 
 		this.stretcher.factor = 1 / rate;
 
-		const outputChannels = this.stretcher.appendAudioBuffer(buffer);
-		const stretched = outputChannels?.[0]?.length
-			? this.createAudioBufferFromChannels(outputChannels, buffer.sampleRate)
+		const channels = this.stretcher.appendAudioBuffer(buffer);
+		const stretched = channels?.[0]?.length
+			? this.createAudioBufferFromChannels(channels, buffer.sampleRate)
 			: null;
 
 		if (!stretched) return 0;
 
 		const startAt = Math.max(idealStartSec, this.wsolaScheduledUntilSec);
-		const stopAt = this.scheduleBuffer(stretched, startAt, 1);
+		const stopAt = this.scheduleBuffer(stretched, startAt);
 
 		if (stopAt > 0) this.wsolaScheduledUntilSec = stopAt;
 		return stopAt;
@@ -462,53 +445,43 @@ export default class Audio extends ScopedClass {
 
 	private scheduleBuffer(buffer: AudioBuffer, idealStartSec: number, playbackRate = 1) {
 		const now = this.ctx.currentTime;
-		let startAt = idealStartSec;
-		let offsetSec = 0;
+		const lateBySec = Math.max(0, now - idealStartSec);
+		const offsetSec = lateBySec * playbackRate;
 
-		if (startAt < now) {
-			const lateBySec = now - startAt;
-			offsetSec = lateBySec * playbackRate;
-
-			if (offsetSec >= buffer.duration) return 0;
-			if (lateBySec > 0.08) {
-				console.warn(`Audio scheduler late by ${(lateBySec * 1000).toFixed(1)}ms`);
-			}
-
-			startAt = now;
+		if (offsetSec >= buffer.duration) return 0;
+		if (lateBySec > 0.08) {
+			console.warn(`Audio scheduler late by ${(lateBySec * 1000).toFixed(1)}ms`);
 		}
 
+		const startAt = Math.max(idealStartSec, now);
 		const sourceDurationSec = buffer.duration - offsetSec;
-		const outputDurationSec = sourceDurationSec / playbackRate;
-		const stopAt = startAt + outputDurationSec;
+		const stopAt = startAt + sourceDurationSec / playbackRate;
 		const node = this.ctx.createBufferSource();
 
 		node.buffer = buffer;
 		node.playbackRate.value = playbackRate;
 		node.connect(this.localGainNode);
+		node.onended = () => {
+			node.disconnect();
+			this.scheduledNodes.delete(node);
+		};
 		node.start(startAt, offsetSec, sourceDurationSec);
-		node.onended = () => node.disconnect();
 
-		this.scheduledNodes.push({ node, stopAtContextSec: stopAt });
-
+		this.scheduledNodes.add(node);
 		return stopAt;
-	}
-
-	private get scheduleAheadSec() {
-		return document.hidden ? 20 : 0.08;
-	}
-
-	private get schedulerSleepMs() {
-		return document.hidden ? 250 : 8;
 	}
 
 	private async waitForScheduleBudget(token: number, scheduledUntilSec: number) {
 		while (
-			token === this.schedulerToken &&
-			this.state === 'PLAYING' &&
-			scheduledUntilSec - this.ctx.currentTime > this.scheduleAheadSec
-			) {
-			await sleep(this.schedulerSleepMs);
+			this.isSchedulerActive(token) &&
+			scheduledUntilSec - this.ctx.currentTime > (document.hidden ? 20 : 0.08)
+		) {
+			await sleep(document.hidden ? 250 : 8);
 		}
+	}
+
+	private isSchedulerActive(token: number) {
+		return token === this.schedulerToken && this.state === 'PLAYING';
 	}
 
 	private async stopIterator(incrementToken = true) {
@@ -521,7 +494,9 @@ export default class Audio extends ScopedClass {
 	}
 
 	private stopScheduledNodes() {
-		for (const { node } of this.scheduledNodes) {
+		for (const node of this.scheduledNodes) {
+			node.onended = null;
+
 			try {
 				node.stop();
 			} catch {
@@ -531,25 +506,7 @@ export default class Audio extends ScopedClass {
 			node.disconnect();
 		}
 
-		this.scheduledNodes.length = 0;
-	}
-
-	private pruneFinishedNodes() {
-		const now = this.ctx.currentTime;
-		let write = 0;
-
-		for (let i = 0; i < this.scheduledNodes.length; i++) {
-			const item = this.scheduledNodes[i];
-
-			if (item.stopAtContextSec <= now) {
-				item.node.disconnect();
-				continue;
-			}
-
-			this.scheduledNodes[write++] = item;
-		}
-
-		this.scheduledNodes.length = write;
+		this.scheduledNodes.clear();
 	}
 
 	private createAudioBufferFromChannels(channels: Float32Array[], sampleRate: number) {
@@ -575,7 +532,7 @@ export default class Audio extends ScopedClass {
 		});
 
 		navigator.mediaSession.setActionHandler('play', () => {
-			if (this.state !== 'PLAYING') void this.play();
+			if (this.state !== 'PLAYING' && this.init) void this.play().catch(() => undefined);
 		});
 
 		navigator.mediaSession.setActionHandler('pause', () => {
@@ -592,29 +549,22 @@ export default class Audio extends ScopedClass {
 		});
 
 		navigator.mediaSession.setActionHandler('seekto', (details) => {
-			if (typeof details.seekTime !== 'number') return;
-
-			const targetMs = this.clampTime(details.seekTime * 1000);
-			this.beatmapSet.seek(targetMs);
-			this.updateMediaSessionState();
+			if (typeof details.seekTime === 'number') this.seekFromMediaSession(details.seekTime * 1000);
 		});
 
 		navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-			const offsetSec = details.seekOffset ?? 10;
-			const targetMs = this.clampTime(this.mediaSessionTimeMs() - offsetSec * 1000);
-
-			this.beatmapSet.seek(targetMs);
-			this.updateMediaSessionState();
+			this.seekFromMediaSession(this.mediaSessionTimeMs() - (details.seekOffset ?? 10) * 1000);
 		});
 
 		navigator.mediaSession.setActionHandler('seekforward', (details) => {
-			const offsetSec = details.seekOffset ?? 10;
-			const targetMs = this.clampTime(this.mediaSessionTimeMs() + offsetSec * 1000);
-
-			this.beatmapSet.seek(targetMs);
-			this.updateMediaSessionState();
+			this.seekFromMediaSession(this.mediaSessionTimeMs() + (details.seekOffset ?? 10) * 1000);
 		});
 
+		this.updateMediaSessionState();
+	}
+
+	private seekFromMediaSession(timeMs: number) {
+		this.beatmapSet.seek(this.clampTime(timeMs));
 		this.updateMediaSessionState();
 	}
 
@@ -632,8 +582,11 @@ export default class Audio extends ScopedClass {
 	}
 
 	private mediaSessionPlaybackState(): MediaSessionPlaybackState {
-		if (!this.init || !this.audioTrack || !this.sink) return 'none';
-		return this.state === 'PLAYING' ? 'playing' : 'paused';
+		return this.init && this.audioTrack && this.sink
+			? this.state === 'PLAYING'
+				? 'playing'
+				: 'paused'
+			: 'none';
 	}
 
 	private updateMediaSessionPosition() {
@@ -648,7 +601,7 @@ export default class Audio extends ScopedClass {
 				position: this.mediaSessionTimeMs() / 1000,
 			});
 		} catch {
-			// Safari/Chrome may reject invalid/edge position states during load/teardown
+			// Safari/Chrome may reject invalid/edge position states during load/teardown.
 		}
 	}
 
@@ -659,9 +612,7 @@ export default class Audio extends ScopedClass {
 	}
 
 	private startMediaSessionPositionTimer() {
-		if (this.mediaSessionPositionTimer !== undefined) return;
-
-		this.mediaSessionPositionTimer = setInterval(() => {
+		this.mediaSessionPositionTimer ??= setInterval(() => {
 			this.updateMediaSessionPosition();
 		}, 1000);
 	}
@@ -686,12 +637,9 @@ export default class Audio extends ScopedClass {
 			// Some browsers do not like clearing position state.
 		}
 
-		navigator.mediaSession.setActionHandler('play', null);
-		navigator.mediaSession.setActionHandler('pause', null);
-		navigator.mediaSession.setActionHandler('stop', null);
-		navigator.mediaSession.setActionHandler('seekto', null);
-		navigator.mediaSession.setActionHandler('seekbackward', null);
-		navigator.mediaSession.setActionHandler('seekforward', null);
+		for (const action of ['play', 'pause', 'stop', 'seekto', 'seekbackward', 'seekforward'] as const) {
+			navigator.mediaSession.setActionHandler(action, null);
+		}
 	}
 
 	private disposeInput() {
@@ -711,53 +659,126 @@ export default class Audio extends ScopedClass {
 	}
 }
 
-const MP3_XING_MAGIC = 0x58696E67; // 'Xing'
-const MP3_INFO_MAGIC = 0x496E666F; // 'Info'
-const MP3_DELAY_PADDING_OFFSET_FROM_TAG = 141;
-const MP3_DECODER_DELAY_SAMPLES = 528;
-const DEFAULT_MP3_DELAY_MS = 25;
-
 function sleep(ms: number) {
 	return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-function isMp3Track(blob: Blob, audioTrack: InputAudioTrack) {
-	const codecStr = (
-		(audioTrack as any).codec ||
-		(audioTrack as any).format ||
-		blob.type
-	).toLowerCase();
-
-	return codecStr.includes('mp3') || codecStr.includes('mpeg');
-}
+const MP3_XING_MAGIC = 0x58696e67; // 'Xing'
+const MP3_INFO_MAGIC = 0x496e666f; // 'Info'
+const MP3_DELAY_OFFSET_FROM_XING = 0x8d;
+const MP3_DECODER_DELAY_SAMPLES = 528;
+const DEFAULT_MP3_DELAY_MS = 25;
+const MP3_PROBE_BYTES = 256 * 1024;
 
 async function getEncoderDelayMs(blob: Blob, audioTrack: InputAudioTrack) {
-	if (!isMp3Track(blob, audioTrack)) return 0;
+	const view = new DataView(await blob.slice(0, MP3_PROBE_BYTES).arrayBuffer());
+	const xingOffset = findXingOffset(view);
+	const isMp3 = hasMp3CodecHint(blob, audioTrack) || xingOffset >= 0 || findMp3FrameOffset(view) >= 0;
 
-	const buffer = await blob.slice(0, 8192).arrayBuffer();
-	const view = new DataView(buffer);
-	const searchLimit = Math.min(2000, view.byteLength - 4);
+	if (!isMp3) return 0;
+	if (xingOffset < 0) return defaultMp3DelayMs(audioTrack, 'no Xing/Info tag');
 
-	let tagOffset = -1;
-	for (let i = 0; i < searchLimit; i++) {
-		const magic = view.getUint32(i, false);
-		if (magic === MP3_XING_MAGIC || magic === MP3_INFO_MAGIC) {
-			tagOffset = i;
-			break;
-		}
-	}
+	const encoderDelaySamples = readLameEncoderDelaySamples(view, xingOffset);
+	if (encoderDelaySamples < 0) return defaultMp3DelayMs(audioTrack, 'no LAME delay field');
 
-	if (tagOffset < 0) return DEFAULT_MP3_DELAY_MS;
-
-	const delayPaddingOffset = tagOffset + MP3_DELAY_PADDING_OFFSET_FROM_TAG;
-	if (delayPaddingOffset + 1 >= view.byteLength) return DEFAULT_MP3_DELAY_MS;
-
-	const byte0 = view.getUint8(delayPaddingOffset);
-	const byte1 = view.getUint8(delayPaddingOffset + 1);
-	const encoderDelaySamples = (byte0 << 4) | (byte1 >> 4);
 	const sampleRate = audioTrack.sampleRate || 44100;
 	const delay = ((encoderDelaySamples + MP3_DECODER_DELAY_SAMPLES) / sampleRate) * 1000;
 
 	console.log(`MP3 encoder delay: ${encoderDelaySamples} samples @ ${sampleRate}Hz = ${delay.toFixed(2)}ms`);
 	return delay;
+}
+
+function hasMp3CodecHint(blob: Blob, audioTrack: InputAudioTrack) {
+	const codec = (audioTrack.codec || blob.type).toLowerCase();
+	return codec.includes('mp3') || codec.includes('mpeg');
+}
+
+function findXingOffset(view: DataView) {
+	const frameOffset = findMp3FrameOffset(view);
+	const expectedOffset = frameOffset < 0 ? -1 : getExpectedXingOffset(view, frameOffset);
+
+	if (isXingMagicAt(view, expectedOffset)) return expectedOffset;
+
+	const start = Math.max(0, skipId3v2(view));
+	const end = view.byteLength - MP3_DELAY_OFFSET_FROM_XING - 3;
+
+	for (let i = start; i <= end; i++) {
+		if (isXingMagicAt(view, i)) return i;
+	}
+
+	return -1;
+}
+
+function findMp3FrameOffset(view: DataView) {
+	const start = Math.max(0, skipId3v2(view));
+	const end = view.byteLength - 4;
+
+	for (let i = start; i <= end; i++) {
+		if (isMp3FrameHeader(view.getUint32(i, false))) return i;
+	}
+
+	return -1;
+}
+
+function isMp3FrameHeader(header: number) {
+	const version = (header >>> 19) & 3;
+	const layer = (header >>> 17) & 3;
+	const bitrate = (header >>> 12) & 0xf;
+	const sampleRate = (header >>> 10) & 3;
+
+	return (header & 0xffe00000) === 0xffe00000 &&
+		version !== 1 &&
+		layer === 1 &&
+		bitrate !== 0 &&
+		bitrate !== 0xf &&
+		sampleRate !== 3;
+}
+
+function getExpectedXingOffset(view: DataView, frameOffset: number) {
+	if (frameOffset + 4 > view.byteLength) return -1;
+
+	const header = view.getUint32(frameOffset, false);
+	const version = (header >>> 19) & 3;
+	const channelMode = (header >>> 6) & 3;
+	const sideInfoBytes = version === 3
+		? channelMode === 3 ? 17 : 32
+		: channelMode === 3 ? 9 : 17;
+
+	return frameOffset + 4 + sideInfoBytes;
+}
+
+function isXingMagicAt(view: DataView, offset: number) {
+	if (offset < 0 || offset + 4 > view.byteLength) return false;
+
+	const magic = view.getUint32(offset, false);
+	return magic === MP3_XING_MAGIC || magic === MP3_INFO_MAGIC;
+}
+
+function skipId3v2(view: DataView) {
+	if (view.byteLength < 10) return 0;
+	if (view.getUint8(0) !== 0x49 || view.getUint8(1) !== 0x44 || view.getUint8(2) !== 0x33) return 0;
+
+	const size =
+		(view.getUint8(6) << 21) |
+		(view.getUint8(7) << 14) |
+		(view.getUint8(8) << 7) |
+		view.getUint8(9);
+
+	return 10 + size + ((view.getUint8(5) & 0x10) ? 10 : 0);
+}
+
+function readLameEncoderDelaySamples(view: DataView, xingOffset: number) {
+	const offset = xingOffset + MP3_DELAY_OFFSET_FROM_XING;
+	if (offset + 3 > view.byteLength) return -1;
+
+	const raw = (view.getUint8(offset) << 16) | (view.getUint8(offset + 1) << 8) | view.getUint8(offset + 2);
+	const encoderDelaySamples = raw >>> 12;
+	const encoderPaddingSamples = raw & 0xfff;
+
+	return encoderDelaySamples || encoderPaddingSamples ? encoderDelaySamples : -1;
+}
+
+function defaultMp3DelayMs(audioTrack: InputAudioTrack, reason: string) {
+	console.log(`MP3 encoder delay: using ${DEFAULT_MP3_DELAY_MS}ms fallback (${reason}) @ ${audioTrack.sampleRate || 44100}Hz`);
+	return DEFAULT_MP3_DELAY_MS;
 }
