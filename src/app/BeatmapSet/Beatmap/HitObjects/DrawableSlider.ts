@@ -332,17 +332,31 @@ export default class DrawableSlider
 		this.renderer.setSelectionUniforms(patch);
 	}
 
-	checkCollide(x: number, y: number, time: number) {
+	checkCollide(rect: [Vector2, Vector2], time: number) {
 		const obj = this._object;
+
 		if (time < obj.startTime - obj.timePreempt || time > obj.endTime + 240) {
 			return false;
 		}
 
-		const radiusSq = (64 * obj.scale) ** 2;
+		if (!this.wrapper.visible) return false;
+
+		const radius = 48 * obj.scale;
+		const radiusSq = radius * radius;
+
+		const a = rect[0];
+		const b = rect[1];
+
+		const minX = Math.min(a.x, b.x);
+		const maxX = Math.max(a.x, b.x);
+		const minY = Math.min(a.y, b.y);
+		const maxY = Math.max(a.y, b.y);
+
 		const objX = obj.startX + obj.stackedOffset.x;
 		const objY = obj.startY + obj.stackedOffset.y;
 
 		const pathPts = this.path.points;
+
 		for (let i = 0; i < this.path.length - 1; i++) {
 			const p1 = pathPts[i];
 			const p2 = pathPts[i + 1];
@@ -352,20 +366,9 @@ export default class DrawableSlider
 			const x2 = p2.x + objX;
 			const y2 = p2.y + objY;
 
-			const dx = x2 - x1;
-			const dy = y2 - y1;
-			const l2 = dx * dx + dy * dy;
-
-			if (l2 === 0) continue;
-
-			let t = ((x - x1) * dx + (y - y1) * dy) / l2;
-			t = Math.max(0, Math.min(1, t));
-
-			const closestX = x1 + t * dx;
-			const closestY = y1 + t * dy;
-
-			const distSq = (x - closestX) ** 2 + (y - closestY) ** 2;
-			if (distSq < radiusSq) return true;
+			if (capsuleIntersectsRect(x1, y1, x2, y2, radiusSq, minX, minY, maxX, maxY)) {
+				return true;
+			}
 		}
 
 		return false;
@@ -705,4 +708,104 @@ export default class DrawableSlider
 
 		this._selectionVisualsDirty = false;
 	}
+}
+
+function capsuleIntersectsRect(
+	x1: number,
+	y1: number,
+	x2: number,
+	y2: number,
+	radiusSq: number,
+	minX: number,
+	minY: number,
+	maxX: number,
+	maxY: number
+): boolean {
+	if (
+		pointInRect(x1, y1, minX, minY, maxX, maxY) ||
+		pointInRect(x2, y2, minX, minY, maxX, maxY)
+	) {
+		return true;
+	}
+
+	if (
+		segmentsIntersect(x1, y1, x2, y2, minX, minY, maxX, minY) ||
+		segmentsIntersect(x1, y1, x2, y2, maxX, minY, maxX, maxY) ||
+		segmentsIntersect(x1, y1, x2, y2, maxX, maxY, minX, maxY) ||
+		segmentsIntersect(x1, y1, x2, y2, minX, maxY, minX, minY)
+	) {
+		return true;
+	}
+
+	const d1 = pointSegmentDistSq(minX, minY, x1, y1, x2, y2);
+	const d2 = pointSegmentDistSq(maxX, minY, x1, y1, x2, y2);
+	const d3 = pointSegmentDistSq(maxX, maxY, x1, y1, x2, y2);
+	const d4 = pointSegmentDistSq(minX, maxY, x1, y1, x2, y2);
+
+	return Math.min(d1, d2, d3, d4) < radiusSq;
+}
+
+function pointInRect(
+	x: number,
+	y: number,
+	minX: number,
+	minY: number,
+	maxX: number,
+	maxY: number
+): boolean {
+	return x >= minX && x <= maxX && y >= minY && y <= maxY;
+}
+
+function pointSegmentDistSq(
+	px: number,
+	py: number,
+	x1: number,
+	y1: number,
+	x2: number,
+	y2: number
+): number {
+	const dx = x2 - x1;
+	const dy = y2 - y1;
+	const l2 = dx * dx + dy * dy;
+
+	if (l2 === 0) {
+		const ox = px - x1;
+		const oy = py - y1;
+		return ox * ox + oy * oy;
+	}
+
+	const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
+	const x = x1 + t * dx;
+	const y = y1 + t * dy;
+	const ox = px - x;
+	const oy = py - y;
+
+	return ox * ox + oy * oy;
+}
+
+function segmentsIntersect(
+	ax: number,
+	ay: number,
+	bx: number,
+	by: number,
+	cx: number,
+	cy: number,
+	dx: number,
+	dy: number
+): boolean {
+	const abx = bx - ax;
+	const aby = by - ay;
+	const cdx = dx - cx;
+	const cdy = dy - cy;
+
+	const denom = abx * cdy - aby * cdx;
+	if (denom === 0) return false;
+
+	const acx = cx - ax;
+	const acy = cy - ay;
+
+	const t = (acx * cdy - acy * cdx) / denom;
+	const u = (acx * aby - acy * abx) / denom;
+
+	return t >= 0 && t <= 1 && u >= 0 && u <= 1;
 }

@@ -3,6 +3,7 @@ import { Vibrant } from 'node-vibrant/browser';
 import { Color, type ColorSource } from 'pixi.js';
 import ColorConfig, { ColorPalette } from './Config/ColorConfig.ts';
 import { inject } from './Context.ts';
+import type { InputAudioTrack } from 'mediabunny';
 
 export function lighten(
 	color: ColorSource,
@@ -177,3 +178,131 @@ export const difficultyRange = (
 	if (val < 5) return mid - ((mid - min) * (5 - val)) / 5;
 	return mid;
 };
+
+export function sleep(ms: number): Promise<void> {
+	return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+const MP3_XING_MAGIC = 0x58696e67;
+const MP3_INFO_MAGIC = 0x496e666f;
+const MP3_DELAY_OFFSET_FROM_XING = 0x8d;
+const MP3_DECODER_DELAY_SAMPLES = 528;
+const DEFAULT_MP3_DELAY_MS = 25;
+const MP3_PROBE_BYTES = 256 * 1024;
+
+export async function getEncoderDelayMs(blob: Blob, audioTrack: InputAudioTrack): Promise<number> {
+	const view = new DataView(await blob.slice(0, MP3_PROBE_BYTES).arrayBuffer());
+	const xingOffset = findXingOffset(view);
+	const isMp3 = hasMp3CodecHint(blob, audioTrack) || xingOffset >= 0 || findMp3FrameOffset(view) >= 0;
+
+	if (!isMp3) return 0;
+	if (xingOffset < 0) return defaultMp3DelayMs(audioTrack, 'no Xing/Info tag');
+
+	const encoderDelaySamples = readLameEncoderDelaySamples(view, xingOffset);
+	if (encoderDelaySamples < 0) return defaultMp3DelayMs(audioTrack, 'no LAME delay field');
+
+	const sampleRate = audioTrack.sampleRate || 44100;
+	const delay = ((encoderDelaySamples + MP3_DECODER_DELAY_SAMPLES) / sampleRate) * 1000;
+
+	console.log(`MP3 encoder delay: ${encoderDelaySamples} samples @ ${sampleRate}Hz = ${delay.toFixed(2)}ms`);
+	return delay;
+}
+
+function hasMp3CodecHint(blob: Blob, audioTrack: InputAudioTrack): boolean {
+	const codec = (audioTrack.codec || blob.type).toLowerCase();
+	return codec.includes('mp3') || codec.includes('mpeg');
+}
+
+function findXingOffset(view: DataView): number {
+	const frameOffset = findMp3FrameOffset(view);
+	const expectedOffset = frameOffset < 0 ? -1 : getExpectedXingOffset(view, frameOffset);
+
+	if (isXingMagicAt(view, expectedOffset)) return expectedOffset;
+
+	const start = Math.max(0, skipId3v2(view));
+	const end = view.byteLength - MP3_DELAY_OFFSET_FROM_XING - 3;
+
+	for (let i = start; i <= end; i++) {
+		if (isXingMagicAt(view, i)) return i;
+	}
+
+	return -1;
+}
+
+function findMp3FrameOffset(view: DataView): number {
+	const start = Math.max(0, skipId3v2(view));
+	const end = view.byteLength - 4;
+
+	for (let i = start; i <= end; i++) {
+		if (isMp3FrameHeader(view.getUint32(i, false))) return i;
+	}
+
+	return -1;
+}
+
+function isMp3FrameHeader(header: number): boolean {
+	const version = (header >>> 19) & 3;
+	const layer = (header >>> 17) & 3;
+	const bitrate = (header >>> 12) & 0xf;
+	const sampleRate = (header >>> 10) & 3;
+
+	return (header & 0xffe00000) === 0xffe00000 &&
+		version !== 1 &&
+		layer === 1 &&
+		bitrate !== 0 &&
+		bitrate !== 0xf &&
+		sampleRate !== 3;
+}
+
+function getExpectedXingOffset(view: DataView, frameOffset: number): number {
+	if (frameOffset + 4 > view.byteLength) return -1;
+
+	const header = view.getUint32(frameOffset, false);
+	const version = (header >>> 19) & 3;
+	const channelMode = (header >>> 6) & 3;
+	const sideInfoBytes = version === 3
+		? channelMode === 3 ? 17 : 32
+		: channelMode === 3 ? 9 : 17;
+
+	return frameOffset + 4 + sideInfoBytes;
+}
+
+function isXingMagicAt(view: DataView, offset: number): boolean {
+	if (offset < 0 || offset + 4 > view.byteLength) return false;
+
+	const magic = view.getUint32(offset, false);
+	return magic === MP3_XING_MAGIC || magic === MP3_INFO_MAGIC;
+}
+
+function skipId3v2(view: DataView): number {
+	if (view.byteLength < 10) return 0;
+	if (view.getUint8(0) !== 0x49 || view.getUint8(1) !== 0x44 || view.getUint8(2) !== 0x33) return 0;
+
+	const size =
+		(view.getUint8(6) << 21) |
+		(view.getUint8(7) << 14) |
+		(view.getUint8(8) << 7) |
+		view.getUint8(9);
+
+	return 10 + size + ((view.getUint8(5) & 0x10) ? 10 : 0);
+}
+
+function readLameEncoderDelaySamples(view: DataView, xingOffset: number): number {
+	const offset = xingOffset + MP3_DELAY_OFFSET_FROM_XING;
+	if (offset + 3 > view.byteLength) return -1;
+
+	const raw =
+		(view.getUint8(offset) << 16) |
+		(view.getUint8(offset + 1) << 8) |
+		view.getUint8(offset + 2);
+
+	const encoderDelaySamples = raw >>> 12;
+	const encoderPaddingSamples = raw & 0xfff;
+
+	return encoderDelaySamples || encoderPaddingSamples ? encoderDelaySamples : -1;
+}
+
+function defaultMp3DelayMs(audioTrack: InputAudioTrack, reason: string): number {
+	console.log(`MP3 encoder delay: using ${DEFAULT_MP3_DELAY_MS}ms fallback (${reason}) @ ${audioTrack.sampleRate || 44100}Hz`);
+	return DEFAULT_MP3_DELAY_MS;
+}

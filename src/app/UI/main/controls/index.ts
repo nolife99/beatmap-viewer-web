@@ -12,7 +12,7 @@ import ProgressBar from './ProgressBar.ts';
 import Timestamp from './Timestamp.ts';
 
 export default class Controls {
-	container = new ZContainer({
+	container: ZContainer = new ZContainer({
 		label: 'controls',
 		layout: {
 			width: '100%',

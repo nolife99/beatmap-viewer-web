@@ -1,7 +1,7 @@
 ﻿import pool from '@stdlib/array-pool';
 
 /**
- * Utility class for performing time stretching on a multi-channel audio signal. The input audio will be stretched by
+ * Utility class for performing time stretching on a multichannel audio signal. The input audio will be stretched by
  * a configurable factor without changing its pitch.
  *
  * Internally, this uses a WSOLA-like algorithm.
@@ -80,26 +80,6 @@ export class TimeStretcher {
 			}
 
 			this.buffers[i].set(newBuffer, this.bufferEndIndex);
-		}
-
-		this.bufferEndIndex += frameCount;
-		return this.process();
-	}
-
-	appendAudioBuffer(buffer: AudioBuffer): Float32Array[] | null {
-		this.assertWritable();
-
-		if (buffer.numberOfChannels !== this.numberOfChannels) {
-			throw new Error(`Expected ${this.numberOfChannels} channels, got ${buffer.numberOfChannels}.`);
-		}
-
-		const frameCount = buffer.length;
-		if (frameCount <= 0) return null;
-
-		this.ensureInputBufferLength(this.bufferEndIndex + frameCount);
-
-		for (let i = 0; i < this.numberOfChannels; i++) {
-			this.buffers[i].set(buffer.getChannelData(i), this.bufferEndIndex);
 		}
 
 		this.bufferEndIndex += frameCount;

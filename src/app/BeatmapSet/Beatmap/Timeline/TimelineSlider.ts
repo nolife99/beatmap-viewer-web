@@ -223,7 +223,7 @@ export default class TimelineSlider extends TimelineHitObject {
 
 		this.select.visible =
 			(this.skinManager?.getCurrentSkin().config.General.Argon ?? false) &&
-			this.isSelected;
+			this._isSelected;
 
 		if (this.skinManager?.getCurrentSkin().config.General.Argon) {
 			this.body

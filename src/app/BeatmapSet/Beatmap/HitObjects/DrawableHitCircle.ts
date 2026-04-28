@@ -154,24 +154,37 @@ export default class DrawableHitCircle
 		this.judgement.evaluation = value;
 	}
 
-	checkCollide(x: number, y: number, time: number) {
+	checkCollide(rect: [Vector2, Vector2], time: number) {
 		if (
 			!(
 				this.object.startTime - this.object.timePreempt < time &&
 				time < this.object.startTime + 240
 			)
-		)
+		) {
 			return false;
+		}
+
+		if (!this.wrapper.visible) return false;
 
 		const radius = 64 * this.object.scale * (256 / 236);
-		const objectPosition = new Vector2(
-			this.object.startX + this.object.stackedOffset.x,
-			this.object.startY + this.object.stackedOffset.y
-		);
-		const pointer = new Vector2(x, y);
+		const cx = this.object.startX + this.object.stackedOffset.x;
+		const cy = this.object.startY + this.object.stackedOffset.y;
 
-		const dist = pointer.distance(objectPosition);
-		return dist < radius && this.wrapper.visible;
+		const a = rect[0];
+		const b = rect[1];
+
+		const minX = Math.min(a.x, b.x);
+		const maxX = Math.max(a.x, b.x);
+		const minY = Math.min(a.y, b.y);
+		const maxY = Math.max(a.y, b.y);
+
+		const closestX = Math.max(minX, Math.min(cx, maxX));
+		const closestY = Math.max(minY, Math.min(cy, maxY));
+
+		const dx = cx - closestX;
+		const dy = cy - closestY;
+
+		return dx * dx + dy * dy < radius * radius;
 	}
 
 	override hook(context: Context) {

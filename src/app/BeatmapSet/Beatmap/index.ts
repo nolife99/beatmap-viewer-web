@@ -1,7 +1,7 @@
 import extraMode from '../../../assets/extra-mode.svg?raw';
 import { sort } from 'fast-sort';
 import crypto from 'node:crypto';
-import { ControlPoint, ControlPointType } from 'osu-classes';
+import { ControlPoint, ControlPointType, Vector2 } from 'osu-classes';
 import { BeatmapDecoder } from 'osu-parsers';
 import {
 	Circle,
@@ -53,7 +53,7 @@ export default class Beatmap extends ScopedClass {
 	randomColor: ColorSource = new Color(Math.floor(Math.random() * 0xffffff))
 		.toHex();
 
-	worker: Worker = new ObjectsWorker();
+	worker: Worker = new ObjectsWorker;
 	previousObjects = new Set<number>();
 	previousTime = 0;
 	container: Gameplay;
@@ -274,14 +274,16 @@ export default class Beatmap extends ScopedClass {
 			})
 		});
 
+		this.postAudioClockToWorker();
+
 		// biome-ignore lint/suspicious/noExplicitAny: Can't specify event type
 		this.worker.addEventListener(
 			'message',
 			this.workerUpdate = (event) => {
 				switch (event.data.type) {
 					case 'update': {
-						const { objects, connectors, currentTime, previousTime } =
-							event.data;
+
+						const { objects, connectors, hitSounds, currentTime, previousTime } = event.data;
 
 						const currentInBreak = this.data.events.breaks.some(
 							({ startTime, endTime }) =>
@@ -308,7 +310,8 @@ export default class Beatmap extends ScopedClass {
 						}
 
 						this.previousTime = previousTime;
-						this.update(currentTime, objects, connectors);
+						this.update(currentTime, objects, connectors, hitSounds);
+
 						break;
 					}
 				}
@@ -335,6 +338,8 @@ export default class Beatmap extends ScopedClass {
 	}
 
 	frame(time: number) {
+		this.updateSelectorAndDragSelection();
+
 		const containers = [];
 		const approachCircleContainers = [];
 		const connectorContainers = [];
@@ -377,15 +382,45 @@ export default class Beatmap extends ScopedClass {
 			this.objects[idx].update(time);
 		}
 
-		const dragWindowVector = this.container.dragWindow[1].subtract(
-			this.container.dragWindow[0]
-		);
-		const pos = this.container.wrapper.toLocal(this.container.dragWindow[0]);
-
-		this.container.selector.scale.set(dragWindowVector.x, dragWindowVector.y);
-		this.container.selector.position.set(pos.x, pos.y);
-
 		this.replay?.frame(time);
+	}
+
+	private updateSelectorAndDragSelection() {
+		const [globalA, globalB] = this.container.dragWindow;
+
+		if (globalA.distance(globalB) <= 0) {
+			this.container.selector.scale.set(0, 0);
+			return;
+		}
+
+		const localA = this.container.wrapper.toLocal(globalA);
+		const localB = this.container.wrapper.toLocal(globalB);
+
+		const x = Math.min(localA.x, localB.x);
+		const y = Math.min(localA.y, localB.y);
+		const w = Math.abs(localB.x - localA.x);
+		const h = Math.abs(localB.y - localA.y);
+
+		this.container.selector.position.set(x, y);
+		this.container.selector.scale.set(w, h);
+
+		const rect: [Vector2, Vector2] = [
+			this.container.objectsContainer.toLocal(this.container.dragWindow[0]),
+			this.container.objectsContainer.toLocal(this.container.dragWindow[1])
+		];
+
+		for (const idx of this.previousObjects) {
+			const obj = this.objects[idx];
+
+			if (
+				(obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) &&
+				obj.checkCollide(rect, obj.object.startTime)
+			) {
+				this.container.addSelected(idx);
+			} else {
+				this.container.removeSelected(idx);
+			}
+		}
 	}
 
 	getNearestSamplePoint(time: number) {
@@ -408,23 +443,13 @@ export default class Beatmap extends ScopedClass {
 		return samplePoint;
 	}
 
-	update(time: number, objects: Set<number>, connectors: Set<number>) {
+	update(
+		time: number,
+		objects: Set<number>,
+		connectors: Set<number>,
+		hitSounds: Set<number> = objects
+	) {
 		if (!this.loaded) return;
-
-		if (
-			this.container.dragWindow[0].distance(this.container.dragWindow[1]) > 0
-		) {
-			for (const idx of objects) {
-				const obj = this.objects[idx];
-				const isInBound = this.container.checkInBound(obj.object.startPosition);
-
-				if (isInBound) {
-					this.container.addSelected(idx);
-				} else {
-					this.container.removeSelected(idx);
-				}
-			}
-		}
 
 		const objectsWithSelected = objects.union(this.container.selected);
 		const objectContainer = this.container.objectsContainer;
@@ -451,9 +476,24 @@ export default class Beatmap extends ScopedClass {
 			objectContainer?.removeChild(this.connectors[idx].container);
 		}
 
-		for (const idx of objects) {
-			this.objects[idx].playHitSound(time);
+		for (const idx of hitSounds) {
+			this.objects[idx]?.playHitSound(time);
 		}
+	}
+
+	private postAudioClockToWorker(): void {
+		const audio = this.context.consume<Audio>('audio');
+		if (!audio) return;
+
+		this.worker.postMessage({
+			type: 'clock',
+			sabClock: audio.encodedClock
+		});
+	}
+
+	onPlaybackRateChange(rate: number, time: number) {
+		this.worker.postMessage({ type: 'playbackRate', playbackRate: rate });
+		this.worker.postMessage({ type: 'seek', time });
 	}
 
 	toggle() {
@@ -463,13 +503,9 @@ export default class Beatmap extends ScopedClass {
 			);
 		}
 
-		const audio = this.context.consume<Audio>('audio');
+		this.postAudioClockToWorker();
 
-		this.worker.postMessage({
-			type: 'playbackRate',
-			playbackRate:
-				this.context.consume<BeatmapSet>('beatmapset')?.playbackRate ?? 1
-		});
+		const audio = this.context.consume<Audio>('audio');
 
 		if (audio?.state === 'PLAYING') {
 			this.worker.postMessage({ type: 'start' });
@@ -487,6 +523,7 @@ export default class Beatmap extends ScopedClass {
 			);
 		}
 
+		this.postAudioClockToWorker();
 		this.worker.postMessage({ type: 'seek', time });
 	}
 

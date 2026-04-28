@@ -1,15 +1,10 @@
 import pool from '@stdlib/array-pool';
 import { Texture } from 'pixi.js';
 import FFT, { applyFilterBank, createFilterBankForScale, setupColorMap } from 'wavesurfer.js/dist/fft.js';
-import type { AudioBufferSink } from 'mediabunny';
-
-type WrappedBufferLike = {
-	buffer: AudioBuffer;
-	timestamp: number;
-};
+import type { AudioSample, AudioSampleSink } from 'mediabunny';
 
 type SpectrogramProcessorOptions = {
-	sink: AudioBufferSink;
+	sink: AudioSampleSink;
 	durationSec: number;
 	sampleRate: number;
 	channels: number;
@@ -32,7 +27,7 @@ const DEFAULT_FFT_SAMPLES = 512;
 const DEFAULT_FLUSH_COLUMNS = 4;
 
 export default class SpectrogramProcessor {
-	private readonly sink: AudioBufferSink;
+	private readonly sink: AudioSampleSink;
 	private readonly durationSec: number;
 	private readonly sampleRate: number;
 	private readonly channelCount: number;
@@ -122,11 +117,10 @@ export default class SpectrogramProcessor {
 		);
 
 		this.smoothingBins = this.fftSamples / 2;
-		this.columnAccum = pool.malloc(this.width * this.smoothingBins, 'float32') as Float32Array;
-		this.columnCounts = pool.malloc(this.width, 'uint16') as Uint16Array;
-
-		this.windowBuffer = pool.malloc(this.fftSamples, 'float32') as Float32Array;
-		this.carryBuffer = pool.malloc(this.fftSamples * 2, 'float32') as Float32Array;
+		this.columnAccum = pool(this.width * this.smoothingBins, 'float32') as Float32Array;
+		this.columnCounts = pool(this.width, 'uint16') as Uint16Array;
+		this.windowBuffer = pool(this.fftSamples, 'float32') as Float32Array;
+		this.carryBuffer = pool(this.fftSamples * 2, 'float32') as Float32Array;
 
 		const parent =
 			typeof options.container === 'string'
@@ -137,10 +131,7 @@ export default class SpectrogramProcessor {
 	}
 
 	getTexture() {
-		if (!this.texture) {
-			this.texture = Texture.from(this.canvas);
-		}
-
+		if (!this.texture) this.texture = Texture.from(this.canvas);
 		return this.texture;
 	}
 
@@ -152,17 +143,20 @@ export default class SpectrogramProcessor {
 		const hopSize = this.computeHopSize();
 		let absoluteSample = 0;
 
-		for await (const wrapped of this.sink.buffers(0) as AsyncGenerator<WrappedBufferLike>) {
-			if (this.destroyed || token !== this.renderToken) break;
+		for await (const sample of this.sink.samples(0)) {
+			if (this.destroyed || token !== this.renderToken) {
+				sample.close();
+				break;
+			}
 
-			const buffer = wrapped.buffer;
-			const mono = this.mixToMono(buffer);
+			const mono = this.mixSampleToMono(sample);
 
 			try {
 				absoluteSample = this.consumeMonoChunk(mono, absoluteSample, hopSize);
 				this.flushIfNeeded();
 			} finally {
 				pool.free(mono);
+				sample.close();
 			}
 
 			if (this.writeColumn >= this.width) break;
@@ -175,9 +169,6 @@ export default class SpectrogramProcessor {
 	destroy() {
 		this.destroyed = true;
 		this.renderToken++;
-
-		this.texture?.destroy(true);
-		this.texture = undefined;
 
 		pool.free(this.columnAccum);
 		pool.free(this.columnCounts);
@@ -198,7 +189,6 @@ export default class SpectrogramProcessor {
 		this.fillImageDataBlack();
 		this.ctx.clearRect(0, 0, this.width, this.height);
 		this.drawFullFrameWithProgress();
-
 		this.updateTexture();
 	}
 
@@ -206,19 +196,35 @@ export default class SpectrogramProcessor {
 		return Math.max(64, this.fftSamples >> 2);
 	}
 
-	private mixToMono(buffer: AudioBuffer): Float32Array {
-		const length = buffer.length;
-		const mono = pool.malloc(length, 'float32') as Float32Array;
-		mono.fill(0);
+	private mixSampleToMono(sample: AudioSample): Float32Array {
+		const frameCount = sample.numberOfFrames;
+		const sourceChannels = sample.numberOfChannels;
+		const usedChannels = Math.max(1, Math.min(this.channelCount, sourceChannels));
 
-		const channels = Math.min(this.channelCount, buffer.numberOfChannels);
+		const mono = pool(Math.max(1, frameCount), 'float32') as Float32Array;
+		mono.fill(0, 0, frameCount);
 
-		for (let ch = 0; ch < channels; ch++) {
-			const src = buffer.getChannelData(ch);
-			const gain = 1 / channels;
+		const gain = 1 / usedChannels;
 
-			for (let i = 0; i < length; i++) {
-				mono[i] += src[i] * gain;
+		for (let ch = 0; ch < usedChannels; ch++) {
+			const bytes = sample.allocationSize({
+				format: 'f32-planar',
+				planeIndex: ch
+			});
+
+			const tmp = pool(Math.max(1, bytes >> 2), 'float32') as Float32Array;
+
+			try {
+				sample.copyTo(tmp, {
+					format: 'f32-planar',
+					planeIndex: ch
+				});
+
+				for (let i = 0; i < frameCount; i++) {
+					mono[i] += tmp[i] * gain;
+				}
+			} finally {
+				pool.free(tmp);
 			}
 		}
 
@@ -326,6 +332,7 @@ export default class SpectrogramProcessor {
 			data[pixel + 3] = color[3] * 255;
 		}
 	}
+
 	private flushIfNeeded() {
 		if (this.writeColumn - this.lastFlushedColumn >= DEFAULT_FLUSH_COLUMNS) {
 			this.flush(false);
@@ -340,9 +347,7 @@ export default class SpectrogramProcessor {
 
 		for (let x = start; x < end; x++) {
 			const count = this.columnCounts[x];
-
 			if (count === 0) continue;
-
 			this.drawAveragedColumn(x, count);
 		}
 
@@ -364,7 +369,6 @@ export default class SpectrogramProcessor {
 		if (this.writeColumn >= this.width) return;
 
 		const x = Math.max(0, Math.min(this.width - 1, this.writeColumn));
-
 		this.ctx.fillStyle = '#fff';
 		this.ctx.fillRect(x, 0, 1, this.height);
 	}

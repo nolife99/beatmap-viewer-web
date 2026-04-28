@@ -103,7 +103,6 @@ export default class Gameplay extends ScopedClass {
 		this.selector = new Graphics()
 			.rect(0, 0, 1, 1)
 			.fill({ color: 0xffffff, alpha: 0.3 });
-		this.selector.cacheAsTexture(true);
 
 		this.objectsContainer = new Container({
 			boundsArea: new Rectangle(0, 0, 512, 384),
@@ -325,9 +324,9 @@ export default class Gameplay extends ScopedClass {
 			for (const idx of beatmap.previousObjects) {
 				const obj = beatmap.objects[idx];
 				if (obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) {
+					const p = new Vector2(pos.x, pos.y);
 					const collided = obj.checkCollide(
-						pos.x,
-						pos.y,
+						[p, p],
 						inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
 							?.currentTime ?? 0
 					);
@@ -354,9 +353,9 @@ export default class Gameplay extends ScopedClass {
 			for (const idx of beatmap.previousObjects) {
 				const obj = beatmap.objects[idx];
 				if (obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) {
+					const p = new Vector2(pos.x, pos.y);
 					const collided = obj.checkCollide(
-						pos.x,
-						pos.y,
+						[p, p],
 						inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
 							?.currentTime ?? 0
 					);
@@ -388,9 +387,9 @@ export default class Gameplay extends ScopedClass {
 	removeSelected(idx: number) {
 		this.selected.delete(idx);
 		const obj = this.beatmap.objects[idx] as DrawableHitCircle | DrawableSlider;
+		obj.isSelected = false;
 		if (obj.timelineObject) obj.timelineObject.isSelected = false;
 		this.selectContainer.removeChild(obj.select);
-		obj.isSelected = false;
 	}
 
 	checkInBound(point: Vector2) {

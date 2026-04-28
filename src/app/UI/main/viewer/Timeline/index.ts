@@ -1,4 +1,3 @@
-import IntervalTree from '@flatten-js/interval-tree';
 import { TimingPoint } from 'osu-classes';
 import { Slider } from 'osu-standard-stable';
 import { Container, Graphics } from 'pixi.js';
@@ -8,7 +7,6 @@ import DrawableSlider from '../../../../BeatmapSet/Beatmap/HitObjects/DrawableSl
 import Beatmap from '../../../../BeatmapSet/Beatmap/index.ts';
 import TimelineHitObject from '../../../../BeatmapSet/Beatmap/Timeline/TimelineHitObject.ts';
 import TimelineTimingPoint from '../../../../BeatmapSet/Beatmap/Timeline/TimelineTimingPoint.ts';
-import { findRange } from '../../../../BeatmapSet/Beatmap/Worker/Objects.ts';
 import BeatmapSet from '../../../../BeatmapSet/index.ts';
 import FullscreenConfig from '../../../../Config/FullscreenConfig.ts';
 import TimelineConfig from '../../../../Config/TimelineConfig.ts';
@@ -18,6 +16,7 @@ import ZContainer from '../../../core/ZContainer.ts';
 import Easings from '../../../Easings.ts';
 
 export const DEFAULT_SCALE = 1;
+
 const BEAT_LINE_COLOR = {
 	1: 0xffffff,
 	2: 0xff0000,
@@ -42,18 +41,21 @@ export default class Timeline {
 	private _dragWindow = new Graphics({ roundPixels: true })
 		.rect(0, 0, 1, 80)
 		.fill({ color: 0xffffff, alpha: 0.3 });
+
 	private _timingPoints: TimelineTimingPoint[] = [];
 	private _objects: TimelineHitObject[] = [];
-	private _range = 0;
 
+	private _visibleObjects: number[] = [];
+	private _visibleTiming: number[] = [];
+	private _objectMarks = new Uint8Array(0);
+	private _timingMarks = new Uint8Array(0);
+
+	private _range = 0;
 	private _ruler = new Graphics();
 	private _dragWindowRange: [number, number] = [0, 0];
 	private _selected = new Set<number>();
 	private _clicked = false;
 	private _offset = 0;
-	private _tree = new IntervalTree<number>();
-	private _previous = new Set<number>();
-	private _previousTiming = new Set<number>();
 
 	constructor() {
 		const thumb = new Graphics()
@@ -71,6 +73,7 @@ export default class Timeline {
 			.lineTo(4, 80 / 2)
 			.lineTo(-2, 80 / 2)
 			.fill(0xcdd6f4);
+
 		thumb.cacheAsTexture({ antialias: false });
 		this._dragWindow.cacheAsTexture({ antialias: false });
 
@@ -80,10 +83,11 @@ export default class Timeline {
 			this._dragWindow,
 			thumb
 		);
+
 		this.container.on('layout', (layout) => {
 			const { width, height } = layout.computedLayout;
-
 			const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
+
 			this._range = (width / 2) * (DEFAULT_SCALE / scale) + 120;
 
 			thumb.x = width / 2;
@@ -93,19 +97,15 @@ export default class Timeline {
 				.moveTo(0, -height / 2)
 				.lineTo(0, height / 2)
 				.stroke(0xcdd6f4)
-				//
 				.moveTo(-3, -(height / 2))
 				.lineTo(0, -(height / 2 - 3))
 				.lineTo(3, -(height / 2))
 				.lineTo(-3, -(height / 2))
-				//
 				.moveTo(-3, height / 2)
 				.lineTo(0, height / 2 - 3)
 				.lineTo(3, height / 2)
 				.lineTo(-3, height / 2)
-				//
 				.fill(0xcdd6f4)
-				//
 				.moveTo(-width / 2, height / 2)
 				.lineTo(width / 2, height / 2)
 				.stroke(0xa6adc8)
@@ -141,9 +141,7 @@ export default class Timeline {
 							this.container.visible = false;
 						}
 					);
-				}
-
-				if (!isFullscreen) {
+				} else {
 					this.container.visible = true;
 					this.container.triggerAnimation(
 						'height',
@@ -165,17 +163,14 @@ export default class Timeline {
 				if (!event.altKey) return;
 
 				event.preventDefault();
+
 				const timeline = inject<TimelineConfig>('config/timeline');
-				if (timeline === undefined) return;
+				if (!timeline) return;
 
 				if (event.deltaY > 0) {
 					timeline.scale = Math.max(0.5, timeline.scale - 0.1);
-					return;
-				}
-
-				if (event.deltaY < 0) {
+				} else if (event.deltaY < 0) {
 					timeline.scale = Math.min(1.5, timeline.scale + 0.1);
-					return;
 				}
 			},
 			{
@@ -189,72 +184,51 @@ export default class Timeline {
 		this.container.on('pointerdown', (event) => {
 			this._clicked = true;
 
-			const { x } = this.container.toLocal(event.global);
-			const width = this.container.layout?.computedLayout.width ?? 1;
+			const time = this.pointerTime(event.global.x);
 			const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
-			const currentTime =
-				inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
-					?.currentTime ?? 0;
-
-			const time = (x - width / 2) * (DEFAULT_SCALE / scale) + currentTime;
-			this._dragWindowRange = [time, time];
 			const padding = 40 * (DEFAULT_SCALE / scale);
 
-			const selected = new Set<number>();
-			for (const idx of this._previous) {
-				const obj = this._objects[idx];
-				const startTime = obj.object.startTime;
-				const endTime = (obj.object as Slider).endTime ?? obj.object.startTime;
+			this._dragWindowRange = [time, time];
 
-				if (
-					(time - padding < startTime && time + padding > startTime) ||
-					(time - padding < endTime && time + padding > endTime) ||
-					(startTime - padding < time && time < endTime + padding)
-				) {
-					selected.add(idx);
+			let firstSelected = -1;
+
+			for (const idx of this._visibleObjects) {
+				if (this.objectIntersectsTime(idx, time - padding, time + padding)) {
+					firstSelected = idx;
+					break;
 				}
 			}
 
-			if (!event.ctrlKey || selected.values.length === 0) {
-				for (const idx of this._selected) {
-					this.removeSelected(idx);
-				}
+			if (!event.ctrlKey || firstSelected < 0) {
+				this.clearSelected();
 			}
 
-			this._selected.add([...selected][0]);
-			for (const idx of this._selected) {
-				this.addSelected(idx);
+			if (firstSelected >= 0) {
+				this.addSelected(firstSelected);
 			}
 		});
 
 		this.container.on('globalpointermove', (event) => {
 			if (!this._clicked) return;
+
 			const { x } = this.container.toLocal(event.global);
 			const width = this.container.layout?.computedLayout.width ?? 1;
 			const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
-			const currentTime =
-				inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
-					?.currentTime ?? 0;
+			const currentTime = this.audioTime();
 
-			const offset = (x - width / 2) * (DEFAULT_SCALE / scale);
-			const time = (x - width / 2) * (DEFAULT_SCALE / scale) + currentTime;
-			this._dragWindowRange[1] = time;
-			this._offset = offset;
+			this._offset = (x - width / 2) * (DEFAULT_SCALE / scale);
+			this._dragWindowRange[1] = this._offset + currentTime;
 		});
 
-		this.container.on('pointerup', () => {
+		const clearDrag = () => {
 			this._clicked = false;
 			this._dragWindowRange = [0, 0];
 			this._dragWindow.scale.set(0, 1);
 			this._offset = 0;
-		});
+		};
 
-		this.container.on('pointerupoutside', () => {
-			this._clicked = false;
-			this._dragWindowRange = [0, 0];
-			this._dragWindow.scale.set(0, 1);
-			this._offset = 0;
-		});
+		this.container.on('pointerup', clearDrag);
+		this.container.on('pointerupoutside', clearDrag);
 	}
 
 	addSelected(idx: number) {
@@ -276,18 +250,15 @@ export default class Timeline {
 			this._objectsContainer.removeChild(
 				...this._objects.map((object) => object.container)
 			);
-			this._objects = [];
-			this._tree.clear();
 		}
 
 		this._objects = objects
 			.map((object) => object.timelineObject)
-			.filter((object) => object !== undefined);
+			.filter((object) => object !== undefined)
+			.sort((a, b) => a.object.startTime - b.object.startTime);
 
-		for (let i = 0; i < this._objects.length; i++) {
-			const { start, end } = this._objects[i].getTimeRange();
-			this._tree.insert([start, end], i);
-		}
+		this._visibleObjects.length = 0;
+		this._objectMarks = new Uint8Array(this._objects.length);
 
 		this.buildRuler();
 	}
@@ -297,96 +268,19 @@ export default class Timeline {
 			this._objectsContainer.removeChild(
 				...this._timingPoints.map((point) => point.container)
 			);
-			this._timingPoints = [];
 		}
 
 		this._timingPoints = points.map((point) => new TimelineTimingPoint(point));
+		this._visibleTiming.length = 0;
+		this._timingMarks = new Uint8Array(this._timingPoints.length);
+
 		this.buildRuler();
 	}
 
 	update(timestamp: number) {
 		this.updateTiming(timestamp);
-
-		const set = findRange(this._tree, [
-			timestamp - this._range,
-			timestamp + this._range
-		]);
-
-		const removed = this._previous.difference(set);
-		for (const idx of removed) {
-			if (!this._objects[idx]) continue;
-			this._objects[idx].container.visible = false;
-			this._objectsContainer.removeChild(this._objects[idx].container);
-		}
-
-		this._previous = set;
-		for (const idx of set) {
-			this._objectsContainer.addChild(this._objects[idx].container);
-		}
-	}
-
-	updateTiming(timestamp: number) {
-		const idx = binarySearch(
-			timestamp,
-			this._timingPoints,
-			(mid, value) => mid.data.startTime - value
-		);
-
-		const set = new Set<number>();
-		set.add(idx);
-
-		let start = idx - 1;
-		while (
-			start >= 0 &&
-			this._timingPoints[start].data.startTime > timestamp - this._range
-			) {
-			set.add(start);
-			start--;
-		}
-
-		let end = idx + 1;
-		while (
-			this._timingPoints[end] &&
-			end < this._objects.length &&
-			this._timingPoints[end].data.startTime < timestamp + this._range
-			) {
-			set.add(end);
-			end++;
-		}
-
-		const removed = this._previousTiming.difference(set);
-		for (const idx of removed) {
-			if (!this._timingPoints[idx]) continue;
-			this._timingPoints[idx].container.visible = false;
-			this._objectsContainer.removeChild(this._timingPoints[idx].container);
-		}
-
-		this._previousTiming = set;
-		for (const idx of set) {
-			if (!this._timingPoints[idx]) continue;
-			this._objectsContainer.addChild(this._timingPoints[idx].container);
-		}
-
-		if (Math.abs(this._dragWindowRange[0] - this._dragWindowRange[1]) !== 0) {
-			const min = Math.min(...this._dragWindowRange);
-			const max = Math.max(...this._dragWindowRange);
-
-			for (const idx of this._previous) {
-				const obj = this._objects[idx];
-				const startTime = obj.object.startTime;
-				const endTime = (obj.object as Slider).endTime ?? obj.object.startTime;
-
-				if (
-					(min < startTime && max > startTime) ||
-					(min < endTime && max > endTime) ||
-					(min < startTime && endTime < max)
-				) {
-					this.addSelected(idx);
-				} else {
-					this.removeSelected(idx);
-				}
-			}
-		}
+		this.updateObjects(timestamp);
+		this.updateDragSelection();
 	}
 
 	draw(timestamp: number) {
@@ -400,36 +294,179 @@ export default class Timeline {
 
 		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
 		const width = this.container.layout?.computedLayout.width ?? 0;
+
 		this._objectsContainer.x = width / 2 + -timestamp / (DEFAULT_SCALE / scale);
 		this._ruler.x = width / 2 + -timestamp / (DEFAULT_SCALE / scale);
 
-		for (const idx of this._previousTiming) {
-			if (!this._timingPoints[idx]) continue;
-			this._timingPoints[idx].container.visible = true;
+		for (const idx of this._visibleTiming) {
+			const point = this._timingPoints[idx];
+			if (point) point.container.visible = true;
 		}
 
-		for (const idx of this._previous) {
-			if (!this._objects[idx]) continue;
-			this._objects[idx].container.visible = true;
+		for (const idx of this._visibleObjects) {
+			const obj = this._objects[idx];
+			if (obj) obj.container.visible = true;
 		}
 
-		if (Math.abs(this._dragWindowRange[0] - this._dragWindowRange[1]) !== 0) {
-			const min = Math.min(...this._dragWindowRange);
-			const max = Math.max(...this._dragWindowRange);
+		this.drawDragWindow(timestamp);
+	}
 
-			const width = this.container.layout?.computedLayout.width ?? 1;
-			const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
-			const currentTime =
-				inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
-					?.currentTime ?? 0;
+	private updateObjects(timestamp: number) {
+		const min = timestamp - this._range;
+		const max = timestamp + this._range;
 
-			const dist = max - min;
+		this.updateVisibleList(
+			this._visibleObjects,
+			this._objectMarks,
+			(idx) => this.objectIntersectsTime(idx, min, max),
+			(idx) => this._objects[idx].container,
+			this.firstObjectIndexAfter(min - 800),
+			this._objects.length,
+			(idx) => this._objects[idx].object.startTime <= max
+		);
+	}
 
-			const x = (min - currentTime) / (DEFAULT_SCALE / scale);
-			const w = dist / (DEFAULT_SCALE / scale);
+	updateTiming(timestamp: number) {
+		const min = timestamp - this._range;
+		const max = timestamp + this._range;
 
-			this._dragWindow.x = width / 2 + x;
-			this._dragWindow.scale.set(w, 1);
+		if (this._timingPoints.length === 0) return;
+
+		const center = Math.max(
+			0,
+			binarySearch(
+				timestamp,
+				this._timingPoints,
+				(mid, value) => mid.data.startTime - value
+			)
+		);
+
+		let start = center;
+		while (start > 0 && this._timingPoints[start - 1].data.startTime >= min) {
+			start--;
+		}
+
+		this.updateVisibleList(
+			this._visibleTiming,
+			this._timingMarks,
+			(idx) => {
+				const time = this._timingPoints[idx]?.data.startTime;
+				return time !== undefined && time >= min && time <= max;
+			},
+			(idx) => this._timingPoints[idx].container,
+			start,
+			this._timingPoints.length,
+			(idx) => this._timingPoints[idx].data.startTime <= max
+		);
+	}
+
+	private updateVisibleList(
+		visible: number[],
+		marks: Uint8Array,
+		keep: (idx: number) => boolean,
+		getContainer: (idx: number) => Container,
+		start: number,
+		end: number,
+		shouldContinue: (idx: number) => boolean
+	) {
+		for (let i = visible.length - 1; i >= 0; i--) {
+			const idx = visible[i];
+
+			if (keep(idx)) continue;
+
+			marks[idx] = 0;
+			visible.splice(i, 1);
+
+			const container = getContainer(idx);
+			container.visible = false;
+			this._objectsContainer.removeChild(container);
+		}
+
+		for (let idx = start; idx < end && shouldContinue(idx); idx++) {
+			if (marks[idx] || !keep(idx)) continue;
+
+			marks[idx] = 1;
+			visible.push(idx);
+			this._objectsContainer.addChild(getContainer(idx));
+		}
+	}
+
+	private updateDragSelection() {
+		if (Math.abs(this._dragWindowRange[0] - this._dragWindowRange[1]) === 0) {
+			return;
+		}
+
+		const min = Math.min(this._dragWindowRange[0], this._dragWindowRange[1]);
+		const max = Math.max(this._dragWindowRange[0], this._dragWindowRange[1]);
+
+		for (const idx of this._visibleObjects) {
+			if (this.objectIntersectsTime(idx, min, max)) {
+				this.addSelected(idx);
+			} else {
+				this.removeSelected(idx);
+			}
+		}
+	}
+
+	private drawDragWindow(timestamp: number) {
+		if (Math.abs(this._dragWindowRange[0] - this._dragWindowRange[1]) === 0) {
+			return;
+		}
+
+		const min = Math.min(this._dragWindowRange[0], this._dragWindowRange[1]);
+		const max = Math.max(this._dragWindowRange[0], this._dragWindowRange[1]);
+		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
+		const width = this.container.layout?.computedLayout.width ?? 1;
+
+		const x = (min - timestamp) / (DEFAULT_SCALE / scale);
+		const w = (max - min) / (DEFAULT_SCALE / scale);
+
+		this._dragWindow.x = width / 2 + x;
+		this._dragWindow.scale.set(w, 1);
+	}
+
+	private firstObjectIndexAfter(time: number) {
+		let lo = 0;
+		let hi = this._objects.length;
+
+		while (lo < hi) {
+			const mid = (lo + hi) >>> 1;
+			const object = this._objects[mid].object;
+			const endTime = (object as Slider).endTime ?? object.startTime;
+
+			if (endTime < time) lo = mid + 1;
+			else hi = mid;
+		}
+
+		return lo;
+	}
+
+	private objectIntersectsTime(idx: number, min: number, max: number) {
+		const obj = this._objects[idx];
+		if (!obj) return false;
+
+		const start = obj.object.startTime;
+		const end = (obj.object as Slider).endTime ?? start;
+
+		return start <= max && end >= min;
+	}
+
+	private pointerTime(globalX: number) {
+		const { x } = this.container.toLocal({ x: globalX, y: 0 });
+		const width = this.container.layout?.computedLayout.width ?? 1;
+		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
+
+		return (x - width / 2) * (DEFAULT_SCALE / scale) + this.audioTime();
+	}
+
+	private audioTime() {
+		return inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
+			?.currentTime ?? 0;
+	}
+
+	private clearSelected() {
+		for (const idx of this._selected) {
+			this.removeSelected(idx);
 		}
 	}
 
@@ -450,15 +487,18 @@ export default class Timeline {
 				: duration;
 
 			let t = startTime;
+
 			while (t <= sectionEnd) {
 				const isWholeBeat = Math.round(
 					t -
 					(Math.round((t - startTime) / beatLength) * beatLength + startTime)
 				) === 0;
+
 				const isDominant = isWholeBeat &&
 					Math.round((t - startTime) / beatLength) % timeSignature === 0;
 
 				let color = 0xffffff;
+
 				if (!isWholeBeat) {
 					const nearestWholeBeat =
 						Math.floor((t - startTime) / beatLength) * beatLength + startTime;
@@ -466,6 +506,7 @@ export default class Timeline {
 						(t - nearestWholeBeat) / (beatLength / divisor)
 					);
 					const denominator = divisor / gcd(divisor, idx);
+
 					color =
 						BEAT_LINE_COLOR[denominator as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9] ??
 						0x929292;

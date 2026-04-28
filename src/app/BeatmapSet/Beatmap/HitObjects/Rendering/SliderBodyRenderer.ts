@@ -269,7 +269,7 @@ export default class SliderBodyRenderer {
 		app.ticker.addOnce(
 			() => pool.free(staging),
 			undefined,
-			UPDATE_PRIORITY.LOW
+			UPDATE_PRIORITY.UTILITY
 		);
 
 		return new Rectangle(
