@@ -104,25 +104,6 @@ function loop(): void {
 	previousTime = currentTime;
 }
 
-function startLoop(): void {
-	if (timer !== undefined) clearInterval(timer);
-	resetClock();
-	timer = setInterval(loop);
-	loop();
-}
-
-function stopLoop(): void {
-	anchorTime = nowMs();
-	anchorPerf = performance.now();
-
-	if (timer !== undefined) {
-		clearInterval(timer);
-		timer = undefined;
-	}
-
-	loop();
-}
-
 function initTree(tree: IntervalTree<number>, items: HitObjectMini[]): void {
 	tree.clear();
 
@@ -219,11 +200,22 @@ onmessage = (event: MessageEvent<WorkerInMessage>) => {
 			break;
 
 		case 'start':
-			startLoop();
+			if (timer !== undefined) clearInterval(timer);
+			resetClock();
+			timer = setInterval(loop);
+			loop();
 			break;
 
 		case 'stop':
-			stopLoop();
+			anchorTime = nowMs();
+			anchorPerf = performance.now();
+
+			if (timer !== undefined) {
+				clearInterval(timer);
+				timer = undefined;
+			}
+
+			loop();
 			break;
 
 		case 'seek':

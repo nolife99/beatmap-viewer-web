@@ -283,7 +283,7 @@ export default class Beatmap extends ScopedClass {
 				switch (event.data.type) {
 					case 'update': {
 
-						const { objects, connectors, hitSounds, currentTime, previousTime } = event.data;
+						const { objects, connectors, currentTime, previousTime } = event.data;
 
 						const currentInBreak = this.data.events.breaks.some(
 							({ startTime, endTime }) =>
@@ -310,7 +310,7 @@ export default class Beatmap extends ScopedClass {
 						}
 
 						this.previousTime = previousTime;
-						this.update(currentTime, objects, connectors, hitSounds);
+						this.update(currentTime, objects, connectors);
 
 						break;
 					}
@@ -446,8 +446,7 @@ export default class Beatmap extends ScopedClass {
 	update(
 		time: number,
 		objects: Set<number>,
-		connectors: Set<number>,
-		hitSounds: Set<number> = objects
+		connectors: Set<number>
 	) {
 		if (!this.loaded) return;
 
@@ -476,7 +475,7 @@ export default class Beatmap extends ScopedClass {
 			objectContainer?.removeChild(this.connectors[idx].container);
 		}
 
-		for (const idx of hitSounds) {
+		for (const idx of objects) {
 			this.objects[idx]?.playHitSound(time);
 		}
 	}
@@ -491,9 +490,8 @@ export default class Beatmap extends ScopedClass {
 		});
 	}
 
-	onPlaybackRateChange(rate: number, time: number) {
+	onPlaybackRateChange(rate: number) {
 		this.worker.postMessage({ type: 'playbackRate', playbackRate: rate });
-		this.worker.postMessage({ type: 'seek', time });
 	}
 
 	toggle() {

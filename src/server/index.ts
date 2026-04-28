@@ -1,6 +1,9 @@
 import { ViteDevServer } from 'vite';
 
-const isProduction = Deno.env.get('NODE_ENV') === 'production';
+const isProduction = 
+	!!Deno.env.get('DENO_DEPLOYMENT_ID') || 
+	Deno.env.get('NODE_ENV') === 'production';
+
 const htmlTemplate = isProduction
 	? await Deno.readTextFile('dist/index.html').catch(() => '')
 	: '';

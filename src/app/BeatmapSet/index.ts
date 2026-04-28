@@ -1,7 +1,6 @@
 import { Tween } from '@tweenjs/tween.js';
 import { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
 import { Application, Assets, type FederatedWheelEvent, Texture } from 'pixi.js';
-
 import extraMode from '../../assets/extra-mode.svg?raw';
 import Audio from '../Audio/index.ts';
 import AudioConfig from '../Config/AudioConfig.ts';
@@ -76,11 +75,10 @@ export default class BeatmapSet extends ScopedClass {
 				if (!audio) return;
 
 				audio.onPlaybackRateChange();
-				const t = audio.currentTime;
-
-				this.master?.onPlaybackRateChange(this.playbackRate, t);
+				
+				this.master?.onPlaybackRateChange(this.playbackRate);
 				for (const slave of this.slaves) {
-					slave.onPlaybackRateChange(this.playbackRate, t);
+					slave.onPlaybackRateChange(this.playbackRate);
 				}
 			}
 		);

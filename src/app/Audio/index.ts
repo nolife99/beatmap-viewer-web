@@ -23,6 +23,9 @@ import {
 // @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix
 import AudioDecoderWorker from './AudioDecoderWorker.ts?worker&inline';
 
+// @ts-expect-error: Deno LSP struggles with Vite workers
+import DecoderWorklet from './ClockBridgeProcessor.ts?worklet-inline';
+
 if ('audioSession' in navigator) {
 	// @ts-expect-error Safari/WebKit API
 	navigator.audioSession.type = 'playback';
@@ -281,9 +284,7 @@ export default class Audio extends ScopedClass {
 
 		this.workletNode?.disconnect();
 
-		await this.ctx.audioWorklet.addModule(
-			new URL('./ClockBridgeProcessor.ts', import.meta.url)
-		);
+		await this.ctx.audioWorklet.addModule(DecoderWorklet);
 
 		this.workletNode = new AudioWorkletNode(this.ctx, 'clock-bridge-processor', {
 			numberOfInputs: 0,

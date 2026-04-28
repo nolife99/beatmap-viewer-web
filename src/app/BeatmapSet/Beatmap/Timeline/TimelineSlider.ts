@@ -8,7 +8,7 @@ import {
 	SpinnerTick,
 	type StandardHitObject
 } from 'osu-standard-stable';
-import { FillGradient, Graphics, BitmapText } from 'pixi.js';
+import { FillGradient, Graphics, Text } from 'pixi.js';
 import Beatmap from '..';
 import TimelineConfig from '../../../Config/TimelineConfig.ts';
 import { type Context, inject } from '../../../Context.ts';
@@ -187,7 +187,7 @@ export default class TimelineSlider extends TimelineHitObject {
 		);
 
 		const label = `${difficultyPoint.sliderVelocity.toFixed(2)}x`;
-		const velocity = new BitmapText({
+		const velocity = new Text({
 			text: label,
 			label,
 			style: {

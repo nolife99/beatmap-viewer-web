@@ -32,7 +32,8 @@ class ClockBridgeProcessor extends AudioWorkletProcessor {
 
 	private readonly quantum = 128;
 
-	private emittedFrames = 0;
+	private sourceFramesRead = 0;
+	private sourceFramesEmitted = 0;
 
 	private scratchCapacity = INITIAL_SHIFT_SCRATCH_CAPACITY;
 	private scratch: Float32Array[] = Array.from(
@@ -84,7 +85,6 @@ class ClockBridgeProcessor extends AudioWorkletProcessor {
 					this.rate = msg.rate;
 					this.pitchMode = msg.pitchMode;
 					this.userPosAtStartSec = msg.userPositionSec;
-					this.emittedFrames = 0;
 					this.isPlaying = true;
 					break;
 
@@ -103,90 +103,106 @@ class ClockBridgeProcessor extends AudioWorkletProcessor {
 
 	process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
 		const out = outputs[0];
-		if (!out || out.length === 0) return true;
+		const quantum = out[0].length;
 
+		if (!out || out.length === 0) return true;
+	
 		for (let c = 0; c < RING_CHANNELS; c++) {
 			this.outBufs[c] = out[c];
 		}
-
+	
 		const ringGen = this.ring.generation;
 		if (ringGen !== this.currentGeneration) {
 			this.stretcher?.dispose();
 			this.stretcher = undefined;
-
+	
 			this.fifoWriteHead = 0;
 			this.fifoReadHead = 0;
 			this.fifoFilled = 0;
 			this.shiftPhase = 0;
-			this.emittedFrames = 0;
+			
+			this.sourceFramesRead = 0;
+			this.sourceFramesEmitted = 0;
+			
 			this.currentGeneration = ringGen;
 		}
-
-		let emitted = 0;
-
+	
+		let emittedCount = 0;
+	
 		if (!this.isPlaying) {
 			for (let c = 0; c < RING_CHANNELS; c++) {
 				this.outBufs[c].fill(0);
 			}
 		} else if (Math.abs(this.rate - 1) <= EPSILON_RATE) {
-			emitted = this.ring.read(this.outBufs, this.quantum) ? this.quantum : 0;
+			if (this.ring.read(this.outBufs, quantum)) {
+				emittedCount = quantum;
+				this.sourceFramesRead += quantum;
+				this.sourceFramesEmitted += quantum;
+			}
 		} else if (this.pitchMode === 'preserve') {
 			this.stretcher ??= new TimeStretcher(RING_CHANNELS, sampleRate, 1 / this.rate);
 			this.stretcher.factor = 1 / this.rate;
-
-			while (this.fifoFilled < this.quantum) {
+	
+			while (this.fifoFilled < quantum) {
 				if (!this.ring.read(this.wsolaScratch, WSOLA_FEED_CHUNK)) break;
-
+				
+				this.sourceFramesRead += WSOLA_FEED_CHUNK;
 				const stretched = this.stretcher.append(this.wsolaScratch);
 				if (stretched) this.fifoEnqueue(stretched);
 			}
-
-			const take = Math.min(this.quantum, this.fifoFilled);
-
-			for (let c = 0; c < RING_CHANNELS; c++) {
-				const src = this.fifoBuf[c];
-				const dst = this.outBufs[c];
-				const rh = this.fifoReadHead;
-				const p1 = Math.min(take, this.fifoCapacity - rh);
-
-				dst.set(src.subarray(rh, rh + p1), 0);
-				if (p1 < take) dst.set(src.subarray(0, take - p1), p1);
-				if (take < this.quantum) dst.fill(0, take, this.quantum);
+	
+			const take = Math.min(quantum, this.fifoFilled);
+			if (take > 0) {
+				const sourceInFifo = this.sourceFramesRead - this.sourceFramesEmitted;
+				const progressRatio = sourceInFifo / this.fifoFilled;
+	
+				for (let c = 0; c < RING_CHANNELS; c++) {
+					const src = this.fifoBuf[c];
+					const dst = this.outBufs[c];
+					const rh = this.fifoReadHead;
+					const p1 = Math.min(take, this.fifoCapacity - rh);
+	
+					dst.set(src.subarray(rh, rh + p1), 0);
+					if (p1 < take) dst.set(src.subarray(0, take - p1), p1);
+					if (take < quantum) dst.fill(0, take, quantum);
+				}
+	
+				this.fifoReadHead = (this.fifoReadHead + take) % this.fifoCapacity;
+				this.fifoFilled -= take;
+				
+				this.sourceFramesEmitted += (take * progressRatio);
+				emittedCount = take;
 			}
-
-			this.fifoReadHead = (this.fifoReadHead + take) % this.fifoCapacity;
-			this.fifoFilled -= take;
-
-			emitted = take;
 		} else {
-			emitted = this.processShift();
+			emittedCount = this.processShift(quantum);
+			if (emittedCount > 0) {
+				const consumed = quantum * this.rate;
+				this.sourceFramesEmitted += consumed;
+				this.sourceFramesRead = this.sourceFramesEmitted;
+			}
 		}
-
-		this.emittedFrames += emitted;
-
+	
 		const hwNow = currentTime;
-
 		const audioPosSec = this.isPlaying
-			? this.userPosAtStartSec + (this.emittedFrames * this.rate) / sampleRate
+			? this.userPosAtStartSec + (this.sourceFramesEmitted / sampleRate)
 			: this.userPosAtStartSec;
-
+	
 		const hwMicros = BigInt(Math.round(hwNow * 1_000_000));
 		const audioMicros = BigInt(Math.round(audioPosSec * 1_000_000));
-
+	
 		const seq = Atomics.load(this.clockInt, CLOCK_INT_SEQNO);
-
 		Atomics.store(this.clockInt, CLOCK_INT_SEQNO, seq | 1);
 		Atomics.store(this.clockBig, CLOCK_BIG_HW_TIME, hwMicros);
 		Atomics.store(this.clockBig, CLOCK_BIG_AUDIO_POS, audioMicros);
 		Atomics.store(this.clockInt, CLOCK_INT_GEN, this.currentGeneration);
 		Atomics.store(this.clockInt, CLOCK_INT_PLAYING, this.isPlaying ? 1 : 0);
 		Atomics.store(this.clockInt, CLOCK_INT_SEQNO, seq + 2);
-
+	
 		return true;
 	}
 
-	private processShift(): number {
-		const totalPhase = this.shiftPhase + this.quantum * this.rate;
+	private processShift(quantum: number): number {
+		const totalPhase = this.shiftPhase + quantum * this.rate;
 		const framesConsumed = Math.floor(totalPhase);
 		const framesToPeek = framesConsumed + 1;
 
@@ -199,7 +215,7 @@ class ClockBridgeProcessor extends AudioWorkletProcessor {
 
 		let phase = this.shiftPhase;
 
-		for (let i = 0; i < this.quantum; i++) {
+		for (let i = 0; i < quantum; i++) {
 			const lo = phase | 0;
 			const t = phase - lo;
 			const hi = lo + 1;
@@ -213,7 +229,7 @@ class ClockBridgeProcessor extends AudioWorkletProcessor {
 		}
 
 		this.shiftPhase = totalPhase - framesConsumed;
-		return this.quantum;
+		return quantum;
 	}
 
 	private ensureScratchCapacity(requiredFrames: number): void {
