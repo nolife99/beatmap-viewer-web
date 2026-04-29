@@ -53,6 +53,9 @@ const quadPositions = new Buffer({
 	usage: BufferUsage.VERTEX
 });
 
+const REDUCE_PRECISION = 0.01;
+const REDUCE_PRECISION_SQ = REDUCE_PRECISION * REDUCE_PRECISION;
+
 function createBodyGeometry() {
 	return new Geometry({
 		attributes: {
@@ -223,6 +226,85 @@ export default class SliderBodyRenderer {
 		this.selectionBody.destroy(true);
 	}
 
+	private reduceSegments(
+		points: SliderProgressResult['points'],
+		pointsCount: number,
+		out: Float32Array
+	): number {
+		if (pointsCount <= 0) return 0;
+
+		if (pointsCount === 1) {
+			const p = points[0];
+
+			out[0] = p.x;
+			out[1] = p.y;
+			out[2] = p.x;
+			out[3] = p.y;
+
+			return 1;
+		}
+
+		let ax = points[0].x;
+		let ay = points[0].y;
+		let bx = points[1].x;
+		let by = points[1].y;
+
+		let written = 0;
+
+		for (let i = 1; i < pointsCount - 1; i++) {
+			const nx = points[i + 1].x;
+			const ny = points[i + 1].y;
+
+			const dx = bx - ax;
+			const dy = by - ay;
+			const lenSq = dx * dx + dy * dy;
+
+			if (lenSq < REDUCE_PRECISION) {
+				bx = nx;
+				by = ny;
+				continue;
+			}
+
+			const dx2 = nx - ax;
+			const dy2 = ny - ay;
+			const cross = dx * dy2 - dy * dx2;
+
+			if ((cross * cross) / lenSq < REDUCE_PRECISION_SQ) {
+				const dot = dx * dx2 + dy * dy2;
+
+				if (dot < 0) {
+					ax = nx;
+					ay = ny;
+				} else if (dot > lenSq) {
+					bx = nx;
+					by = ny;
+				}
+
+				continue;
+			}
+
+			const o = written++ * 4;
+			out[o] = ax;
+			out[o + 1] = ay;
+			out[o + 2] = bx;
+			out[o + 3] = by;
+
+			const p = points[i];
+			ax = p.x;
+			ay = p.y;
+			bx = nx;
+			by = ny;
+		}
+
+		const o = written++ * 4;
+		out[o] = ax;
+		out[o + 1] = ay;
+		out[o + 2] = bx;
+		out[o + 3] = by;
+
+		return written;
+	}
+
 	private populateInstanceBuffer(
 		path: SliderProgressResult,
 		targetGeometry: Geometry,
@@ -230,41 +312,43 @@ export default class SliderBodyRenderer {
 	): Rectangle {
 		const { points, length: pointsCount } = path;
 
-		const segmentsCount = Math.max(1, pointsCount - 1);
-		const requiredFloats = segmentsCount * 4;
+		const maxSegments = Math.max(1, pointsCount - 1);
+		const maxFloats = maxSegments * 4;
 
-		const rawStaging = pool(requiredFloats, 'float32');
+		const rawStaging = pool(maxFloats, 'float32');
 		if (!rawStaging) {
 			throw new Error(
-				`Renting staging buffer (size ${requiredFloats * Float32Array.BYTES_PER_ELEMENT})`
+				`Renting staging buffer (size ${maxFloats * Float32Array.BYTES_PER_ELEMENT}) failed`
 			);
 		}
 
-		const staging = new Float32Array(rawStaging.buffer, 0, requiredFloats);
+		const staging = new Float32Array(rawStaging.buffer, 0, maxFloats);
+		const segmentsCount = this.reduceSegments(points, pointsCount, staging);
+		const requiredFloats = Math.max(4, segmentsCount * 4);
 
-		let minX = points[0].x;
-		let minY = points[0].y;
-		let maxX = points[0].x;
-		let maxY = points[0].y;
+		let minX = staging[0];
+		let minY = staging[1];
+		let maxX = staging[0];
+		let maxY = staging[1];
 
-		for (let i = 0; i < segmentsCount; i++) {
-			const A = points[i];
-			const B = points[Math.min(i + 1, pointsCount - 1)];
+		for (let i = 0; i < requiredFloats; i += 2) {
+			const x = staging[i];
+			const y = staging[i + 1];
 
-			const offset = i * 4;
-			staging[offset] = A.x;
-			staging[offset + 1] = A.y;
-			staging[offset + 2] = B.x;
-			staging[offset + 3] = B.y;
+			if (x < minX) minX = x;
+			else if (x > maxX) maxX = x;
 
-			if (B.x < minX) minX = B.x;
-			if (B.y < minY) minY = B.y;
-			if (B.x > maxX) maxX = B.x;
-			if (B.y > maxY) maxY = B.y;
+			if (y < minY) minY = y;
+			else if (y > maxY) maxY = y;
 		}
 
-		targetGeometry.attributes.aSegment.buffer.setDataWithSize(staging, requiredFloats, false);
-		targetGeometry.instanceCount = segmentsCount;
+		targetGeometry.attributes.aSegment.buffer.setDataWithSize(
+			staging,
+			requiredFloats,
+			false
+		);
+
+		targetGeometry.instanceCount = Math.max(1, segmentsCount);
 
 		app.ticker.addOnce(
 			() => pool.free(staging),

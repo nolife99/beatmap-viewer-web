@@ -467,12 +467,12 @@ export default class BeatmapSet extends ScopedClass {
 
 		audio.currentTime = time;
 
-		this.master?.seek(audio.currentTime);
+		this.master?.seek(time);
 		for (const slave of this.slaves) {
-			slave.seek(audio.currentTime);
+			slave.seek(time);
 		}
 
-		this.context.consume<Video>('video')?.seek(audio.currentTime);
+		this.context.consume<Video>('video')?.seek(time);
 	}
 
 	frame() {
@@ -653,6 +653,7 @@ export default class BeatmapSet extends ScopedClass {
 		inject<Spectrogram>('ui/sidepanel/modding/spectrogram')?.unloadTexture();
 
 		provide('beatmapset', undefined);
+		this.difficulties.length = 0;
 	}
 
 	private setIds() {

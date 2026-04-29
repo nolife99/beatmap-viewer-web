@@ -48,7 +48,14 @@ export default defineConfig({
 				minify: true
 			}
 		}),
-		nodePolyfills(),
+		nodePolyfills({
+			globals: {
+				Buffer: true,
+				global: true,
+				process: true,
+			},
+			protocolImports: true,
+		}),
 		{
 			name: 'inline-audio-worklet-b64',
 			enforce: 'pre',
@@ -122,7 +129,8 @@ export default defineConfig({
 		allowedHosts: true,
 		headers: {
 			'Cross-Origin-Opener-Policy': 'same-origin',
-			'Cross-Origin-Embedder-Policy': 'require-corp',
+			'Cross-Origin-Embedder-Policy': 'credentialless',
+			'Cross-Origin-Resource-Policy': 'cross-origin',
 		},
 		cors: {
 			origin: true,

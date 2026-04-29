@@ -2,7 +2,6 @@ import { LayoutContainer } from '@pixi/layout/components';
 import pool from '@stdlib/array-pool';
 import { Application, BitmapText, type Renderer } from 'pixi.js';
 import { inject } from '../../../Context.ts';
-// import { debugPoolMemory } from '../../../BeatmapSet/Beatmap/HitObjects/Rendering/CalculateSliderProgress.ts';
 
 export default class FPS {
 	public container = new LayoutContainer({

@@ -1,9 +1,7 @@
 import { AsyncUnzipInflate, Unzip } from 'fflate';
 
-export type Resource = Blob | undefined;
-
-async function extract(zipFile: Blob): Promise<Map<string, Resource>> {
-	const resources = new Map<string, Resource>();
+async function extract(zipFile: Blob): Promise<Map<string, Blob>> {
+	const resources = new Map<string, Blob>();
 	const pending: Promise<void>[] = [];
 
 	const unzip = new Unzip((file) => {

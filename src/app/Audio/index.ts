@@ -33,8 +33,6 @@ if ('audioSession' in navigator) {
 
 const CONTEXT_FREEZE_CHECK_MS = 120;
 
-type PlaybackCommand = 'play' | 'seek';
-
 export default class Audio extends ScopedClass {
 	state: 'PLAYING' | 'STOPPED' = 'STOPPED';
 	init = false;
@@ -53,10 +51,7 @@ export default class Audio extends ScopedClass {
 	private encoderDelayMs = 0;
 	private loadingPromise?: Promise<void>;
 	private loadVersion = 0;
-
 	private seekGeneration = 0;
-	private preparedGeneration = 0;
-	private preparedTimeMs = Number.NaN;
 
 	private lastHwMicros = 0;
 	private lastSabReadPerfMs = 0;
@@ -64,7 +59,6 @@ export default class Audio extends ScopedClass {
 
 	private smoothClockMs = 0;
 	private smoothClockPerfMs = 0;
-	private smoothClockReady = false;
 	private lastReturnedTimeMs = 0;
 
 	private pitchMode: 'preserve' | 'shift' = 'preserve';
@@ -105,16 +99,16 @@ export default class Audio extends ScopedClass {
 		if (this.state === 'STOPPED') return this._currentTime;
 
 		const now = this.predictedTimeMs();
-		this.guardClock(now);
+		this.reviveFrozenContextIfNeeded(now);
 
-		if (now <= this.duration) return now;
+		if (now <= this.durationMs) return now;
 
 		void this.beatmapSet.toggle().then(() => this.beatmapSet.seek(0));
-		return this.duration;
+		return this.durationMs;
 	}
 
 	set currentTime(val: number) {
-		this.seekAudio(val);
+		this.dispatchPlayback('seek', val, this.state === 'PLAYING');
 	}
 
 	get encodedClock(): SharedArrayBuffer {
@@ -167,38 +161,8 @@ export default class Audio extends ScopedClass {
 
 		await this.ctx.resume();
 
-		const timeMs = this.clampTime(this._currentTime);
-		const hasPreparedSeek =
-			this.preparedGeneration === this.seekGeneration &&
-			Math.abs(this.preparedTimeMs - timeMs) <= 0.5;
-
-		if (!hasPreparedSeek) {
-			this.seekGeneration++;
-
-			this.worker.postMessage({
-				type: 'play',
-				seekSec: timeMs / 1000 + this.encoderDelayMs / 1000,
-				generation: this.seekGeneration
-			});
-		}
-
-		this.lastHwMicros = 0;
-		this.lastSabReadPerfMs = performance.now();
-		this.resetSmoothClock(timeMs);
-
-		this.workletNode.port.postMessage({
-			type: 'play',
-			generation: this.seekGeneration,
-			rate: this.playbackRate,
-			pitchMode: this.pitchMode,
-			userPositionSec: timeMs / 1000
-		});
-
-		this.preparedGeneration = 0;
-		this.preparedTimeMs = Number.NaN;
-
 		this.state = 'PLAYING';
-		this.updateMediaSessionState();
+		this.dispatchPlayback('play', this._currentTime, true);
 	}
 
 	pause(): void {
@@ -211,7 +175,7 @@ export default class Audio extends ScopedClass {
 		this.worker.postMessage({ type: 'pause' });
 		this.workletNode?.port.postMessage({ type: 'pause' });
 
-		this.updateMediaSessionState();
+		this.syncMediaSession();
 	}
 
 	destroy(): void {
@@ -227,8 +191,9 @@ export default class Audio extends ScopedClass {
 	}
 
 	onPlaybackRateChange(): void {
-		if (this.state !== 'PLAYING') return;
-		this.restartPlaybackAt(this.predictedTimeMs(), 'seek');
+		if (this.state === 'PLAYING') {
+			this.dispatchPlayback('seek', this.predictedTimeMs(), true);
+		}
 	}
 
 	private async load(blob: Blob, loadVersion: number, beatmap: Beatmap): Promise<void> {
@@ -272,7 +237,7 @@ export default class Audio extends ScopedClass {
 			});
 		}
 
-		this.updateMediaSessionState();
+		this.syncMediaSession();
 
 		this.renderSpectrogram(durationSec, track)
 			.catch(console.error)
@@ -300,45 +265,18 @@ export default class Audio extends ScopedClass {
 	}
 
 	private onWorkerMessage(msg: WorkerOutMessage): void {
-		switch (msg.type) {
-			case 'error':
-				console.error('AudioDecoderWorker:', msg.message);
-				if (this.state === 'PLAYING') this.pause();
-				break;
-		}
+		if (msg.type !== 'error') return;
+
+		console.error('AudioDecoderWorker:', msg.message);
+		if (this.state === 'PLAYING') this.pause();
 	}
 
-	private seekAudio(timeMs: number): void {
+	private dispatchPlayback(command: 'play' | 'seek', timeMs: number, outputPlaying: boolean): void {
 		const clamped = this.clampTime(timeMs);
-
-		this._currentTime = clamped;
-		this.resetSmoothClock(clamped);
-		this.updateMediaSessionState();
-
-		if (this.state === 'PLAYING') {
-			this.restartPlaybackAt(clamped, 'seek');
-			return;
-		}
-
-		this.preparedGeneration = ++this.seekGeneration;
-		this.preparedTimeMs = clamped;
-
-		this.worker.postMessage({
-			type: 'seek',
-			seekSec: clamped / 1000 + this.encoderDelayMs / 1000,
-			generation: this.seekGeneration
-		});
-	}
-
-	private restartPlaybackAt(timeMs: number, command: PlaybackCommand): void {
-		const clamped = this.clampTime(timeMs);
+		const generation = ++this.seekGeneration;
 		const userPositionSec = clamped / 1000;
 
 		this._currentTime = clamped;
-		this.seekGeneration++;
-		this.preparedGeneration = 0;
-		this.preparedTimeMs = Number.NaN;
-
 		this.lastHwMicros = 0;
 		this.lastSabReadPerfMs = performance.now();
 		this.resetSmoothClock(clamped);
@@ -346,101 +284,73 @@ export default class Audio extends ScopedClass {
 		this.worker.postMessage({
 			type: command,
 			seekSec: userPositionSec + this.encoderDelayMs / 1000,
-			generation: this.seekGeneration
+			generation
 		});
 
-		this.workletNode?.port.postMessage({
-			type: command,
-			generation: this.seekGeneration,
-			rate: this.playbackRate,
-			pitchMode: this.pitchMode,
-			userPositionSec
-		});
+		if (outputPlaying) {
+			this.workletNode?.port.postMessage({
+				type: command,
+				generation,
+				rate: this.playbackRate,
+				pitchMode: this.pitchMode,
+				userPositionSec
+			});
+		} else {
+			this.workletNode?.port.postMessage({ type: 'pause' });
+		}
 
-		this.updateMediaSessionState();
+		this.syncMediaSession();
 	}
 
 	private predictedTimeMs(): number {
 		if (this.state === 'STOPPED') return this._currentTime;
 
-		let hwMicros = 0;
-		let audioMicros = 0;
-		let gen = -1;
-		let ok = false;
-
-		for (let attempts = 0; attempts < 8; attempts++) {
-			const seq1 = Atomics.load(this.clockInt, CLOCK_INT_SEQNO);
-			if (seq1 & 1) continue;
-
-			hwMicros = Number(Atomics.load(this.clockBig, CLOCK_BIG_HW_TIME));
-			audioMicros = Number(Atomics.load(this.clockBig, CLOCK_BIG_AUDIO_POS));
-			gen = Atomics.load(this.clockInt, CLOCK_INT_GEN);
-
-			const seq2 = Atomics.load(this.clockInt, CLOCK_INT_SEQNO);
-			if (seq1 === seq2) {
-				ok = true;
-				break;
-			}
-		}
-
-		if (!ok || gen !== this.seekGeneration) {
+		const sample = this.readClockSample();
+		if (!sample || sample.gen !== this.seekGeneration) {
 			return this.lastReturnedTimeMs || this.smoothClockMs || this._currentTime;
 		}
 
 		const perfNow = performance.now();
-		const rawMs = audioMicros / 1000;
+		const rawMs = sample.audioMicros / 1000;
 
-		if (hwMicros !== this.lastHwMicros) {
-			this.lastHwMicros = hwMicros;
+		if (sample.hwMicros !== this.lastHwMicros) {
+			this.lastHwMicros = sample.hwMicros;
 			this.lastSabReadPerfMs = perfNow;
-		}
-
-		if (!this.smoothClockReady) {
-			this.resetSmoothClock(rawMs);
-			this.lastReturnedTimeMs = rawMs;
-			return rawMs;
 		}
 
 		const elapsedMs = perfNow - this.smoothClockPerfMs;
 		this.smoothClockPerfMs = perfNow;
 
-		this.smoothClockMs += elapsedMs * this.playbackRate;
+		let predicted = this.smoothClockMs + elapsedMs * this.playbackRate;
+		const errorMs = rawMs - predicted;
 
-		const errorMs = rawMs - this.smoothClockMs;
-		this.smoothClockMs += Math.abs(errorMs) > 20 ? errorMs : errorMs * 0.03;
+		predicted += Math.abs(errorMs) > 20 ? errorMs : errorMs * 0.03;
+		predicted = Math.max(predicted, this.lastReturnedTimeMs);
 
-		if (this.smoothClockMs < this.lastReturnedTimeMs) {
-			return this.lastReturnedTimeMs;
-		}
+		this.smoothClockMs = predicted;
+		this.lastReturnedTimeMs = predicted;
 
-		this.lastReturnedTimeMs = this.smoothClockMs;
-		return this.smoothClockMs;
+		return predicted;
 	}
 
-	private readClockSnapshot(): {
-		hwMicros: number;
-		audioMicros: number;
-		generation: number;
-	} | null {
+	private readClockSample(): { hwMicros: number; audioMicros: number; gen: number } | undefined {
 		for (let attempts = 0; attempts < 8; attempts++) {
 			const seq1 = Atomics.load(this.clockInt, CLOCK_INT_SEQNO);
 			if (seq1 & 1) continue;
 
 			const hwMicros = Number(Atomics.load(this.clockBig, CLOCK_BIG_HW_TIME));
 			const audioMicros = Number(Atomics.load(this.clockBig, CLOCK_BIG_AUDIO_POS));
-			const generation = Atomics.load(this.clockInt, CLOCK_INT_GEN);
-			const seq2 = Atomics.load(this.clockInt, CLOCK_INT_SEQNO);
+			const gen = Atomics.load(this.clockInt, CLOCK_INT_GEN);
 
-			if (seq1 === seq2) return { hwMicros, audioMicros, generation };
+			if (seq1 === Atomics.load(this.clockInt, CLOCK_INT_SEQNO)) {
+				return { hwMicros, audioMicros, gen };
+			}
 		}
-
-		return null;
 	}
 
 	private resetSmoothClock(timeMs: number): void {
 		this.smoothClockMs = timeMs;
 		this.smoothClockPerfMs = performance.now();
-		this.smoothClockReady = true;
 		this.lastReturnedTimeMs = timeMs;
 	}
 
@@ -448,15 +358,10 @@ export default class Audio extends ScopedClass {
 		return Number.isFinite(ms) && ms >= 0 && ms <= this.durationMs ? ms : 0;
 	}
 
-	private guardClock(predictedMs: number): void {
+	private reviveFrozenContextIfNeeded(predictedMs: number): void {
 		if (Atomics.load(this.clockInt, CLOCK_INT_PLAYING) !== 1) return;
+		if (performance.now() - this.lastSabReadPerfMs <= 40) return;
 
-		if (performance.now() - this.lastSabReadPerfMs > 40) {
-			this.reviveContext(predictedMs);
-		}
-	}
-
-	private reviveContext(predictedMs: number): void {
 		const now = performance.now();
 		if (now - this.lastContextReviveMs < 750) return;
 		this.lastContextReviveMs = now;
@@ -526,9 +431,7 @@ export default class Audio extends ScopedClass {
 		this.seekGeneration = 0;
 		this.lastHwMicros = 0;
 		this.lastSabReadPerfMs = 0;
-		this.smoothClockReady = false;
-		this.preparedGeneration = 0;
-		this.preparedTimeMs = Number.NaN;
+		this.resetSmoothClock(0);
 	}
 
 	private disposeIfStale(loadVersion: number, input: Input): boolean {
@@ -564,61 +467,56 @@ export default class Audio extends ScopedClass {
 		});
 
 		navigator.mediaSession.setActionHandler('seekbackward', (d) => {
-			this.seekFromMediaSession(this.mediaSessionTimeMs() - (d.seekOffset ?? 10) * 1000);
+			this.seekFromMediaSession(this.mediaTimeMs() - (d.seekOffset ?? 10) * 1000);
 		});
 
 		navigator.mediaSession.setActionHandler('seekforward', (d) => {
-			this.seekFromMediaSession(this.mediaSessionTimeMs() + (d.seekOffset ?? 10) * 1000);
+			this.seekFromMediaSession(this.mediaTimeMs() + (d.seekOffset ?? 10) * 1000);
 		});
 
-		this.updateMediaSessionState();
+		this.syncMediaSession();
 	}
 
 	private seekFromMediaSession(timeMs: number): void {
 		this.beatmapSet.seek(this.clampTime(timeMs));
-		this.updateMediaSessionState();
+		this.syncMediaSession();
 	}
 
-	private updateMediaSessionState(): void {
+	private mediaTimeMs(): number {
+		return this.state === 'PLAYING'
+			? this.clampTime(this.predictedTimeMs())
+			: this._currentTime;
+	}
+
+	private syncMediaSession(): void {
 		if (!('mediaSession' in navigator)) return;
 
-		navigator.mediaSession.playbackState = this.mediaSessionPlaybackState();
-		this.updateMediaSessionPosition();
+		navigator.mediaSession.playbackState = this.init
+			? this.state === 'PLAYING' ? 'playing' : 'paused'
+			: 'none';
+
+		if (
+			'setPositionState' in navigator.mediaSession &&
+			this.init &&
+			this.durationMs > 0
+		) {
+			try {
+				navigator.mediaSession.setPositionState({
+					duration: this.durationMs / 1000,
+					playbackRate: this.playbackRate,
+					position: this.mediaTimeMs() / 1000
+				});
+			} catch {
+				// Safari/Chrome may reject invalid states.
+			}
+		}
 
 		if (this.state === 'PLAYING') {
-			this.mediaSessionPositionTimer ??= setInterval(() => this.updateMediaSessionPosition(), 1000);
+			this.mediaSessionPositionTimer ??= setInterval(() => this.syncMediaSession(), 1000);
 		} else {
 			clearInterval(this.mediaSessionPositionTimer);
 			this.mediaSessionPositionTimer = undefined;
 		}
-	}
-
-	private mediaSessionPlaybackState(): MediaSessionPlaybackState {
-		return this.init
-			? this.state === 'PLAYING' ? 'playing' : 'paused'
-			: 'none';
-	}
-
-	private updateMediaSessionPosition(): void {
-		if (!('mediaSession' in navigator)) return;
-		if (!('setPositionState' in navigator.mediaSession)) return;
-		if (!this.init || !(this.durationMs > 0)) return;
-
-		try {
-			navigator.mediaSession.setPositionState({
-				duration: this.durationMs / 1000,
-				playbackRate: this.playbackRate,
-				position: this.mediaSessionTimeMs() / 1000
-			});
-		} catch {
-			// Safari/Chrome may reject invalid states.
-		}
-	}
-
-	private mediaSessionTimeMs(): number {
-		return this.state === 'PLAYING'
-			? this.clampTime(this.predictedTimeMs())
-			: this._currentTime;
 	}
 
 	private disposeMediaSession(): void {

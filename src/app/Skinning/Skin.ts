@@ -58,7 +58,7 @@ type PackedAtlas = {
 	frames: Map<string, Texture>;
 };
 
-const ATLAS_PADDING = 0;
+const ATLAS_PADDING = 1;
 const ATLAS_MAX_SIZE = 4096;
 
 function nextPow2(v: number): number {

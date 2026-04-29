@@ -306,8 +306,7 @@ export default class DrawableSlider
 		if (value) {
 			for (let i = 0; i < this.drawableCircles.length; i++) {
 				const circle = this.drawableCircles[i];
-				const evaluation = value.circlesEvals[i];
-				circle.evaluation = evaluation;
+				circle.evaluation = value.circlesEvals[i];
 			}
 		}
 
@@ -341,33 +340,163 @@ export default class DrawableSlider
 
 		if (!this.wrapper.visible) return false;
 
-		const radius = 48 * obj.scale;
-		const radiusSq = radius * radius;
-
 		const a = rect[0];
 		const b = rect[1];
 
-		const minX = Math.min(a.x, b.x);
-		const maxX = Math.max(a.x, b.x);
-		const minY = Math.min(a.y, b.y);
-		const maxY = Math.max(a.y, b.y);
+		let minX = a.x;
+		let maxX = b.x;
+		if (minX > maxX) {
+			const t = minX;
+			minX = maxX;
+			maxX = t;
+		}
+
+		let minY = a.y;
+		let maxY = b.y;
+		if (minY > maxY) {
+			const t = minY;
+			minY = maxY;
+			maxY = t;
+		}
+
+		const radius = 48 * obj.scale;
+		const radiusSq = radius * radius;
 
 		const objX = obj.startX + obj.stackedOffset.x;
 		const objY = obj.startY + obj.stackedOffset.y;
 
 		const pathPts = this.path.points;
+		const pathLength = this.path.length;
 
-		for (let i = 0; i < this.path.length - 1; i++) {
-			const p1 = pathPts[i];
-			const p2 = pathPts[i + 1];
+		let p1, p2, x1, y1, x2, y2;
+		let segMinX, segMaxX, segMinY, segMaxY;
+		let abx, aby, cdx, cdy, denom, acx, acy, tInt, uInt;
+		let lenSq, tDist, ox, oy;
 
-			const x1 = p1.x + objX;
-			const y1 = p1.y + objY;
-			const x2 = p2.x + objX;
-			const y2 = p2.y + objY;
+		for (let i = 0; i < pathLength - 1; i++) {
+			p1 = pathPts[i];
+			p2 = pathPts[i + 1];
 
-			if (capsuleIntersectsRect(x1, y1, x2, y2, radiusSq, minX, minY, maxX, maxY)) {
+			x1 = p1.x + objX;
+			y1 = p1.y + objY;
+			x2 = p2.x + objX;
+			y2 = p2.y + objY;
+
+			// AABB vs Capsule Bounding Box fast reject
+			segMinX = x1 < x2 ? x1 : x2;
+			segMaxX = x1 > x2 ? x1 : x2;
+			segMinY = y1 < y2 ? y1 : y2;
+			segMaxY = y1 > y2 ? y1 : y2;
+
+			if (
+				segMaxX + radius < minX ||
+				segMinX - radius > maxX ||
+				segMaxY + radius < minY ||
+				segMinY - radius > maxY
+			) {
+				continue;
+			}
+
+			// Point in Rect check for segment endpoints
+			if ((x1 >= minX && x1 <= maxX && y1 >= minY && y1 <= maxY) ||
+				(x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY)) {
 				return true;
+			}
+
+			// Segment vector
+			abx = x2 - x1;
+			aby = y2 - y1;
+
+			// Segment intersections with Rect Edges
+
+			// Edge 1: Top (minX, minY) to (maxX, minY)
+			cdx = maxX - minX; cdy = 0;
+			denom = abx * cdy - aby * cdx;
+			if (denom !== 0) {
+				acx = minX - x1; acy = minY - y1;
+				tInt = (acx * cdy - acy * cdx) / denom;
+				if (tInt >= 0 && tInt <= 1) {
+					uInt = (acx * aby - acy * abx) / denom;
+					if (uInt >= 0 && uInt <= 1) return true;
+				}
+			}
+
+			// Edge 2: Bottom (maxX, minY) to (maxX, maxY)
+			cdx = 0; cdy = maxY - minY;
+			denom = abx * cdy - aby * cdx;
+			if (denom !== 0) {
+				acx = maxX - x1; acy = minY - y1;
+				tInt = (acx * cdy - acy * cdx) / denom;
+				if (tInt >= 0 && tInt <= 1) {
+					uInt = (acx * aby - acy * abx) / denom;
+					if (uInt >= 0 && uInt <= 1) return true;
+				}
+			}
+
+			// Edge 3: Right (maxX, maxY) to (minX, maxY)
+			cdx = minX - maxX; cdy = 0;
+			denom = abx * cdy - aby * cdx;
+			if (denom !== 0) {
+				acx = maxX - x1; acy = maxY - y1;
+				tInt = (acx * cdy - acy * cdx) / denom;
+				if (tInt >= 0 && tInt <= 1) {
+					uInt = (acx * aby - acy * abx) / denom;
+					if (uInt >= 0 && uInt <= 1) return true;
+				}
+			}
+
+			// Edge 4: Left (minX, maxY) to (minX, minY)
+			cdx = 0; cdy = minY - maxY;
+			denom = abx * cdy - aby * cdx;
+			if (denom !== 0) {
+				acx = minX - x1; acy = maxY - y1;
+				tInt = (acx * cdy - acy * cdx) / denom;
+				if (tInt >= 0 && tInt <= 1) {
+					uInt = (acx * aby - acy * abx) / denom;
+					if (uInt >= 0 && uInt <= 1) return true;
+				}
+			}
+
+			// Point Segment Distance Sq for Rect Corners
+			lenSq = abx * abx + aby * aby;
+
+			if (lenSq <= 0) {
+				// Corner 1 (minX, minY)
+				ox = minX - x1; oy = minY - y1;
+				if (ox * ox + oy * oy <= radiusSq) return true;
+				// Corner 2 (maxX, minY)
+				ox = maxX - x1; oy = minY - y1;
+				if (ox * ox + oy * oy <= radiusSq) return true;
+				// Corner 3 (maxX, maxY)
+				ox = maxX - x1; oy = maxY - y1;
+				if (ox * ox + oy * oy <= radiusSq) return true;
+				// Corner 4 (minX, maxY)
+				ox = minX - x1; oy = maxY - y1;
+				if (ox * ox + oy * oy <= radiusSq) return true;
+			} else {
+				// Corner 1: (minX, minY)
+				tDist = ((minX - x1) * abx + (minY - y1) * aby) / lenSq;
+				if (tDist < 0) tDist = 0; else if (tDist > 1) tDist = 1;
+				ox = minX - (x1 + tDist * abx); oy = minY - (y1 + tDist * aby);
+				if (ox * ox + oy * oy <= radiusSq) return true;
+
+				// Corner 2: (maxX, minY)
+				tDist = ((maxX - x1) * abx + (minY - y1) * aby) / lenSq;
+				if (tDist < 0) tDist = 0; else if (tDist > 1) tDist = 1;
+				ox = maxX - (x1 + tDist * abx); oy = minY - (y1 + tDist * aby);
+				if (ox * ox + oy * oy <= radiusSq) return true;
+
+				// Corner 3: (maxX, maxY)
+				tDist = ((maxX - x1) * abx + (maxY - y1) * aby) / lenSq;
+				if (tDist < 0) tDist = 0; else if (tDist > 1) tDist = 1;
+				ox = maxX - (x1 + tDist * abx); oy = maxY - (y1 + tDist * aby);
+				if (ox * ox + oy * oy <= radiusSq) return true;
+
+				// Corner 4: (minX, maxY)
+				tDist = ((minX - x1) * abx + (maxY - y1) * aby) / lenSq;
+				if (tDist < 0) tDist = 0; else if (tDist > 1) tDist = 1;
+				ox = minX - (x1 + tDist * abx); oy = maxY - (y1 + tDist * aby);
+				if (ox * ox + oy * oy <= radiusSq) return true;
 			}
 		}
 
@@ -578,13 +707,22 @@ export default class DrawableSlider
 
 			const x = frame.position.x;
 			const y = frame.position.y;
-			const pointer = new Vector2(x, y);
+
+			const px =
+				position.x +
+				this.object.stackedOffset.x +
+				this.object.startPosition.x;
+
+			const py =
+				position.y +
+				this.object.stackedOffset.y +
+				this.object.startPosition.y;
+
+			const dx = x - px;
+			const dy = y - py;
 
 			const radius = 64 * this.object.scale * 2.4;
-			const dist = pointer.distance(
-				position.add(this.object.stackedOffset).add(this.object.startPosition)
-			);
-			return dist <= radius && (frame.mouseLeft || frame.mouseRight);
+			return dx * dx + dy * dy <= radius * radius;
 		};
 
 		for (const frame of frames) {
@@ -696,116 +834,13 @@ export default class DrawableSlider
 			this.nodes.fill(0xff0000);
 		}
 
-		const path = this.lastGeometryState.head === 0 && this.lastGeometryState.tail === 1 ?
-			this.path :
-			calculateSliderProgress(val.path, 0, 1, this.path.points);
-
-		if (!path.length) return;
-
 		const selectionScale = this.getSkinBodyScale();
 		const selectionRadius = val.radius * (236 / 256) * selectionScale;
-		this.renderer.updateSelectionGeometry(path, selectionRadius);
+		this.renderer.updateSelectionGeometry({
+			points: this.object.path.calculatedPath,
+			length: this.object.path.calculatedPath.length
+		}, selectionRadius);
 
 		this._selectionVisualsDirty = false;
 	}
-}
-
-function capsuleIntersectsRect(
-	x1: number,
-	y1: number,
-	x2: number,
-	y2: number,
-	radiusSq: number,
-	minX: number,
-	minY: number,
-	maxX: number,
-	maxY: number
-): boolean {
-	if (
-		pointInRect(x1, y1, minX, minY, maxX, maxY) ||
-		pointInRect(x2, y2, minX, minY, maxX, maxY)
-	) {
-		return true;
-	}
-
-	if (
-		segmentsIntersect(x1, y1, x2, y2, minX, minY, maxX, minY) ||
-		segmentsIntersect(x1, y1, x2, y2, maxX, minY, maxX, maxY) ||
-		segmentsIntersect(x1, y1, x2, y2, maxX, maxY, minX, maxY) ||
-		segmentsIntersect(x1, y1, x2, y2, minX, maxY, minX, minY)
-	) {
-		return true;
-	}
-
-	const d1 = pointSegmentDistSq(minX, minY, x1, y1, x2, y2);
-	const d2 = pointSegmentDistSq(maxX, minY, x1, y1, x2, y2);
-	const d3 = pointSegmentDistSq(maxX, maxY, x1, y1, x2, y2);
-	const d4 = pointSegmentDistSq(minX, maxY, x1, y1, x2, y2);
-
-	return Math.min(d1, d2, d3, d4) < radiusSq;
-}
-
-function pointInRect(
-	x: number,
-	y: number,
-	minX: number,
-	minY: number,
-	maxX: number,
-	maxY: number
-): boolean {
-	return x >= minX && x <= maxX && y >= minY && y <= maxY;
-}
-
-function pointSegmentDistSq(
-	px: number,
-	py: number,
-	x1: number,
-	y1: number,
-	x2: number,
-	y2: number
-): number {
-	const dx = x2 - x1;
-	const dy = y2 - y1;
-	const l2 = dx * dx + dy * dy;
-
-	if (l2 === 0) {
-		const ox = px - x1;
-		const oy = py - y1;
-		return ox * ox + oy * oy;
-	}
-
-	const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
-	const x = x1 + t * dx;
-	const y = y1 + t * dy;
-	const ox = px - x;
-	const oy = py - y;
-
-	return ox * ox + oy * oy;
-}
-
-function segmentsIntersect(
-	ax: number,
-	ay: number,
-	bx: number,
-	by: number,
-	cx: number,
-	cy: number,
-	dx: number,
-	dy: number
-): boolean {
-	const abx = bx - ax;
-	const aby = by - ay;
-	const cdx = dx - cx;
-	const cdy = dy - cy;
-
-	const denom = abx * cdy - aby * cdx;
-	if (denom === 0) return false;
-
-	const acx = cx - ax;
-	const acy = cy - ay;
-
-	const t = (acx * cdy - acy * cdx) / denom;
-	const u = (acx * aby - acy * abx) / denom;
-
-	return t >= 0 && t <= 1 && u >= 0 && u <= 1;
 }
