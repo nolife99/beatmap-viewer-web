@@ -87,16 +87,10 @@ function loop(): void {
 	const prev = previousTime || currentTime;
 
 	const visibleInterval = [currentTime - 800, currentTime + preempt] as IntervalInput;
-	const hitSoundInterval = [
-		Math.min(prev, currentTime) - 4,
-		Math.max(prev, currentTime) + 4
-	] as IntervalInput;
-
 	postMessage({
 		type: 'update',
 		objects: findRange(objectsTree, visibleInterval),
 		connectors: findRange(connectorsTree, visibleInterval),
-		hitSounds: findRange(objectsTree, hitSoundInterval),
 		currentTime,
 		previousTime: prev
 	});

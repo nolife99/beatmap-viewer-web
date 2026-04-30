@@ -22,6 +22,7 @@ import DrawableApproachCircle from './DrawableApproachCircle.ts';
 import DrawableDefaults from './DrawableDefaults.ts';
 import DrawableHitObject, { type IHasApproachCircle } from './DrawableHitObject.ts';
 import DrawableJudgement from './DrawableJudgement.ts';
+import ConfigSection, { ChangeRemover } from '../../../Config/ConfigSection.ts';
 
 export default class DrawableHitCircle
 	extends DrawableHitObject
@@ -46,6 +47,8 @@ export default class DrawableHitCircle
 
 	judgement: DrawableJudgement;
 	color: ColorSource = 'rgb(0, 0, 0)';
+
+	private remover: ChangeRemover;
 
 	constructor(
 		object: StandardHitObject,
@@ -84,7 +87,6 @@ export default class DrawableHitCircle
 		this.gameplaysEventCallback = inject<Gameplays>(
 			'ui/main/viewer/gameplays'
 		)?.on('change', () => this.refreshColor());
-		inject<ExperimentalConfig>('config/experimental')?.onChange('overlapGameplays', () => this.refreshColor());
 
 		this.timelineObject = new TimelineHitCircle(object).hook(this.context);
 
@@ -92,14 +94,17 @@ export default class DrawableHitCircle
 		judgementLayer.attach(this.judgement.container);
 		this.container.addChild(this.judgement.container);
 
-		inject<GameplayConfig>('config/gameplay')?.onChange(
-			'hitAnimation',
-			(val) => {
-				if (!val) return;
+		this.remover = ConfigSection.createRemover(
+			inject<ExperimentalConfig>('config/experimental')?.onChange('overlapGameplays', () => this.refreshColor()),
+			inject<GameplayConfig>('config/gameplay')?.onChange(
+				'hitAnimation',
+				(val) => {
+					if (!val) return;
 
-				this.hitCircleSprite.tint = this.color;
-			}
-		);
+					this.hitCircleSprite.tint = this.color;
+				}
+			)
+		)
 	}
 
 	private _isSelected = false;
@@ -309,7 +314,9 @@ export default class DrawableHitCircle
 		};
 	}
 
-	destroy() {
+	override destroy(): void {
+		super.destroy();
+
 		this.hitCircleOverlay.destroy();
 		this.hitCircleSprite.destroy();
 		this.flashPiece.destroy();
@@ -328,5 +335,7 @@ export default class DrawableHitCircle
 				'change',
 				this.gameplaysEventCallback
 			);
+
+		this.remover();
 	}
 }

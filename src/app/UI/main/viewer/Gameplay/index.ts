@@ -41,6 +41,38 @@ const defaultLayout: Omit<LayoutOptions, 'target'> = {
 	objectFit: 'none'
 };
 
+type Remover = () => void;
+
+const makeRemover = (
+	...removers: readonly (Remover | undefined | null)[]
+): Remover => {
+	let removed = false;
+	let list: (Remover | undefined | null)[] | undefined = removers.slice();
+
+	return () => {
+		if (removed) return;
+		removed = true;
+
+		const current = list;
+		list = undefined;
+
+		if (!current) return;
+
+		for (let i = current.length - 1; i >= 0; i--) {
+			const remover = current[i];
+			current[i] = undefined;
+
+			try {
+				remover?.();
+			} catch (error) {
+				console.error('[Gameplay] disposer failed', error);
+			}
+		}
+
+		current.length = 0;
+	};
+};
+
 export default class Gameplay extends ScopedClass {
 	container: Container;
 	wrapper: Container;
@@ -54,15 +86,14 @@ export default class Gameplay extends ScopedClass {
 	closeButton!: LayoutContainer;
 	spinner: Spinner;
 	cursorLayer: Container;
-
-	csText!: Text;
-	arText!: Text;
-	odText!: Text;
-	hpText!: Text;
-
 	selected: Set<number> = new Set();
 	dragWindow: [Vector2, Vector2] = [new Vector2(0, 0), new Vector2(0, 0)];
+
 	private _currentTween?: Tween;
+	private _destroyed = false;
+	private _removeGlobalEventHandlers?: Remover;
+	private _removeCloseButtonGlobalHandlers?: Remover;
+	private _layoutTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
 	constructor(public beatmap: Beatmap) {
 		super();
@@ -76,6 +107,7 @@ export default class Gameplay extends ScopedClass {
 			},
 			interactive: true
 		});
+
 		this.wrapper = new Container({
 			layout: {
 				width: '100%',
@@ -83,6 +115,7 @@ export default class Gameplay extends ScopedClass {
 			},
 			interactive: true
 		});
+
 		this.background = new LayoutContainer({
 			layout: {
 				width: '100%',
@@ -100,6 +133,7 @@ export default class Gameplay extends ScopedClass {
 				borderRadius: 20
 			}
 		});
+
 		this.selector = new Graphics()
 			.rect(0, 0, 1, 1)
 			.fill({ color: 0xffffff, alpha: 0.3 });
@@ -138,29 +172,51 @@ export default class Gameplay extends ScopedClass {
 			this.selector,
 			this.cursorLayer
 		);
-		this.wrapper.on('layout', () => this.reLayout());
 
-		this.loadEventListeners();
-
-		inject<ColorConfig>('config/color')?.onChange('color', ({ base, text }) => {
-			this.closeButton.layout = { backgroundColor: base };
-			this.statsContainer.layout = { backgroundColor: base };
-			this.diffName.style.fill = text;
+		this.wrapper.on('layout', () => {
+			if (!this._destroyed) this.reLayout();
 		});
 
-		inject<BackgroundConfig>('config/background')?.onChange(
-			'backgroundDim',
-			(value: number) => {
+		this.loadEventListeners();
+		this.loadGlobalEventHandlers();
+
+		this.reLayout();
+	}
+
+	private static createRemover(
+		...removers: readonly (Remover | undefined | null)[]
+	): Remover {
+		return makeRemover(...removers);
+	}
+
+	private loadGlobalEventHandlers() {
+		const colorConfig = inject<ColorConfig>('config/color');
+		const backgroundConfig = inject<BackgroundConfig>('config/background');
+		const gameplayConfig = inject<GameplayConfig>('config/gameplay');
+
+		this._removeGlobalEventHandlers = Gameplay.createRemover(
+			this._removeCloseButtonGlobalHandlers,
+
+			colorConfig?.onChange('color', ({ base, text }) => {
+				if (this._destroyed) return;
+
+				this.closeButton.layout = { backgroundColor: base };
+				this.statsContainer.layout = { backgroundColor: base };
+				this.diffName.style.fill = text;
+			}),
+
+			backgroundConfig?.onChange('backgroundDim', (value: number) => {
+				if (this._destroyed) return;
+
 				this.background.layout = {
 					backgroundColor: [0, 0, 0, Math.max(0.01, value / 100)]
 				};
-			}
-		);
+			}),
 
-		inject<BackgroundConfig>('config/background')?.onChange(
-			'breakSection',
-			(isBreak: boolean) => {
-				this._currentTween?.stop();
+			backgroundConfig?.onChange('breakSection', (isBreak: boolean) => {
+				if (this._destroyed) return;
+
+				this.stopCurrentTween();
 
 				const tween = new Tween({
 					value: this.background.alpha
@@ -173,32 +229,52 @@ export default class Gameplay extends ScopedClass {
 						1000
 					)
 					.onUpdate(({ value }) => {
-						this.background.alpha = value;
+						if (!this._destroyed) {
+							this.background.alpha = value;
+						}
 					})
 					.onComplete(() => {
 						tweenGroup.remove(tween);
+
+						if (this._currentTween === tween) {
+							this._currentTween = undefined;
+						}
 					})
 					.onStop(() => {
 						tweenGroup.remove(tween);
+
+						if (this._currentTween === tween) {
+							this._currentTween = undefined;
+						}
 					})
 					.start();
 
 				tweenGroup.add(tween);
 				this._currentTween = tween;
-			}
-		);
+			}),
 
-		inject<GameplayConfig>('config/gameplay')?.onChange(
-			'showGrid',
-			(val: boolean) => {
+			gameplayConfig?.onChange('showGrid', (val: boolean) => {
+				if (this._destroyed) return;
+
 				this.grid.visible = val;
-			}
+			})
 		);
 
-		this.reLayout();
+		this._removeCloseButtonGlobalHandlers = undefined;
+	}
+
+	private stopCurrentTween() {
+		const tween = this._currentTween;
+		if (!tween) return;
+
+		this._currentTween = undefined;
+		tween.stop();
+		tweenGroup.remove(tween);
 	}
 
 	reLayout() {
+		if (this._destroyed) return;
+
 		const isFullscreen =
 			inject<FullscreenConfig>('config/fullscreen')?.fullscreen;
 
@@ -226,7 +302,18 @@ export default class Gameplay extends ScopedClass {
 		this.grid.x = (width - _w) / 2;
 		this.grid.y = (height - _h) / 2;
 
-		setTimeout(() => this.drawGrid(_w));
+		if (this._layoutTimeoutId !== undefined) {
+			clearTimeout(this._layoutTimeoutId);
+			this._layoutTimeoutId = undefined;
+		}
+
+		this._layoutTimeoutId = setTimeout(() => {
+			this._layoutTimeoutId = undefined;
+
+			if (!this._destroyed) {
+				this.drawGrid(_w);
+			}
+		});
 
 		this.selectContainer.scale.set(scale);
 
@@ -240,6 +327,8 @@ export default class Gameplay extends ScopedClass {
 	}
 
 	drawGrid(width = 512) {
+		if (this._destroyed) return;
+
 		const scale = width / 512;
 		const height = 384 * scale;
 		const unit = 32 * scale;
@@ -260,7 +349,7 @@ export default class Gameplay extends ScopedClass {
 		}
 
 		this.grid.rect(width / 2 - 0.5, 0, 1, height).fill(color);
-		this.grid.rect(0, height / 2 - 0.5, width, 1).fill(color);
+		this.grid.rect(0, height / 2 - 0.5, 1, height).fill(color);
 
 		const cornerStroke: StrokeStyle = {
 			color,
@@ -292,44 +381,50 @@ export default class Gameplay extends ScopedClass {
 
 	loadEventListeners() {
 		const beatmap = this.beatmap;
-		// const canvas = inject<Application>("ui/app")?.canvas;
-
 		let clicked = false;
 
-		this.wrapper.on('pointerup', () => {
+		const resetDrag = () => {
 			clicked = false;
-			this.dragWindow = [new Vector2(0, 0), new Vector2(0, 0)];
+			this.dragWindow[0].x = 0;
+			this.dragWindow[0].y = 0;
+			this.dragWindow[1].x = 0;
+			this.dragWindow[1].y = 0;
+		};
 
-			// if (canvas) {
-			// 	canvas.style.touchAction = "auto";
-			// }
+		const getAudioTime = () =>
+			inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
+				?.currentTime ?? 0;
+
+		this.wrapper.on('pointerup', () => {
+			if (this._destroyed) return;
+
+			resetDrag();
 		});
 
 		this.wrapper.on('pointerupoutside', () => {
-			clicked = false;
-			this.dragWindow = [new Vector2(0, 0), new Vector2(0, 0)];
+			if (this._destroyed) return;
 
-			// if (canvas) {
-			// 	canvas.style.touchAction = "auto";
-			// }
+			resetDrag();
 		});
 
 		this.wrapper.on('globalpointermove', (event) => {
+			if (this._destroyed) return;
+
 			const pos = this.objectsContainer.toLocal(event.global);
 
 			if (clicked) {
-				this.dragWindow[1] = new Vector2(event.global.x, event.global.y);
+				this.dragWindow[1].x = event.global.x;
+				this.dragWindow[1].y = event.global.y;
 			}
+
+			const p = new Vector2(pos.x, pos.y);
+			const time = getAudioTime();
 
 			for (const idx of beatmap.previousObjects) {
 				const obj = beatmap.objects[idx];
+
 				if (obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) {
-					const p = new Vector2(pos.x, pos.y);
-					const collided = obj.checkCollide(
-						[p, p],
-						inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
-							?.currentTime ?? 0
-					);
+					const collided = obj.checkCollide([p, p], time);
 
 					if (obj instanceof DrawableSlider) {
 						obj.isHover = collided;
@@ -339,27 +434,26 @@ export default class Gameplay extends ScopedClass {
 		});
 
 		this.wrapper.on('pointerdown', (event) => {
-			// if (canvas) {
-			// 	canvas.style.touchAction = "none";
-			// }
+			if (this._destroyed) return;
 
 			clicked = true;
-			this.dragWindow[0] = new Vector2(event.global.x, event.global.y);
-			this.dragWindow[1] = new Vector2(event.global.x, event.global.y);
+			this.dragWindow[0].x = event.global.x;
+			this.dragWindow[0].y = event.global.y;
+			this.dragWindow[1].x = event.global.x;
+			this.dragWindow[1].y = event.global.y;
 
 			const pos = this.objectsContainer.toLocal(event.global);
-			const selected = [];
+			const p = new Vector2(pos.x, pos.y);
+			const selected: number[] = [];
+			const time = getAudioTime();
 
 			for (const idx of beatmap.previousObjects) {
 				const obj = beatmap.objects[idx];
+
 				if (obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) {
-					const p = new Vector2(pos.x, pos.y);
-					const collided = obj.checkCollide(
-						[p, p],
-						inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')
-							?.currentTime ?? 0
-					);
-					if (collided) selected.push(idx);
+					if (obj.checkCollide([p, p], time)) {
+						selected.push(idx);
+					}
 				}
 			}
 
@@ -368,7 +462,10 @@ export default class Gameplay extends ScopedClass {
 					this.removeSelected(select);
 				}
 			}
-			if (selected.length !== 0) this.selected.add(selected[0]);
+
+			if (selected.length !== 0) {
+				this.selected.add(selected[0]);
+			}
 
 			for (const select of this.selected) {
 				this.addSelected(select);
@@ -377,19 +474,56 @@ export default class Gameplay extends ScopedClass {
 	}
 
 	addSelected(idx: number) {
+		if (this._destroyed) return;
+
 		this.selected.add(idx);
+
 		const obj = this.beatmap.objects[idx] as DrawableHitCircle | DrawableSlider;
 		if (obj.timelineObject) obj.timelineObject.isSelected = true;
+
 		this.selectContainer.addChild(obj.select);
 		obj.isSelected = true;
 	}
 
 	removeSelected(idx: number) {
+		if (this._destroyed) return;
+
 		this.selected.delete(idx);
+
 		const obj = this.beatmap.objects[idx] as DrawableHitCircle | DrawableSlider;
 		obj.isSelected = false;
+
 		if (obj.timelineObject) obj.timelineObject.isSelected = false;
-		this.selectContainer.removeChild(obj.select);
+
+		if (obj.select.parent === this.selectContainer) {
+			this.selectContainer.removeChild(obj.select);
+		}
+	}
+
+	private clearSelectionState() {
+		const beatmap = this.beatmap;
+		if (!beatmap) {
+			this.selected.clear();
+			return;
+		}
+
+		for (const idx of this.selected) {
+			const obj = beatmap.objects[idx];
+
+			if (obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) {
+				obj.isSelected = false;
+
+				if (obj.timelineObject) {
+					obj.timelineObject.isSelected = false;
+				}
+
+				if (obj.select.parent === this.selectContainer) {
+					this.selectContainer.removeChild(obj.select);
+				}
+			}
+		}
+
+		this.selected.clear();
 	}
 
 	checkInBound(point: Vector2) {
@@ -407,14 +541,20 @@ export default class Gameplay extends ScopedClass {
 	}
 
 	showCloseButton() {
+		if (this._destroyed) return;
+
 		this.container.addChild(this.closeButton);
 	}
 
 	hideCloseButton() {
+		if (this._destroyed) return;
+
 		this.container.removeChild(this.closeButton);
 	}
 
 	showDiffName(withCloseButton: boolean = false) {
+		if (this._destroyed) return;
+
 		if (withCloseButton) {
 			this.statsContainer.addChild(this.closeButton);
 		} else {
@@ -425,6 +565,8 @@ export default class Gameplay extends ScopedClass {
 	}
 
 	hideDiffName() {
+		if (this._destroyed) return;
+
 		this.container.removeChild(this.statsContainer);
 	}
 
@@ -452,14 +594,23 @@ export default class Gameplay extends ScopedClass {
 		closeButton.tint =
 			inject<ColorConfig>('config/color')?.color.text ?? 0xffffff;
 
-		inject<ColorConfig>('config/color')?.onChange('color', ({ text }) => {
-			closeButton.tint = text;
-		});
+		const colorConfig = inject<ColorConfig>('config/color');
+
+		this._removeCloseButtonGlobalHandlers = Gameplay.createRemover(
+			colorConfig?.onChange('color', ({ text }) => {
+				if (!this._destroyed) {
+					closeButton.tint = text;
+				}
+			})
+		);
 
 		closeButton.texture = Texture.from('x.png');
 
 		closeButtonContainer.cursor = 'pointer';
+
 		const unloadSelf = () => {
+			if (this._destroyed) return;
+
 			closeButtonContainer.layout = {
 				backgroundColor:
 					inject<ColorConfig>('config/color')?.color.base ?? 0xffffff
@@ -471,9 +622,12 @@ export default class Gameplay extends ScopedClass {
 			const idx = bms.difficulties.indexOf(this.beatmap);
 			bms.unloadSlave(idx);
 		};
-		closeButtonContainer.addEventListener('pointertap', () => unloadSelf());
+
+		closeButtonContainer.addEventListener('pointertap', unloadSelf);
 
 		closeButtonContainer.addEventListener('pointerenter', () => {
+			if (this._destroyed) return;
+
 			closeButtonContainer.layout = {
 				backgroundColor:
 					inject<ColorConfig>('config/color')?.color.surface2 ?? 0xffffff
@@ -481,6 +635,8 @@ export default class Gameplay extends ScopedClass {
 		});
 
 		closeButtonContainer.addEventListener('pointerleave', () => {
+			if (this._destroyed) return;
+
 			closeButtonContainer.layout = {
 				backgroundColor:
 					inject<ColorConfig>('config/color')?.color.base ?? 0xffffff
@@ -522,5 +678,43 @@ export default class Gameplay extends ScopedClass {
 		});
 
 		this.statsContainer.addChild(this.diffName);
+	}
+
+	override destroy() {
+		if (this._destroyed) return;
+		this._destroyed = true;
+
+		if (this._layoutTimeoutId !== undefined) {
+			clearTimeout(this._layoutTimeoutId);
+			this._layoutTimeoutId = undefined;
+		}
+
+		this.stopCurrentTween();
+
+		this._removeGlobalEventHandlers?.();
+		this._removeGlobalEventHandlers = undefined;
+		this._removeCloseButtonGlobalHandlers = undefined;
+
+		this.clearSelectionState();
+
+		// Pixi destroys its own internal event handlers/listeners for this tree.
+		this.container.destroy({ children: true });
+
+		// Your current Context class has no public destroy(), so clear it defensively.
+		const context = this.context as unknown as {
+			destroy?: () => void;
+			_map?: { clear?: () => void };
+			parent?: undefined;
+		};
+
+		context.destroy?.();
+		context._map?.clear?.();
+		context.parent = undefined;
+
+		this.selected.clear();
+
+		// Break the largest strong edge when this Gameplay instance itself is retained.
+		this.beatmap = undefined as unknown as Beatmap;
+		super.destroy();
 	}
 }

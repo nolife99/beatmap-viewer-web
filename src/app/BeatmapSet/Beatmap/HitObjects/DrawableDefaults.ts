@@ -24,7 +24,13 @@ export default class DrawableDefaults extends SkinnableElement {
 		this.container.addChild(...digits.map<Sprite>(() => new Sprite({ anchor: { x: 0, y: 0.5 } })));
 		this.refreshSprites();
 
-		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() => this.refreshSprites());
+		this.lifetime.use(
+			this.skinManager?.addSkinChangeListener(() => this.refreshSprites()),
+			(c) => {
+				if (!c) return;
+				this.skinManager?.removeSkinChangeListener(c);
+			}
+		);
 	}
 
 	private _object!: Circle;
@@ -77,9 +83,8 @@ export default class DrawableDefaults extends SkinnableElement {
 		update(this, time);
 	}
 
-	destroy() {
-		if (this.skinEventCallback)
-			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
+	override destroy(): void {
+		super.destroy();
 
 		this.container.destroy({ children: true });
 	}

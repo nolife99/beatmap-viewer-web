@@ -1,21 +1,7 @@
 /**
- * AudioDecoderWorker
- * ──────────────────
- * Owns the mediabunny Input + AudioSampleSink, decodes audio off the main
- * thread, resamples to the AudioContext sample rate when necessary, and
- * continuously feeds the SAB_RING shared ring buffer consumed by
- * ClockBridgeProcessor.
- *
- * Communication with the main thread is via postMessage (not SAB) because:
- *  - Commands (play/seek/pause) are rare, and latency requirements are loose
- *    compared to individual process() quanta.
- *  - It lets the Worker's JS event loop remain responsive for cancellation.
- *
- * Channel policy
- * ──────────────
- * The ring is always written with RING_CHANNELS (2) channels.  Mono source
- * tracks have their single channel duplicated.  Source tracks with >2 channels
- * are downmixed to the first two.
+ * Decoder worker.
+ * It owns Mediabunny decode/resample and keeps the SAB ring primed.
+ * Pause does not cancel decode; the writer naturally blocks when the ring is full.
  */
 
 import { ALL_FORMATS, AudioSample, AudioSampleSink, BlobSource, Input } from 'mediabunny';
@@ -30,56 +16,53 @@ let contextSampleRate = 44_100;
 
 let currentInput: Input | null = null;
 let currentSink: AudioSampleSink | null = null;
-
-let cancelToken = { cancelled: false };
+let token: FillToken = { cancelled: true, generation: 0 };
 
 onmessage = async (e: MessageEvent) => {
 	const msg = e.data as WorkerInMessage;
 
-	switch (msg.type) {
-		case 'init': {
-			contextSampleRate = msg.contextSampleRate;
-			ringWriter = new RingBufferWriter(msg.sabRing, RING_CHANNELS, RING_FRAME_CAPACITY);
-			break;
+	try {
+		switch (msg.type) {
+			case 'init':
+				contextSampleRate = msg.contextSampleRate;
+				ringWriter = new RingBufferWriter(msg.sabRing, RING_CHANNELS, RING_FRAME_CAPACITY);
+				break;
+
+			case 'load':
+				await handleLoad(msg.blob, msg.encoderDelayMs);
+				break;
+
+			case 'play':
+			case 'seek':
+				startFill(msg.seekSec, msg.generation);
+				break;
+
+			case 'pause':
+				// Keep filling until full. This makes resume after pause/paused-seek immediate.
+				break;
+
+			case 'stop':
+				token.cancelled = true;
+				break;
+
+			case 'destroy':
+				token.cancelled = true;
+				disposeInput();
+				self.close();
+				break;
 		}
-
-		case 'load':
-			await handleLoad(msg.blob, msg.encoderDelayMs);
-			break;
-
-		case 'play':
-		case 'seek': {
-			cancelToken.cancelled = true;
-			const token = (cancelToken = { cancelled: false });
-
-			if (!ringWriter || !currentSink) break;
-
-			ringWriter.resetForSeek(msg.generation);
-			void fillLoop(msg.seekSec, token);
-
-			break;
-		}
-
-		case 'pause':
-		case 'stop':
-			cancelToken.cancelled = true;
-			break;
-
-		case 'destroy':
-			cancelToken.cancelled = true;
-			disposeInput();
-			self.close();
-			break;
+	} catch (err) {
+		post({ type: 'error', generation: token.generation, message: String(err) });
 	}
 };
 
 async function handleLoad(blob: Blob, encoderDelayMs: number): Promise<void> {
-	cancelToken.cancelled = true;
+	token.cancelled = true;
 	disposeInput();
 
 	const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS });
-
 	const track = await input.getPrimaryAudioTrack();
+
 	if (!track) {
 		input.dispose();
 		throw new Error('No primary audio track found');
@@ -93,64 +76,63 @@ async function handleLoad(blob: Blob, encoderDelayMs: number): Promise<void> {
 	currentInput = input;
 	currentSink = new AudioSampleSink(track);
 
-	const reply: WorkerOutMessage = {
+	post({
 		type: 'loaded',
 		sampleRate: track.sampleRate,
 		numberOfChannels: track.numberOfChannels,
 		encoderDelayMs
-	};
-	self.postMessage(reply);
+	});
 }
 
-async function fillLoop(
-	seekSec: number,
-	token: { cancelled: boolean }
-): Promise<void> {
+function startFill(seekSec: number, generation: number): void {
+	const writer = ringWriter;
+	if (!writer || !currentSink) return;
+
+	token.cancelled = true;
+	token = { cancelled: false, generation };
+	writer.resetForSeek(generation);
+	void fillLoop(seekSec, token);
+}
+
+async function fillLoop(seekSec: number, localToken: FillToken): Promise<void> {
 	const sink = currentSink;
 	const writer = ringWriter;
 	if (!sink || !writer) return;
 
 	try {
 		for await (const sample of sink.samples(seekSec)) {
-			if (token.cancelled) {
+			if (localToken.cancelled) {
 				sample.close();
 				break;
 			}
 
 			const channels = extractAndResample(sample);
 			sample.close();
-
 			if (!channels) continue;
 
-			const totalFrames = channels[0].length;
 			let written = 0;
+			const totalFrames = channels[0].length;
 
-			while (written < totalFrames && !token.cancelled) {
-				const chunkFrames = Math.min(totalFrames - written, RING_FRAME_CAPACITY >> 2);
-				const slices = channels.map((ch) => ch.subarray(written, written + chunkFrames));
+			while (written < totalFrames && !localToken.cancelled) {
+				const chunk = Math.min(totalFrames - written, RING_FRAME_CAPACITY >> 2);
 
-				if (!writer.write(slices, chunkFrames)) {
+				if (writer.write(channels, chunk, written)) {
+					written += chunk;
+				} else {
 					await sleep(1);
-					continue;
 				}
-
-				written += chunkFrames;
 			}
 
 			freeChannels(channels);
 		}
 	} catch (err) {
-		if (!token.cancelled) {
-			const reply: WorkerOutMessage = { type: 'error', message: String(err) };
-			self.postMessage(reply);
-			return;
+		if (!localToken.cancelled) {
+			post({ type: 'error', generation: localToken.generation, message: String(err) });
 		}
+		return;
 	}
 
-	if (!token.cancelled) {
-		const reply: WorkerOutMessage = { type: 'ended' };
-		self.postMessage(reply);
-	}
+	if (!localToken.cancelled) post({ type: 'ended', generation: localToken.generation });
 }
 
 function extractAndResample(sample: AudioSample): Float32Array[] | null {
@@ -159,7 +141,6 @@ function extractAndResample(sample: AudioSample): Float32Array[] | null {
 
 	const srcRate = sample.sampleRate;
 	const srcCh = sample.numberOfChannels;
-
 	const raw: Float32Array[] = [];
 
 	for (let c = 0; c < srcCh; c++) {
@@ -172,9 +153,7 @@ function extractAndResample(sample: AudioSample): Float32Array[] | null {
 	const stereo = downmixToStereo(raw, srcFrames);
 	freeChannels(raw);
 
-	if (srcRate === contextSampleRate) {
-		return stereo;
-	}
+	if (srcRate === contextSampleRate) return stereo;
 
 	const resampled = [
 		linearResample(stereo[0], srcFrames, srcRate, contextSampleRate),
@@ -185,18 +164,16 @@ function extractAndResample(sample: AudioSample): Float32Array[] | null {
 	return resampled;
 }
 
-function downmixToStereo(
-	channels: Float32Array[],
-	frameCount: number
-): Float32Array[] {
+function downmixToStereo(channels: Float32Array[], frameCount: number): Float32Array[] {
 	const srcCh = channels.length;
 	const left = mallocF32(frameCount);
 	const right = mallocF32(frameCount);
 
-	left.fill(0);
-	right.fill(0);
-
-	if (srcCh === 0) return [left, right];
+	if (srcCh === 0) {
+		left.fill(0);
+		right.fill(0);
+		return [left, right];
+	}
 
 	if (srcCh === 1) {
 		left.set(channels[0]);
@@ -210,55 +187,24 @@ function downmixToStereo(
 		return [left, right];
 	}
 
-	const gainsL = new Float32Array(srcCh);
-	const gainsR = new Float32Array(srcCh);
-
-	// 0 = FL, 1 = FR, 2 = C, 3 = LFE, 4 = SL/BL, 5 = SR/BR, 6+ = fallback
-	gainsL[0] = 1.0;
-	gainsR[1] = 1.0;
-
-	if (srcCh > 2) {
-		gainsL[2] = 0.7071067811865476;
-		gainsR[2] = 0.7071067811865476;
-	}
-
-	if (srcCh > 3) {
-		gainsL[3] = 0;
-		gainsR[3] = 0;
-	}
-
-	if (srcCh > 4) gainsL[4] = 0.7071067811865476;
-	if (srcCh > 5) gainsR[5] = 0.7071067811865476;
-
-	for (let c = 6; c < srcCh; c++) {
-		const g = 0.5 / Math.sqrt(srcCh - 6 + 1);
-		gainsL[c] = g;
-		gainsR[c] = g;
-	}
-
-	let sumSqL = 0;
-	let sumSqR = 0;
-
-	for (let c = 0; c < srcCh; c++) {
-		sumSqL += gainsL[c] * gainsL[c];
-		sumSqR += gainsR[c] * gainsR[c];
-	}
-
-	const normL = sumSqL > 1 ? 1 / Math.sqrt(sumSqL) : 1;
-	const normR = sumSqR > 1 ? 1 / Math.sqrt(sumSqR) : 1;
+	left.fill(0);
+	right.fill(0);
 
 	for (let i = 0; i < frameCount; i++) {
-		let l = 0;
-		let r = 0;
+		let l = channels[0][i] + channels[2][i] * 0.7071067811865476;
+		let r = channels[1][i] + channels[2][i] * 0.7071067811865476;
 
-		for (let c = 0; c < srcCh; c++) {
-			const v = channels[c][i];
-			l += v * gainsL[c];
-			r += v * gainsR[c];
+		if (srcCh > 4) l += channels[4][i] * 0.7071067811865476;
+		if (srcCh > 5) r += channels[5][i] * 0.7071067811865476;
+
+		for (let c = 6; c < srcCh; c++) {
+			const v = channels[c][i] * 0.25;
+			l += v;
+			r += v;
 		}
 
-		left[i] = l * normL;
-		right[i] = r * normR;
+		left[i] = Math.max(-1, Math.min(1, l));
+		right[i] = Math.max(-1, Math.min(1, r));
 	}
 
 	return [left, right];
@@ -292,9 +238,8 @@ function disposeInput(): void {
 }
 
 function mallocF32(length: number): Float32Array {
-	const array = pool(length, 'float32');
+	const array = pool(Math.max(1, length), 'float32');
 	if (!array) throw new Error(`Out of memory: ${length} f32s`);
-
 	return array as Float32Array;
 }
 
@@ -302,16 +247,19 @@ function freeChannels(channels: Float32Array[]): void {
 	for (const ch of channels) pool.free(ch);
 }
 
+function post(msg: WorkerOutMessage): void {
+	self.postMessage(msg);
+}
+
+type FillToken = { cancelled: boolean; generation: number };
+
 type WorkerInMessage =
 	| { type: 'init'; sabRing: SharedArrayBuffer; contextSampleRate: number }
 	| { type: 'load'; blob: Blob; encoderDelayMs: number }
-	| { type: 'play'; seekSec: number; generation: number }
-	| { type: 'seek'; seekSec: number; generation: number }
-	| { type: 'pause' }
-	| { type: 'stop' }
-	| { type: 'destroy' };
+	| { type: 'play' | 'seek'; seekSec: number; generation: number }
+	| { type: 'pause' | 'stop' | 'destroy' };
 
 export type WorkerOutMessage =
 	| { type: 'loaded'; sampleRate: number; numberOfChannels: number; encoderDelayMs: number }
-	| { type: 'ended' }
-	| { type: 'error'; message: string };
+	| { type: 'ended'; generation: number }
+	| { type: 'error'; generation: number; message: string };

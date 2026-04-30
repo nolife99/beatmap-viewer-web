@@ -1,5 +1,5 @@
 import { Tween } from '@tweenjs/tween.js';
-import { Graphics } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import Gameplay from '.';
 import { tweenGroup } from '../../../animation/AnimationController.ts';
 import Easings from '../../../Easings.ts';
@@ -7,8 +7,13 @@ import Easings from '../../../Easings.ts';
 export default class Spinner {
 	graphics: Graphics;
 	private _lastTime = 0;
+	private container: Container;
+	private objectsContainer: Container;
 
-	constructor(private parent: Gameplay) {
+	constructor(parent: Gameplay) {
+		this.container = parent.container;
+		this.objectsContainer = parent.objectsContainer;
+
 		this.graphics = new Graphics();
 		this.graphics.arc(0, 0, 30, 0, (5 * Math.PI) / 6).stroke({
 			color: 'white',
@@ -27,8 +32,8 @@ export default class Spinner {
 		if (val) {
 			this._spin = val;
 			this.graphics.alpha = 1;
-			this.parent.container.addChild(this.graphics);
-			this.parent.objectsContainer.alpha = 0;
+			this.container.addChild(this.graphics);
+			this.objectsContainer.alpha = 0;
 			requestAnimationFrame((time) => this.spinFn(time));
 		} else {
 			const tween = new Tween({ value: 100 })
@@ -36,18 +41,18 @@ export default class Spinner {
 				.to({ value: 0 }, 500)
 				.onUpdate(({ value }) => {
 					this.graphics.alpha = value / 100;
-					this.parent.objectsContainer.alpha = 1 - value / 100;
+					this.objectsContainer.alpha = 1 - value / 100;
 				})
 				.onComplete(() => {
-					this.parent.container.removeChild(this.graphics);
+					this.container.removeChild(this.graphics);
 					tweenGroup.remove(tween);
-					this.parent.objectsContainer.alpha = 1;
+					this.objectsContainer.alpha = 1;
 					this._spin = val;
 				})
 				.onStop(() => {
-					this.parent.container.removeChild(this.graphics);
+					this.container.removeChild(this.graphics);
 					tweenGroup.remove(tween);
-					this.parent.objectsContainer.alpha = 1;
+					this.objectsContainer.alpha = 1;
 					this._spin = val;
 				})
 				.start();
@@ -57,7 +62,7 @@ export default class Spinner {
 	}
 
 	spinFn(t: number) {
-		this.graphics.angle += 1 * (t - this._lastTime);
+		this.graphics.angle += (t - this._lastTime);
 		this._lastTime = t;
 
 		if (!this.spin) return;

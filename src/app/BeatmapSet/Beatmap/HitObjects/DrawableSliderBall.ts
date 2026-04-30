@@ -212,7 +212,9 @@ export default class DrawableSliderBall extends AnimatedSkinnableElement {
 		this.sliderspec.angle = -angle;
 	}
 
-	destroy() {
+	override destroy(): void {
+		super.destroy();
+
 		this.container.destroy();
 		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);

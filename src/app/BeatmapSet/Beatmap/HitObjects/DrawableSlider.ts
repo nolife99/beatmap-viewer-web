@@ -27,18 +27,16 @@ import DrawableSliderHead from './DrawableSliderHead.ts';
 import DrawableSliderRepeat from './DrawableSliderRepeat.ts';
 import DrawableSliderTail, { TAIL_LENIENCY } from './DrawableSliderTail.ts';
 import DrawableSliderTick from './DrawableSliderTick.ts';
-import calculateSliderProgress, { type SliderProgressResult } from './Rendering/CalculateSliderProgress.ts';
+import { SliderProgressView } from './Rendering/CalculateSliderProgress.ts';
 import SliderBodyRenderer, { type SliderUniformPatch } from './Rendering/SliderBodyRenderer.ts';
+import ConfigSection, { ChangeRemover } from '../../../Config/ConfigSection.ts';
 
 export default class DrawableSlider
 	extends DrawableHitObject
 	implements IHasApproachCircle {
 	public drawableCircles: DrawableHitObject[] = [];
 	public select = new Container();
-	path: SliderProgressResult = {
-		points: [],
-		length: 0
-	};
+	path = new SliderProgressView();
 	ball: DrawableSliderBall;
 	followCircle: DrawableSliderFollowCircle;
 	nodes: Graphics = new Graphics({ visible: false });
@@ -57,6 +55,8 @@ export default class DrawableSlider
 	private layer2 = new RenderLayer();
 	private _selectionVisualsDirty = true;
 	private _nodesInitialized = false;
+
+	private remover: ChangeRemover;
 
 	constructor(object: Slider) {
 		super(object);
@@ -163,10 +163,10 @@ export default class DrawableSlider
 		this.gameplaysEventCallback = inject<Gameplays>(
 			'ui/main/viewer/gameplays'
 		)?.on('change', () => this.refreshColor());
-		inject<ExperimentalConfig>('config/experimental')?.onChange(
+		this.remover = ConfigSection.createRemover(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'overlapGameplays',
 			() => this.refreshColor()
-		);
+		));
 
 		this.updateRenderUniforms({
 			scale: (object.radius / 54.4) * (236 / 256)
@@ -365,22 +365,19 @@ export default class DrawableSlider
 		const objX = obj.startX + obj.stackedOffset.x;
 		const objY = obj.startY + obj.stackedOffset.y;
 
-		const pathPts = this.path.points;
-		const pathLength = this.path.length;
+		const path = this.path;
+		const pathLength = path.length;
 
-		let p1, p2, x1, y1, x2, y2;
+		let x1, y1, x2, y2;
 		let segMinX, segMaxX, segMinY, segMaxY;
 		let abx, aby, cdx, cdy, denom, acx, acy, tInt, uInt;
 		let lenSq, tDist, ox, oy;
 
 		for (let i = 0; i < pathLength - 1; i++) {
-			p1 = pathPts[i];
-			p2 = pathPts[i + 1];
-
-			x1 = p1.x + objX;
-			y1 = p1.y + objY;
-			x2 = p2.x + objX;
-			y2 = p2.y + objY;
+			x1 = path.getPointX(i) + objX;
+			y1 = path.getPointY(i) + objY;
+			x2 = path.getPointX(i + 1) + objX;
+			y2 = path.getPointY(i + 1) + objY;
 
 			// AABB vs Capsule Bounding Box fast reject
 			segMinX = x1 < x2 ? x1 : x2;
@@ -644,11 +641,10 @@ export default class DrawableSlider
 		this.lastGeometryState.tail = tail;
 		this.lastGeometryState.scale = scale;
 
-		const path = calculateSliderProgress(this.object.path, head, tail, this.path.points);
-		if (path.length === 0) return;
+		this.path.reset(this.object.path, head, tail);
+		if (this.path.length === 0) return;
 
-		this.path = path;
-		this.renderer.updateMainGeometry(path, this.object.radius * (236 / 256) * scale);
+		this.renderer.updateMainGeometry(this.path, this.object.radius * (236 / 256) * scale);
 	}
 
 	spanAt(progress: number) {
@@ -768,7 +764,9 @@ export default class DrawableSlider
 		};
 	}
 
-	destroy() {
+	override destroy(): void {
+		super.destroy();
+
 		for (const object of this.drawableCircles) {
 			object.destroy();
 		}
@@ -791,6 +789,8 @@ export default class DrawableSlider
 				this.gameplaysEventCallback
 			);
 		}
+
+		this.remover();
 	}
 
 	private getSkinBodyScale() {

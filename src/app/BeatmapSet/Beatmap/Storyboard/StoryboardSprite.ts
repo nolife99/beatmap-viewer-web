@@ -11,10 +11,9 @@ import {
 	type Vector2
 } from '@rian8337/osu-base';
 import { groupD8, Sprite, Texture } from 'pixi.js';
-import { ScopedClass } from '../../../Context.ts';
 import { EasingsMap } from '../../../UI/Easings.ts';
 
-export default class StoryboardSprite extends ScopedClass {
+export default class StoryboardSprite {
 	container: Sprite = new Sprite({
 		visible: false
 	});
@@ -28,7 +27,6 @@ export default class StoryboardSprite extends ScopedClass {
 		public data: StoryboardSpriteData,
 		public layerType: StoryboardLayerType
 	) {
-		super();
 		this.container.interactive = false;
 		this.container.interactiveChildren = false;
 
@@ -104,10 +102,7 @@ export default class StoryboardSprite extends ScopedClass {
 		};
 	}
 
-	loadTexture() {
-		const textures = this.context.consume<Map<string, Texture>>('textures');
-		if (!textures) return;
-
+	loadTexture(textures: Map<string, Texture>) {
 		const texture = textures.get(
 			this.data.path.replaceAll('\\', '/').toLowerCase()
 		);
@@ -203,9 +198,8 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processAlpha(timestamp: number, command: Command<number>) {
-		const nearestCommand = command;
 		const { startValue, endValue, startTime, endTime, duration, easing } =
-			nearestCommand;
+			command;
 		const easingFunction = EasingsMap[easing];
 
 		if (timestamp < startTime) {
@@ -229,9 +223,8 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processMove(timestamp: number, command: Command<Vector2>) {
-		const nearestCommand = command;
 		const { startValue, endValue, startTime, endTime, duration, easing } =
-			nearestCommand;
+			command;
 		const easingFunction = EasingsMap[easing];
 
 		if (timestamp < startTime) {
@@ -262,9 +255,8 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processScale(timestamp: number, command: Command<number>) {
-		const nearestCommand = command;
 		const { startValue, endValue, startTime, endTime, duration, easing } =
-			nearestCommand;
+			command;
 		const easingFunction = EasingsMap[easing];
 
 		if (timestamp < startTime) {
@@ -288,9 +280,8 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processVectorScale(timestamp: number, command: Command<Vector2>) {
-		const nearestCommand = command;
 		const { startValue, endValue, startTime, endTime, duration, easing } =
-			nearestCommand;
+			command;
 		const easingFunction = EasingsMap[easing];
 
 		if (timestamp < startTime) {
@@ -320,9 +311,8 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processRotate(timestamp: number, command: Command<number>) {
-		const nearestCommand = command;
 		const { startValue, endValue, startTime, endTime, duration, easing } =
-			nearestCommand;
+			command;
 		const easingFunction = EasingsMap[easing];
 
 		if (timestamp < startTime) {
@@ -346,9 +336,8 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processColor(timestamp: number, command: Command<RGBColor>) {
-		const nearestCommand = command;
 		const { startValue, endValue, startTime, endTime, duration, easing } =
-			nearestCommand;
+			command;
 		const easingFunction = EasingsMap[easing];
 
 		if (timestamp < startTime) {
@@ -389,9 +378,8 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processMoveX(timestamp: number, command: Command<number>) {
-		const nearestCommand = command;
 		const { startValue, endValue, startTime, endTime, duration, easing } =
-			nearestCommand;
+			command;
 		const easingFunction = EasingsMap[easing];
 
 		if (timestamp < startTime) {
@@ -415,9 +403,8 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processMoveY(timestamp: number, command: Command<number>) {
-		const nearestCommand = command;
 		const { startValue, endValue, startTime, endTime, duration, easing } =
-			nearestCommand;
+			command;
 		const easingFunction = EasingsMap[easing];
 
 		if (timestamp < startTime) {
@@ -441,8 +428,7 @@ export default class StoryboardSprite extends ScopedClass {
 	}
 
 	processBlending(timestamp: number, command: Command<BlendingParameters>) {
-		const nearestCommand = command;
-		const { startTime } = nearestCommand;
+		const { startTime } = command;
 
 		if (timestamp < startTime) {
 			this.container.blendMode = 'normal';
@@ -461,11 +447,10 @@ export default class StoryboardSprite extends ScopedClass {
 		}
 		if (this._flipH !== value) {
 			const source = this.container.texture.source;
-			const texture = new Texture({
+			this.container.texture = new Texture({
 				source,
 				rotate: value ? groupD8.MIRROR_HORIZONTAL : groupD8.N
 			});
-			this.container.texture = texture;
 			this._flipH = value;
 		}
 	}
@@ -480,11 +465,10 @@ export default class StoryboardSprite extends ScopedClass {
 
 		if (this._flipV !== value) {
 			const source = this.container.texture.source;
-			const texture = new Texture({
+			this.container.texture = new Texture({
 				source,
 				rotate: value ? groupD8.MIRROR_VERTICAL : groupD8.N
 			});
-			this.container.texture = texture;
 			this._flipV = value;
 		}
 	}

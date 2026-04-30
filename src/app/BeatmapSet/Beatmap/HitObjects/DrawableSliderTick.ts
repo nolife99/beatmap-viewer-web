@@ -189,7 +189,9 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		};
 	}
 
-	destroy() {
+	override destroy(): void {
+		super.destroy();
+
 		this.container.destroy();
 		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);

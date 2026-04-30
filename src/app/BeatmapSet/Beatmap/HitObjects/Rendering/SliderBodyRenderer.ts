@@ -18,7 +18,7 @@ import {
 import RendererConfig from '../../../../Config/RendererConfig.ts';
 import { inject } from '../../../../Context.ts';
 import { darken, lighten } from '../../../../utils.ts';
-import { SliderProgressResult } from './CalculateSliderProgress.ts';
+import { type SliderProgressResult, type SliderProgressSource } from './CalculateSliderProgress.ts';
 import fragment from './Shaders/sliderShader.frag?raw';
 import vertex from './Shaders/sliderShader.vert?raw';
 import gpuSrc from './Shaders/sliderShader.wgsl?raw';
@@ -190,7 +190,7 @@ export default class SliderBodyRenderer {
 		this.applyUniformPatch(this.selectionUniforms, patch);
 	}
 
-	updateMainGeometry(path: SliderProgressResult, radius: number) {
+	updateMainGeometry(path: SliderProgressSource, radius: number) {
 		const bounds = this.populateInstanceBuffer(
 			path,
 			this.body.geometry,
@@ -201,7 +201,7 @@ export default class SliderBodyRenderer {
 		this.body.filterArea = this.computePaddedBounds(bounds, radius);
 	}
 
-	updateSelectionGeometry(path: SliderProgressResult, radius: number) {
+	updateSelectionGeometry(path: SliderProgressSource | SliderProgressResult, radius: number) {
 		const bounds = this.populateInstanceBuffer(
 			path,
 			this.selectionBody.geometry,
@@ -227,33 +227,31 @@ export default class SliderBodyRenderer {
 	}
 
 	private reduceSegments(
-		points: SliderProgressResult['points'],
-		pointsCount: number,
+		path: SliderProgressSource | SliderProgressResult,
 		out: Float32Array
 	): number {
+		const pointsCount = path.length;
 		if (pointsCount <= 0) return 0;
 
 		if (pointsCount === 1) {
-			const p = points[0];
-
-			out[0] = p.x;
-			out[1] = p.y;
-			out[2] = p.x;
-			out[3] = p.y;
+			out[0] = this.getPointX(path, 0);
+			out[1] = this.getPointY(path, 0);
+			out[2] = out[0];
+			out[3] = out[1];
 
 			return 1;
 		}
 
-		let ax = points[0].x;
-		let ay = points[0].y;
-		let bx = points[1].x;
-		let by = points[1].y;
+		let ax = this.getPointX(path, 0);
+		let ay = this.getPointY(path, 0);
+		let bx = this.getPointX(path, 1);
+		let by = this.getPointY(path, 1);
 
 		let written = 0;
 
 		for (let i = 1; i < pointsCount - 1; i++) {
-			const nx = points[i + 1].x;
-			const ny = points[i + 1].y;
+			const nx = this.getPointX(path, i + 1);
+			const ny = this.getPointY(path, i + 1);
 
 			const dx = bx - ax;
 			const dy = by - ay;
@@ -289,9 +287,8 @@ export default class SliderBodyRenderer {
 			out[o + 2] = bx;
 			out[o + 3] = by;
 
-			const p = points[i];
-			ax = p.x;
-			ay = p.y;
+			ax = this.getPointX(path, i);
+			ay = this.getPointY(path, i);
 			bx = nx;
 			by = ny;
 		}
@@ -305,12 +302,20 @@ export default class SliderBodyRenderer {
 		return written;
 	}
 
+	private getPointX(path: SliderProgressSource | SliderProgressResult, index: number): number {
+		return 'points' in path ? path.points[index].x : path.getPointX(index);
+	}
+
+	private getPointY(path: SliderProgressSource | SliderProgressResult, index: number): number {
+		return 'points' in path ? path.points[index].y : path.getPointY(index);
+	}
+
 	private populateInstanceBuffer(
-		path: SliderProgressResult,
+		path: SliderProgressSource | SliderProgressResult,
 		targetGeometry: Geometry,
 		app: Application
 	): Rectangle {
-		const { points, length: pointsCount } = path;
+		const pointsCount = path.length;
 
 		const maxSegments = Math.max(1, pointsCount - 1);
 		const maxFloats = maxSegments * 4;
@@ -323,7 +328,7 @@ export default class SliderBodyRenderer {
 		}
 
 		const staging = new Float32Array(rawStaging.buffer, 0, maxFloats);
-		const segmentsCount = this.reduceSegments(points, pointsCount, staging);
+		const segmentsCount = this.reduceSegments(path, staging);
 		const requiredFloats = Math.max(4, segmentsCount * 4);
 
 		let minX = staging[0];
@@ -342,13 +347,12 @@ export default class SliderBodyRenderer {
 			else if (y > maxY) maxY = y;
 		}
 
+		targetGeometry.instanceCount = Math.max(1, segmentsCount);
 		targetGeometry.attributes.aSegment.buffer.setDataWithSize(
 			staging,
 			requiredFloats,
-			false
+			true
 		);
-
-		targetGeometry.instanceCount = Math.max(1, segmentsCount);
 
 		app.ticker.addOnce(
 			() => pool.free(staging),

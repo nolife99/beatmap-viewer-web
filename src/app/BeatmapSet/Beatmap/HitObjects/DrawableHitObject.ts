@@ -46,5 +46,7 @@ export default abstract class DrawableHitObject extends SkinnableElement {
 		};
 	}
 
-	abstract destroy(): void;
+	override destroy(): void {
+		super.destroy();
+	}
 }

@@ -375,6 +375,7 @@ export default class SpectrogramProcessor {
 
 	private updateTexture() {
 		const texture = this.getTexture();
+		if (texture.source.destroyed) return;
 
 		texture.source.update();
 		this.onTextureUpdate?.(texture);

@@ -1,6 +1,6 @@
 import { Tween } from '@tweenjs/tween.js';
 import { DifficultyPoint, SamplePoint, TimingPoint } from 'osu-classes';
-import { Application, Assets, type FederatedWheelEvent, Texture } from 'pixi.js';
+import { Application, Assets, type FederatedWheelEvent, Texture, TickerCallback } from 'pixi.js';
 import extraMode from '../../assets/extra-mode.svg?raw';
 import Audio from '../Audio/index.ts';
 import AudioConfig from '../Config/AudioConfig.ts';
@@ -53,13 +53,15 @@ export default class BeatmapSet extends ScopedClass {
 			? 1.5
 			: 1;
 
-		this.context.provide('resources', resources);
 		this.context.provide('beatmapset', this);
 
 		provide('beatmapset', this);
-		inject<Application>('ui/app')?.ticker.add(() => this.frame(), this);
+		this.lifetime.use(
+			inject<Application>('ui/app')?.ticker.add(this.frame),
+			(t) => t?.remove(this.frame)
+		)
 
-		inject<ExperimentalConfig>('config/experimental')?.onChange(
+		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'mods',
 			({
 					   mods: val,
@@ -75,25 +77,25 @@ export default class BeatmapSet extends ScopedClass {
 				if (!audio) return;
 
 				audio.onPlaybackRateChange();
-				
+
 				this.master?.onPlaybackRateChange(this.playbackRate);
 				for (const slave of this.slaves) {
 					slave.onPlaybackRateChange(this.playbackRate);
 				}
 			}
-		);
+		));
 	}
 
 	async loadBeatmapSkin() {
 		const skin = this.context.provide<Skin>(
 			'beatmapSkin',
-			new Skin(this.context.consume<Map<string, Blob>>('resources'))
+			new Skin(this.resources)
 		);
 		await skin.init();
 	}
 
 	async loadResources() {
-		inject<Loading>('ui/loading')?.setText('Loading hitSamples');
+		inject<Loading>('ui/loading')?.setText('Loading resources');
 
 		console.time('Load hitSamples');
 		const sampleManager = this.context.provide('sampleManager', new SampleManager(this.resources));
@@ -106,53 +108,97 @@ export default class BeatmapSet extends ScopedClass {
 	}
 
 	async getDifficulties() {
-		const osuFiles =
-			[...this.resources].filter(
-				([filename]) => filename.split('.').at(-1) === 'osu'
-			) ?? [];
+		const osuFiles = [...this.resources].filter(([filename]) =>
+			filename.toLowerCase().endsWith('.osu')
+		);
 
 		this.difficulties = (
-			await Promise.all<Promise<Beatmap | null>[]>(
-				osuFiles.map(async ([_, blob]) => {
-					const rawString = await blob?.text();
+			await Promise.all(
+				osuFiles.map(async ([, blob]) => {
+					if (!blob) return null;
 
-					if (!rawString) return null;
-					return new Beatmap(rawString).hook(this.context);
+					const raw = await blob.arrayBuffer();
+					if (!raw) return null;
+
+					return new Beatmap(raw).hook(this.context);
 				})
 			)
 		)
-			.filter((beatmap) => beatmap !== null)
+			.filter((beatmap): beatmap is Beatmap => beatmap !== null)
 			.sort(
 				(a, b) =>
-					-a.difficultyAttributes.starRating +
-					b.difficultyAttributes.starRating
+					b.difficultyAttributes.starRating -
+					a.difficultyAttributes.starRating
 			);
 
 		const el = document.querySelector<HTMLDivElement>('#diffsContainer');
-		if (el) el.innerHTML = '';
+		if (!el) return;
+
+		el.innerHTML = '';
+
+		const wrapper = document.querySelector<HTMLDivElement>(
+			'#diffsContainerWrapper'
+		);
+
+		const config = inject<ExperimentalConfig>('config/experimental');
+
+		const modeIcon = extraMode
+			.replaceAll('stroke="white"', 'stroke="currentColor"')
+			.replaceAll('fill="white"', 'fill="currentColor"');
+
+		const closeDiffs = () => {
+			wrapper?.classList.add('showOut');
+			wrapper?.classList.remove('showIn');
+		};
+
+		const updateDifficultyVisual = (
+			icon: HTMLSpanElement,
+			ratingEl: HTMLDivElement,
+			difficulty: Beatmap
+		) => {
+			const starRating = difficulty.difficultyAttributes.starRating;
+
+			icon.style.color = getDiffColour(starRating);
+			ratingEl.textContent = `${starRating.toFixed(2)}★`;
+		};
+
+		const fragment = document.createDocumentFragment();
+
 		for (let i = 0; i < this.difficulties.length; i++) {
 			const difficulty = this.difficulties[i];
+
 			const div = document.createElement('div');
 			div.className = 'flex gap-2.5 items-center';
 
 			const button = document.createElement('button');
 			button.className =
 				'flex w-full items-center gap-2.5 p-2.5 hover:bg-white/10 cursor-pointer transition-colors rounded-[10px] text-white';
-			const color = getDiffColour(
-				this.difficulties[i].difficultyAttributes.starRating
-			);
-			button.innerHTML = `${extraMode.replace('stroke="white"', `stroke="${color}"`).replace('fill="white"', `fill="${color}"`)}
 
-            <span class="flex-1 text-left">${difficulty.data.metadata.version}</span>
-            <div>${this.difficulties[i].difficultyAttributes.starRating.toFixed(2)}★</div>`;
+			const icon = document.createElement('span');
+			icon.className = 'shrink-0';
+			icon.innerHTML = modeIcon;
+
+			const title = document.createElement('span');
+			title.className = 'flex-1 text-left';
+			title.textContent = difficulty.data.metadata.version;
+
+			const rating = document.createElement('div');
+
+			updateDifficultyVisual(icon, rating, difficulty);
+
+			this.lifetime.use(config?.onChange(
+				'mods',
+				({ shouldPlaybackChange }: { shouldPlaybackChange: boolean }) => {
+					if (!shouldPlaybackChange) return;
+					updateDifficultyVisual(icon, rating, difficulty);
+				}
+			));
+
+			button.append(icon, title, rating);
+
 			button.addEventListener('click', () => {
 				this.loadMaster(i);
-				document
-					.querySelector<HTMLDivElement>('#diffsContainerWrapper')
-					?.classList.add('showOut');
-				document
-					.querySelector<HTMLDivElement>('#diffsContainerWrapper')
-					?.classList.remove('showIn');
+				closeDiffs();
 			});
 
 			const button2 = document.createElement('button');
@@ -160,21 +206,17 @@ export default class BeatmapSet extends ScopedClass {
 			button2.className =
 				'h-full hover:bg-white/10 p-2.5 flex items-center justify-center rounded-[10px] cursor-pointer transition-colors text-white';
 			button2.style.aspectRatio = '1 / 1';
+
 			button2.addEventListener('click', () => {
 				this.loadSlave(i);
-
-				document
-					.querySelector<HTMLDivElement>('#diffsContainerWrapper')
-					?.classList.add('showOut');
-				document
-					.querySelector<HTMLDivElement>('#diffsContainerWrapper')
-					?.classList.remove('showIn');
+				closeDiffs();
 			});
 
-			div?.append(button, button2);
-
-			el?.append(div);
+			div.append(button, button2);
+			fragment.append(div);
 		}
+
+		el.append(fragment);
 	}
 
 	async loadAudio(beatmap: Beatmap) {
@@ -182,23 +224,19 @@ export default class BeatmapSet extends ScopedClass {
 
 		this.audioKey = beatmap.data.general.audioFilename;
 		console.time('Constructing audio');
-		const audioFile = this.context
-			.consume<Map<string, Blob>>('resources')
-			?.get(this.audioKey.toLowerCase());
+		const audioFile = this.resources.get(this.audioKey.toLowerCase());
 
 		if (!audioFile) throw new Error('Cannot find audio in resource?');
 
 		inject<Spectrogram>('ui/sidepanel/modding/spectrogram')?.unloadTexture();
 
-		this.context.consume<Audio>('audio')?.destroy();
-
 		const gainNode = this.context.provide('masterGainNode', this.audioContext.createGain());
 		gainNode.connect(this.audioContext.destination);
 
 		gainNode.gain.value = inject<AudioConfig>('config/audio')?.masterVolume ?? 0.8;
-		inject<AudioConfig>('config/audio')?.onChange('masterVolume', (val) => {
+		this.lifetime.use(inject<AudioConfig>('config/audio')?.onChange('masterVolume', (val) => {
 			gainNode.gain.value = val;
-		});
+		}));
 
 		const audio = this.context.provide(
 			'audio',
@@ -225,9 +263,7 @@ export default class BeatmapSet extends ScopedClass {
 		}
 
 		this.videoKey = videoFilePath;
-		const videoResource = this.context
-			.consume<Map<string, Blob>>('resources')
-			?.get(
+		const videoResource = this.resources.get(
 				(
 					beatmap.data.events.storyboard?.layers.get('Video')?.elements.at(0)
 						?.filePath ?? ''
@@ -258,9 +294,7 @@ export default class BeatmapSet extends ScopedClass {
 
 		this.backgroundKey = beatmap.data.events.backgroundPath;
 		const background = inject<Background>('ui/main/viewer/background');
-		const backgroundResource = this.context
-			.consume<Map<string, Blob>>('resources')
-			?.get(beatmap.data.events.backgroundPath?.toLowerCase() ?? '');
+		const backgroundResource = this.resources.get(beatmap.data.events.backgroundPath?.toLowerCase() ?? '');
 
 		if (!backgroundResource) return;
 
@@ -277,28 +311,22 @@ export default class BeatmapSet extends ScopedClass {
 		URL.revokeObjectURL(url);
 	}
 
+	private storyboard?: Storyboard;
 	async loadStoryboard() {
-		const storyboardKey = this.context
-			.consume<Map<string, Blob>>('resources')
-			?.keys()
-			.find((key) => key.includes('.osb'));
+		const storyboardKey = this.resources.keys().find((key) => key.includes('.osb'));
 		if (!storyboardKey) return;
 
-		const storyboardFile = this.context
-			.consume<Map<string, Blob>>('resources')
-			?.get(storyboardKey.toLowerCase());
+		const storyboardFile = this.resources.get(storyboardKey.toLowerCase());
 
-		const storyboard = this.context.provide(
-			'storyboard',
-			// biome-ignore lint/style/noNonNullAssertion: I found it already cmon!
-			new Storyboard(storyboardFile!)
-		);
-		storyboard.hook(this.context);
+		const storyboard = new Storyboard(storyboardFile!, this.resources);
 		await storyboard.loadTextures();
+
 		inject<Background>('ui/main/viewer/background')?.injectStoryboardContainer(
 			storyboard.container
 		);
 		await storyboard.loadCurrent();
+
+		this.storyboard = storyboard;
 	}
 
 	async loadPeripherals(beatmap: Beatmap) {
@@ -329,13 +357,13 @@ export default class BeatmapSet extends ScopedClass {
 		if (sr)
 			sr.textContent = `${beatmap.difficultyAttributes.starRating.toFixed(2)}★`;
 
-		const storyboard = this.context.consume<Storyboard>('storyboard');
+		const storyboard = this.storyboard;
 		await Promise.all([
 			this.loadAudio(beatmap),
 			this.loadVideo(beatmap),
 			this.loadBackground(beatmap),
 			storyboard?.loadMaster(beatmap.raw).then(() => {
-				storyboard?.checkRemoveBG();
+				storyboard?.checkRemoveBG(this);
 				storyboard?.sortChildren();
 			})
 		]);
@@ -475,7 +503,7 @@ export default class BeatmapSet extends ScopedClass {
 		this.context.consume<Video>('video')?.seek(time);
 	}
 
-	frame() {
+	private readonly frame: TickerCallback<undefined> = () => {
 		if (!this.master) {
 			return;
 		}
@@ -532,8 +560,8 @@ export default class BeatmapSet extends ScopedClass {
 		inject<Timeline>('ui/main/viewer/timeline')?.update(time);
 		inject<Timeline>('ui/main/viewer/timeline')?.draw(time);
 
-		this.context.consume<Storyboard>('storyboard')?.update(time);
-	}
+		this.storyboard?.update(time);
+	};
 
 	handleWheel(event: FederatedWheelEvent) {
 		const direction = event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0;
@@ -629,8 +657,8 @@ export default class BeatmapSet extends ScopedClass {
 		return miliStep ? currentTime + direction : nextTick;
 	}
 
-	destroy() {
-		inject<Application>('ui/app')?.ticker.remove(() => this.frame());
+	override destroy() {
+		inject<Application>('ui/app')?.ticker.remove(this.frame);
 		const audio = this.context.consume<Audio>('audio');
 		if (audio?.state === 'PLAYING') {
 			const playButton = inject<Play>('ui/main/controls/play');
@@ -642,10 +670,11 @@ export default class BeatmapSet extends ScopedClass {
 		inject<Timeline>('ui/main/viewer/timeline')?.loadObjects([]);
 		inject<Background>('ui/main/viewer/background')?.ejectStoryboardContainer();
 
-		this.context.consume<Storyboard>('storyboard')?.destroy();
+		this.storyboard?.destroy();
 
 		for (const slave of this.difficulties) {
 			slave.destroy();
+			slave.container.destroy();
 			slave.worker.terminate();
 		}
 
@@ -653,7 +682,8 @@ export default class BeatmapSet extends ScopedClass {
 		inject<Spectrogram>('ui/sidepanel/modding/spectrogram')?.unloadTexture();
 
 		provide('beatmapset', undefined);
-		this.difficulties.length = 0;
+
+		super.destroy();
 	}
 
 	private setIds() {

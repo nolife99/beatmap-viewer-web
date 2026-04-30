@@ -16,10 +16,7 @@ export class StoryboardAnimation extends StoryboardSprite {
 		super(data, layerType);
 	}
 
-	override loadTexture(): void {
-		const textures = this.context.consume<Map<string, Texture>>('textures');
-		if (!textures) return;
-
+	override loadTexture(textures: Map<string, Texture>): void {
 		for (let i = 0; i < this.data.frameCount; i++) {
 			const basePath = this.data.path.replaceAll('\\', '/').toLowerCase();
 			const pre = basePath.split('.').slice(0, -1).join('.');

@@ -1,4 +1,4 @@
-﻿import pool from '@stdlib/array-pool';
+import pool from '@stdlib/array-pool';
 
 /**
  * Utility class for performing time stretching on a multichannel audio signal. The input audio will be stretched by
@@ -7,6 +7,12 @@
  * Internally, this uses a WSOLA-like algorithm.
  * Credits to Vanilagy: https://gist.github.com/Vanilagy/05f7901f4c4398356657e3a86c7aee05
  */
+export type StretchResult = {
+	channels: Float32Array[];
+	outputFrames: number;
+	sourceAdvanceFrames: number;
+};
+
 export class TimeStretcher {
 	factor: number; // This value can be changed at runtime
 
@@ -61,6 +67,10 @@ export class TimeStretcher {
 	}
 
 	append(newBuffers: Float32Array[]): Float32Array[] | null {
+		return this.appendDetailed(newBuffers)?.channels ?? null;
+	}
+
+	appendDetailed(newBuffers: Float32Array[]): StretchResult | null {
 		this.assertWritable();
 
 		if (newBuffers.length !== this.numberOfChannels) {
@@ -84,6 +94,17 @@ export class TimeStretcher {
 
 		this.bufferEndIndex += frameCount;
 		return this.process();
+	}
+
+
+	reset(factor: number = this.factor): void {
+		this.assertAlive();
+
+		this.factor = factor;
+		this.bufferEndIndex = this.tolerance;
+		this.nextOutputBufferShiftAmount = 0;
+		this.hasDoneOutput = false;
+		this.finalized = false;
 	}
 
 	finalize(): Float32Array[] | null {
@@ -232,16 +253,24 @@ export class TimeStretcher {
 			}
 		}
 
+		const shouldBlend = this.hasDoneOutput;
+
 		for (let chan = 0; chan < this.numberOfChannels; chan++) {
 			const inputBuffer = this.buffers[chan];
 			const outputBuffer = this.outputBuffers[chan];
 
 			for (let j = 0; j < windowSize; j++) {
-				const blendValue = j < this.overlapSize ? this.blendValues[j] : 1;
 				const outIndex = i + j;
+				const inputValue = inputBuffer[inputStartPos + bestOffset + j];
 
+				if (!shouldBlend) {
+					outputBuffer[outIndex] = inputValue;
+					continue;
+				}
+
+				const blendValue = j < this.overlapSize ? this.blendValues[j] : 1;
 				outputBuffer[outIndex] *= 1 - blendValue;
-				outputBuffer[outIndex] += blendValue * inputBuffer[inputStartPos + bestOffset + j];
+				outputBuffer[outIndex] += blendValue * inputValue;
 			}
 		}
 
@@ -270,7 +299,7 @@ export class TimeStretcher {
 		return dot / (Math.sqrt(normOldTotal * normNewTotal) || 1e-10);
 	}
 
-	private process(): Float32Array[] | null {
+	private process(): StretchResult | null {
 		let synthesisLength = 0;
 
 		for (; true; synthesisLength += this.synthesisHopSize) {
@@ -300,7 +329,11 @@ export class TimeStretcher {
 		this.shiftInputBuffers(inputShiftAmount);
 
 		this.nextOutputBufferShiftAmount = synthesisLength;
-		return this.outputSlices(synthesisLength);
+		return {
+			channels: this.outputSlices(synthesisLength),
+			outputFrames: synthesisLength,
+			sourceAdvanceFrames: inputShiftAmount
+		};
 	}
 
 	private shiftInputBuffers(inputShiftAmount: number): void {

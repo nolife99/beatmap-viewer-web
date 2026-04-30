@@ -114,7 +114,9 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		}
 	}
 
-	destroy() {
+	override destroy(): void {
+		super.destroy();
+
 		this.container.destroy({ children: true });
 
 		if (this.skinEventCallback) {

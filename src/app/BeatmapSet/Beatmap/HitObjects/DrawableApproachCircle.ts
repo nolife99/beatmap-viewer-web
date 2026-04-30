@@ -32,10 +32,10 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		this.gameplaysEventCallback = inject<Gameplays>(
 			'ui/main/viewer/gameplays'
 		)?.on('change', () => this.refreshColor());
-		inject<ExperimentalConfig>('config/experimental')?.onChange(
+		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'overlapGameplays',
 			() => this.refreshColor()
-		);
+		));
 	}
 
 	private _object!: Circle;
@@ -109,7 +109,9 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		this.updateFn(this, time);
 	}
 
-	destroy() {
+	override destroy(): void {
+		super.destroy();
+
 		this.container.destroy();
 		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);

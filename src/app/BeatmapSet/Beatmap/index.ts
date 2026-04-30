@@ -42,8 +42,6 @@ const ruleset = new StandardRuleset();
 
 export default class Beatmap extends ScopedClass {
 	data: StandardBeatmap;
-
-	difficultyCalculator: StandardDifficultyCalculator;
 	difficultyAttributes: StandardDifficultyAttributes;
 
 	objects: DrawableHitObject[] = [];
@@ -66,30 +64,25 @@ export default class Beatmap extends ScopedClass {
 	private workerUpdate: ((this: Worker, ev: MessageEvent) => void) | null =
 		null;
 
-	constructor(public raw: string) {
+	constructor(public raw: ArrayBuffer) {
 		super();
 
-		this.md5 = crypto.createHash('md5').update(raw).digest('hex');
+		this.md5 = crypto.createHash('md5').update(new Uint8Array(raw)).digest('hex');
 
 		const initialMods =
 			inject<ExperimentalConfig>('config/experimental')?.getModsString() ?? '';
-		this.data = this.context.provide(
-			'beatmap',
-			ruleset.applyToBeatmapWithMods(
-				decoder.decodeFromString(raw),
-				ruleset.createModCombination(initialMods)
-			)
-		);
-
-		this.difficultyCalculator = ruleset.createDifficultyCalculator(this.data);
-		this.difficultyAttributes = this.difficultyCalculator.calculateWithMods(
+		this.data = ruleset.applyToBeatmapWithMods(
+			decoder.decodeFromBuffer(raw, { parseStoryboard: false }),
 			ruleset.createModCombination(initialMods)
 		);
-		this.calculateStrainGraph(initialMods);
+
+		const calculator = ruleset.createDifficultyCalculator(this.data);
+		this.difficultyAttributes = calculator.calculateWithMods(
+			ruleset.createModCombination(initialMods)
+		);
+		this.calculateStrainGraph(initialMods, calculator);
 
 		this.color = getDiffColour(this.difficultyAttributes.starRating);
-
-		this.context.provide('beatmapObject', this);
 		this.container = new Gameplay(this);
 
 		this.worker.postMessage({
@@ -102,7 +95,7 @@ export default class Beatmap extends ScopedClass {
 			)
 		});
 
-		inject<ExperimentalConfig>('config/experimental')?.onChange(
+		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'mods',
 			({
 				 mods: val,
@@ -112,27 +105,27 @@ export default class Beatmap extends ScopedClass {
 				shouldRecalculate: boolean;
 			}) => {
 				const appliedMods = ruleset.applyToBeatmapWithMods(
-					decoder.decodeFromString(this.raw),
+					this.data,
 					ruleset.createModCombination(val)
 				);
 
 				if (shouldRecalculate) {
-					this.data = this.context.provide('beatmap', appliedMods);
+					this.data = appliedMods;
 					this.reassignObjects();
 					this.replay?.evaluate(this);
 				}
 
-				this.difficultyCalculator = ruleset.createDifficultyCalculator(
+				const calculator = ruleset.createDifficultyCalculator(
 					appliedMods
 				);
-				this.difficultyAttributes = this.difficultyCalculator.calculateWithMods(
+				this.difficultyAttributes = calculator.calculateWithMods(
 					ruleset.createModCombination(val)
 				);
-				this.calculateStrainGraph(val);
+				this.calculateStrainGraph(val, calculator);
 
 				this.recalculateDifficulty();
 			}
-		);
+		));
 	}
 
 	load() {
@@ -244,6 +237,8 @@ export default class Beatmap extends ScopedClass {
 	}
 
 	async loadHitObjects() {
+		this.context.provide('beatmapObject', this);
+
 		console.time('Constructing hitObjects');
 		const async = inject<ExperimentalConfig>(
 			'config/experimental'
@@ -565,7 +560,7 @@ export default class Beatmap extends ScopedClass {
 		}
 	}
 
-	destroy() {
+	override destroy(): void {
 		inject<Gameplays>('ui/main/viewer/gameplays')?.removeGameplay(
 			this.container
 		);
@@ -592,11 +587,13 @@ export default class Beatmap extends ScopedClass {
 
 		this.previousConnectors.clear();
 		this.previousObjects.clear();
+
+		super.destroy();
 	}
 
-	private calculateStrainGraph(mods: string) {
+	private calculateStrainGraph(mods: string, calculator: StandardDifficultyCalculator) {
 		const modsCombination = ruleset.createModCombination(mods);
-		const beatmap: StandardBeatmap = this.difficultyCalculator
+		const beatmap: StandardBeatmap = calculator
 			['_getWorkingBeatmap'](modsCombination);
 
 		if (!beatmap.hitObjects.length) return;
@@ -606,7 +603,7 @@ export default class Beatmap extends ScopedClass {
 			Math.ceil(beatmap.hitObjects[0].startTime / sectionLength) *
 			sectionLength;
 
-		const skills: StandardStrainSkill[] = this.difficultyCalculator[
+		const skills: StandardStrainSkill[] = calculator[
 			'_createSkills'
 			](beatmap, modsCombination).filter(
 			(skill): skill is StandardStrainSkill => 'difficultyValue' in skill
@@ -615,7 +612,7 @@ export default class Beatmap extends ScopedClass {
 		const aimStrainPeaks = skills[1]['_strainPeaks'];
 		const speedStrainPeaks = skills[1]['_strainPeaks'];
 
-		const objs: StandardDifficultyHitObject[] = this.difficultyCalculator
+		const objs: StandardDifficultyHitObject[] = calculator
 			['_getDifficultyHitObjects'](beatmap, 1);
 
 		for (const hitObject of objs) {
@@ -719,8 +716,8 @@ export default class Beatmap extends ScopedClass {
 		}
 	}
 
-	private async constructConnectorsAsync() {
-		return await Promise.all(
+	private constructConnectorsAsync() {
+		return Promise.all(
 			this.data.hitObjects.map((_, i, arr) => {
 				return new Promise<DrawableFollowPoints | null>((resolve) => {
 					setTimeout(() => {

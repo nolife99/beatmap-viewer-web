@@ -1,6 +1,5 @@
 import IntervalTree from '@flatten-js/interval-tree';
 import {
-	Storyboard as StoryboardData,
 	StoryboardAnimation as StoryboardAnimationData,
 	StoryboardDecoder,
 	StoryboardLayerType,
@@ -8,12 +7,14 @@ import {
 } from '@rian8337/osu-base';
 import { Assets, Container, Graphics, GraphicsContext, Rectangle, type Texture } from 'pixi.js';
 import BackgroundConfig from '../../../Config/BackgroundConfig.ts';
-import { inject, ScopedClass } from '../../../Context.ts';
+import { inject } from '../../../Context.ts';
 import BeatmapSet from '../../index.ts';
 import { StoryboardAnimation } from './StoryboardAnimation.ts';
 import StoryboardSprite from './StoryboardSprite.ts';
+import { Buffer } from 'node:buffer';
+import ConfigSection, { ChangeRemover } from '../../../Config/ConfigSection.ts';
 
-export default class Storyboard extends ScopedClass {
+export default class Storyboard {
 	container: Container = new Container({
 		visible: inject<BackgroundConfig>('config/background')?.storyboard
 	});
@@ -34,18 +35,15 @@ export default class Storyboard extends ScopedClass {
 	});
 	fill: Graphics;
 	startTime: number = Infinity;
-	private data!: StoryboardData;
 	private sprites!: StoryboardSprite[];
-	private masterData!: StoryboardData;
 	private masterSprites!: StoryboardSprite[];
 	private _masterTree?: IntervalTree;
 	private _tree?: IntervalTree;
 	private _previous = new Set<number>();
 	private _previousMaster = new Set<number>();
+	private remover: ChangeRemover;
 
-	constructor(private blob: Blob) {
-		super();
-
+	constructor(private blob: Blob, private resources: Map<string, Blob>) {
 		const mask = new Graphics()
 			.rect(-106.666666667, 0, 853.333333333, 480)
 			.fill({
@@ -76,20 +74,17 @@ export default class Storyboard extends ScopedClass {
 		);
 		this.container.mask = mask;
 
-		inject<BackgroundConfig>('config/background')?.onChange(
+		this.remover = ConfigSection.createRemover(inject<BackgroundConfig>('config/background')?.onChange(
 			'storyboard',
 			(val) => {
 				this.container.visible = val;
 			}
-		);
+		));
 	}
 
+	private textureMap = new Map<string, Texture>();
 	async loadTextures() {
-		const textureMap = new Map<string, Texture>();
-		const promises = [
-			// biome-ignore lint/style/noNonNullAssertion: Hooked
-			...this.context.consume<Map<string, Blob>>('resources')!
-		].map(async ([key, resource]) => {
+		const promises = [...this.resources].map(async ([key, resource]) => {
 			if (
 				// biome-ignore lint/style/noNonNullAssertion: Always have extension
 				!['png', 'jpg', 'jpeg'].includes(key.split('.').at(-1)!.toLowerCase())
@@ -105,7 +100,7 @@ export default class Storyboard extends ScopedClass {
 					parser: 'texture'
 				});
 
-				textureMap.set(key.toLowerCase(), texture);
+				this.textureMap.set(key.toLowerCase(), texture);
 			} catch {
 				console.warn(`Cannot load resource with name: ${key}`);
 			} finally {
@@ -114,11 +109,10 @@ export default class Storyboard extends ScopedClass {
 		});
 
 		await Promise.all(promises);
-		this.context.provide('textures', textureMap);
 	}
 
-	async loadMaster(raw: string) {
-		const { data, sprites, tree } = await this.load(raw);
+	async loadMaster(raw: ArrayBuffer) {
+		const { sprites, tree } = await this.load(raw);
 
 		if (this._masterTree) {
 			this._masterTree.clear();
@@ -149,16 +143,14 @@ export default class Storyboard extends ScopedClass {
 			this.masterSprites = [];
 		}
 
-		this.masterData = data;
 		this.masterSprites = sprites;
 		this._masterTree = tree;
 	}
 
 	async loadCurrent() {
-		const raw = await this.blob.text();
-		const { data, sprites, tree } = await this.load(raw);
+		const raw = await this.blob.arrayBuffer();
+		const { sprites, tree } = await this.load(raw);
 
-		this.data = data;
 		this.sprites = sprites;
 		this._tree = tree;
 	}
@@ -289,11 +281,11 @@ export default class Storyboard extends ScopedClass {
 		}
 	}
 
-	checkRemoveBG() {
+	checkRemoveBG(set: BeatmapSet) {
 		const hasBG = this.sprites.some(
 			(sprite) =>
 				sprite.data.path.replaceAll('\\', '/') ===
-				this.context.consume<BeatmapSet>('beatmapset')?.backgroundKey
+				set.backgroundKey
 		);
 
 		const context = new GraphicsContext()
@@ -320,11 +312,13 @@ export default class Storyboard extends ScopedClass {
 		this.backgroundLayer.destroy(true);
 		this.overlayLayer.destroy(true);
 		this.container.destroy(true);
+
+		this.remover();
 	}
 
-	private async load(raw: string) {
+	private async load(raw: ArrayBuffer) {
 		const decoder = new StoryboardDecoder();
-		const data = decoder.decode(raw).result;
+		const data = decoder.decode(Buffer.from(raw).toString('utf8')).result;
 
 		const sprites = await Promise.all([
 			...[...(data.layers.Background?.elements ?? [])]
@@ -334,8 +328,8 @@ export default class Storyboard extends ScopedClass {
 						element instanceof StoryboardAnimationData
 							? new StoryboardAnimation(element, StoryboardLayerType.background)
 							: new StoryboardSprite(element, StoryboardLayerType.background)
-					).hook(this.context);
-					ele.loadTexture();
+					);
+					ele.loadTexture(this.textureMap);
 
 					return ele;
 				}),
@@ -346,8 +340,8 @@ export default class Storyboard extends ScopedClass {
 						element instanceof StoryboardAnimationData
 							? new StoryboardAnimation(element, StoryboardLayerType.foreground)
 							: new StoryboardSprite(element, StoryboardLayerType.foreground)
-					).hook(this.context);
-					ele.loadTexture();
+					);
+					ele.loadTexture(this.textureMap);
 
 					return ele;
 				}),
@@ -358,8 +352,8 @@ export default class Storyboard extends ScopedClass {
 						element instanceof StoryboardAnimationData
 							? new StoryboardAnimation(element, StoryboardLayerType.overlay)
 							: new StoryboardSprite(element, StoryboardLayerType.overlay)
-					).hook(this.context);
-					ele.loadTexture();
+					);
+					ele.loadTexture(this.textureMap);
 
 					return ele;
 				})

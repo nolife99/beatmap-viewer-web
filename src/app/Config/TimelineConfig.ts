@@ -3,8 +3,6 @@ import Config from '.';
 import { Clamp } from '../utils.ts';
 import ConfigSection from './ConfigSection.ts';
 
-type TimelineConfigEvents = 'scale' | 'divisor';
-
 export type TimelineProps = {
 	scale?: number;
 	divisor?: number;
@@ -38,13 +36,6 @@ export default class TimelineConfig extends ConfigSection {
 	set divisor(val: number) {
 		this._divisor = val;
 		this.emitChange('divisor', val);
-	}
-
-	override onChange(
-		key: TimelineConfigEvents,
-		callback: (newValue: any) => void
-	): void {
-		super.onChange(key, callback);
 	}
 
 	handleWheel(event: FederatedWheelEvent) {

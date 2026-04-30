@@ -111,7 +111,9 @@ export default class DrawableSliderFollowCircle
 		this.container.texture = this.texturesList[frameIndex];
 	}
 
-	destroy() {
+	override destroy(): void {
+		super.destroy();
+
 		this.container.destroy();
 		if (this.skinEventCallback) {
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);

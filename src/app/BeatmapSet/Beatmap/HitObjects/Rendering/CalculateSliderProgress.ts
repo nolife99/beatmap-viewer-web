@@ -5,6 +5,94 @@ export type SliderProgressResult = {
 	length: number;
 };
 
+export type SliderProgressSource = {
+	readonly length: number;
+	getPointX(index: number): number;
+	getPointY(index: number): number;
+};
+
+export class SliderProgressView implements SliderProgressSource {
+	public length = 0;
+
+	private calcPath: Vector2[] = [];
+	private startX = 0;
+	private startY = 0;
+	private endX = 0;
+	private endY = 0;
+	private interiorBase = 0;
+	private interiorLength = 0;
+
+	reset(path: SliderPath, p0: number, p1: number): this {
+		const calcPath = path.calculatedPath;
+		const pathLen = calcPath.length;
+
+		this.calcPath = calcPath;
+		this.length = 0;
+		this.interiorBase = 0;
+		this.interiorLength = 0;
+
+		if (pathLen === 0) {
+			this.startX = 0;
+			this.startY = 0;
+			this.endX = 0;
+			this.endY = 0;
+			return this;
+		}
+
+		const d0: number = path['_progressToDistance'](p0);
+		const d1: number = path['_progressToDistance'](p1);
+
+		const cumLengths: number[] | Float64Array = path['_cumulativeLength'];
+
+		const startIdx = lowerBound(cumLengths, d0, 0, pathLen);
+		const endIdx = upperBound(cumLengths, d1, startIdx, pathLen);
+
+		const pStart: Vector2 = path['_interpolateVertices'](startIdx, d0);
+		const pEnd: Vector2 = path['_interpolateVertices'](endIdx, d1);
+
+		this.startX = pStart.x;
+		this.startY = pStart.y;
+		this.endX = pEnd.x;
+		this.endY = pEnd.y;
+
+		const rawInteriorLength = endIdx - startIdx;
+		const skipFirstInterior =
+			rawInteriorLength > 0 && pStart.equals(calcPath[startIdx]);
+
+		this.interiorBase = startIdx + (skipFirstInterior ? 1 : 0);
+		this.interiorLength = rawInteriorLength - (skipFirstInterior ? 1 : 0);
+
+		const skipEnd = this.interiorLength > 0
+			? pEnd.equals(calcPath[endIdx - 1])
+			: pEnd.equals(pStart);
+		this.length = 1 + this.interiorLength + (skipEnd ? 0 : 1);
+
+		return this;
+	}
+
+	getPointX(index: number): number {
+		if (index === 0) return this.startX;
+
+		const interiorIndex = index - 1;
+		if (interiorIndex < this.interiorLength) {
+			return this.calcPath[this.interiorBase + interiorIndex].x;
+		}
+
+		return this.endX;
+	}
+
+	getPointY(index: number): number {
+		if (index === 0) return this.startY;
+
+		const interiorIndex = index - 1;
+		if (interiorIndex < this.interiorLength) {
+			return this.calcPath[this.interiorBase + interiorIndex].y;
+		}
+
+		return this.endY;
+	}
+}
+
 export default function calculateSliderProgress(
 	path: SliderPath,
 	p0: number,
@@ -17,7 +105,7 @@ export default function calculateSliderProgress(
 	const d0: number = path['_progressToDistance'](p0);
 	const d1: number = path['_progressToDistance'](p1);
 
-	const cumLengths: number[] = path['_cumulativeLength'];
+	const cumLengths: number[] | Float64Array = path['_cumulativeLength'];
 
 	const startIdx = lowerBound(cumLengths, d0, 0, pathLen);
 	const endIdx = upperBound(cumLengths, d1, startIdx, pathLen);
@@ -28,11 +116,17 @@ export default function calculateSliderProgress(
 	let finalLen = 0;
 	out[finalLen++] = pStart;
 
-	for (let j = startIdx; j < endIdx; j++) {
-		const pt = calcPath[j];
-		if (!out[finalLen - 1].equals(pt)) {
-			out[finalLen++] = pt;
+	let j = startIdx;
+	if (j < endIdx) {
+		const first = calcPath[j];
+		if (!pStart.equals(first)) {
+			out[finalLen++] = first;
 		}
+		j++;
+	}
+
+	for (; j < endIdx; j++) {
+		out[finalLen++] = calcPath[j];
 	}
 
 	if (!out[finalLen - 1].equals(pEnd)) {

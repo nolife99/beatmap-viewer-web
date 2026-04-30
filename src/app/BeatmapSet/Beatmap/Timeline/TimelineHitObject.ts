@@ -46,7 +46,9 @@ export default abstract class TimelineHitObject extends SkinnableElement {
 
 	abstract refreshSprite(): void;
 
-	destroy() {
+	override destroy(): void {
+		super.destroy();
+
 		if (this.skinEventCallback)
 			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
 	}
