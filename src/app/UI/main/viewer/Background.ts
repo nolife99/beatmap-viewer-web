@@ -4,14 +4,6 @@ import FullscreenConfig from '../../../Config/FullscreenConfig.ts';
 import { inject } from '../../../Context.ts';
 
 export default class Background {
-	blurFilter = new BlurFilter({
-		strength:
-			((inject<BackgroundConfig>('config/background')?.backgroundBlur ?? 0) /
-				100) *
-			50,
-		quality: 4
-	});
-
 	container = new Container({
 		label: 'background',
 		layout: {
@@ -26,7 +18,6 @@ export default class Background {
 		interactiveChildren: false
 	});
 	init = false;
-	timer?: number;
 	lastFrame?: VideoFrame;
 	private sprite = new Sprite({
 		layout: {
@@ -37,8 +28,7 @@ export default class Background {
 			height: '100%',
 			objectPosition: 'center',
 			objectFit: 'cover'
-		},
-		filters: [this.blurFilter]
+		}
 	});
 	private video = new Sprite({
 		layout: {
@@ -80,10 +70,21 @@ export default class Background {
 			this.video.visible = val;
 		});
 
+		const blurFilter = new BlurFilter({
+			strength:
+				((inject<BackgroundConfig>('config/background')?.backgroundBlur ?? 0) /
+					100) *
+				50,
+			quality: 4
+		});
+
+		if (blurFilter.strength > 0) this.sprite.filters = [blurFilter];
+
 		inject<BackgroundConfig>('config/background')?.onChange(
 			'backgroundBlur',
 			(value: number) => {
-				this.blurFilter.strength = (value / 100) * 50;
+				blurFilter.strength = (value / 100) * 50;
+				if (blurFilter.strength > 0) this.sprite.filters = [blurFilter];
 			}
 		);
 	}
@@ -143,11 +144,9 @@ export default class Background {
 		// this.video.texture.update();
 
 		const texture = this.video.texture;
-		const newTexture = Texture.from(frame);
-		this.video.texture = newTexture;
+		this.video.texture = Texture.from(frame);
 
 		texture.source.destroy();
-		texture.baseTexture.destroy();
 		texture.destroy();
 
 		this.lastFrame?.close();

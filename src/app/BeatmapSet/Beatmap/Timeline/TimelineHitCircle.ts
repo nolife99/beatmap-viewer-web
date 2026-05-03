@@ -119,4 +119,8 @@ export default class TimelineHitCircle extends TimelineHitObject {
 			end: this.object.startTime + 30 * 5
 		};
 	}
+
+	override destroy() {
+		super.destroy();
+	}
 }

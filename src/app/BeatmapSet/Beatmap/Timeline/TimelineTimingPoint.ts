@@ -1,16 +1,21 @@
 import { TimingPoint } from 'osu-classes';
-import { Container, Graphics, Text } from 'pixi.js';
+import { BitmapText, Container, Sprite } from 'pixi.js';
 import TimelineConfig from '../../../Config/TimelineConfig.ts';
 import { inject } from '../../../Context.ts';
 import { DEFAULT_SCALE } from '../../../UI/main/viewer/Timeline/index.ts';
+import { getPixelTexture } from './TimelineSlider.ts';
 
 export default class TimelineTimingPoint {
 	container: Container = new Container();
 
-	constructor(public data: TimingPoint) {
-		const graphics = new Graphics;
+	private readonly timelineConfig = inject<TimelineConfig>('config/timeline');
 
-		const text = new Text({
+	private readonly background = new Sprite(getPixelTexture());
+	private readonly line = new Sprite(getPixelTexture());
+	private readonly text: BitmapText;
+
+	constructor(public data: TimingPoint) {
+		this.text = new BitmapText({
 			text: `${data.bpm.toFixed(0)}BPM`,
 			style: {
 				fontFamily: 'Rubik',
@@ -26,33 +31,36 @@ export default class TimelineTimingPoint {
 			y: 38
 		});
 
-		const width = text.width;
-		const height = text.height;
+		const width = this.text.width;
+		const height = this.text.height;
 
-		graphics
-			.rect(0, 40 - (height + 4), width + 10, height + 4)
-			.fill(0xf54254)
-			.moveTo(0, -40)
-			.lineTo(0, 40)
-			.stroke({
-				color: 0xffffff,
-				width: 2,
-				cap: 'round'
-			});
+		this.background.tint = 0xf54254;
+		this.background.x = 0;
+		this.background.y = 40 - (height + 4);
+		this.background.width = width + 10;
+		this.background.height = height + 4;
 
-		this.container.addChild(graphics, text);
+		this.line.tint = 0xffffff;
+		this.line.x = -1;
+		this.line.y = -40;
+		this.line.width = 2;
+		this.line.height = 80;
 
-		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
+		this.container.addChild(
+			this.background,
+			this.line,
+			this.text
+		);
 
-		this.container.x = this.data.startTime / (DEFAULT_SCALE / scale);
 		this.container.y = 40;
 
-		inject<TimelineConfig>('config/timeline')?.onChange('scale', (newValue) => {
-			this.container.x = this.data.startTime / (DEFAULT_SCALE / newValue);
-		});
+		this.container.onRender = () => {
+			const scale = this.timelineConfig?.scale ?? 1;
+			this.container.x = this.data.startTime / (DEFAULT_SCALE / scale);
+		};
 	}
 
 	destroy() {
-		this.container.destroy();
+		this.container.destroy({ children: true });
 	}
 }

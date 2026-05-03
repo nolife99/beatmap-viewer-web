@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Container, Text, Texture } from 'pixi.js';
+import { Container, BitmapText, Texture } from 'pixi.js';
 import ColorConfig from '../../../../../Config/ColorConfig.ts';
 import FullscreenConfig from '../../../../../Config/FullscreenConfig.ts';
 import TimelineConfig from '../../../../../Config/TimelineConfig.ts';
@@ -26,7 +26,7 @@ export default class Beatsnap {
 			}
 		});
 
-		const text = new Text({
+		const text = new BitmapText({
 			text: 'Beat Snap Divisor',
 			style: {
 				...defaultStyle,
@@ -41,7 +41,7 @@ export default class Beatsnap {
 			}
 		});
 
-		const divisorText = new Text({
+		const divisorText = new BitmapText({
 			text: `1/${inject<TimelineConfig>('config/timeline')?.divisor ?? 4}`,
 			style: {
 				...defaultStyle,

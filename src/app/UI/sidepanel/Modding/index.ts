@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Container, Text } from 'pixi.js';
+import { Container, BitmapText } from 'pixi.js';
 import ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject, provide } from '../../../Context.ts';
 import ResponsiveHandler from '../../../ResponsiveHandler.ts';
@@ -31,8 +31,7 @@ export default class Modding {
 
 		const difficultyGraph = this.createEntry(
 			'difficulty graph',
-			provide('ui/sidepanel/modding/difficulty', new DifficultyGraph())
-				.container
+			provide('ui/sidepanel/modding/difficulty', new DifficultyGraph()).container
 		);
 
 		this.container.addChild(spectrogram, difficultyGraph);
@@ -68,7 +67,7 @@ export default class Modding {
 			}
 		});
 
-		const text = new Text({
+		const text = new BitmapText({
 			text: label,
 			style: {
 				...defaultStyle,
@@ -84,9 +83,9 @@ export default class Modding {
 			}
 		});
 
-		inject<ColorConfig>('config/color')?.onChange('color', ({ subtext1 }) => {
-			text.style.fill = subtext1;
-		});
+		text.onRender = () => {
+			text.style.fill = inject<ColorConfig>('config/color')?.color.subtext1 ?? 0xffffff;
+		}
 
 		container.addChild(text, children);
 

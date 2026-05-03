@@ -59,21 +59,6 @@ export default class Replay {
 				inject<SkinningConfig>('config/skinning')?.cursorSize ?? 1
 			);
 		}
-
-		inject<SkinManager>('skinManager')?.addSkinChangeListener((skin) => {
-			this.cursor.texture = skin.getTexture('cursor') ?? BLANK_TEXTURE;
-			for (const trail of this.trails) {
-				trail.texture = skin.getTexture('cursortrail') ?? BLANK_TEXTURE;
-			}
-		});
-
-		inject<SkinningConfig>('config/skinning')?.onChange(
-			'cursorSize',
-			(val: number) => {
-				this.cursor.scale.set(val);
-				for (const trail of this.trails) trail.scale.set(val);
-			}
-		);
 	}
 
 	async process(raw: Blob) {
@@ -171,5 +156,17 @@ export default class Replay {
 			this.trails[i].x = frames[j].position.x;
 			this.trails[i].y = frames[j].position.y;
 		}
+
+		const skin = inject<SkinManager>('skinManager')?.getCurrentSkin();
+
+		this.cursor.texture = skin?.getTexture('cursor') ?? BLANK_TEXTURE;
+		for (const trail of this.trails) {
+			trail.texture = skin?.getTexture('cursortrail') ?? BLANK_TEXTURE;
+		}
+
+		const val = inject<SkinningConfig>('config/skinning')?.cursorSize ?? 1;
+
+		this.cursor.scale.set(val);
+		for (const trail of this.trails) trail.scale.set(val);
 	}
 }

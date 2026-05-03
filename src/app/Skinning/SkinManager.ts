@@ -3,6 +3,8 @@ import { inject } from '../Context.ts';
 import { getArgon, getDefaultLegacy, getYugen } from '../Initiator.ts';
 import Database from './Database.ts';
 import Skin from './Skin.ts';
+import WeakEvent from '../WeakEvent.ts';
+import { DisposableLike } from '@esfx/disposable';
 
 export type SkinEventCallback = (skin: Skin) => void;
 
@@ -12,13 +14,18 @@ export type SkinMetadata = {
 	resources: Map<string, Blob>;
 };
 
+function invokeSkinEventCallback(callback: SkinEventCallback, skin: Skin): void {
+	callback(skin);
+}
+
 export default class SkinManager {
 	skins: SkinMetadata[] = [];
 	currentSkin!: Skin;
 	defaultSkin!: Skin;
 	indexed = new Database();
 
-	private callbacks = new Set<SkinEventCallback>();
+	private readonly skinChanged = new WeakEvent<Skin>;
+	private readonly skinChangedDisposers = new WeakMap<SkinEventCallback, DisposableLike>();
 
 	constructor() {
 		document.querySelector<HTMLButtonElement>('#reloadDefaultSkins')?.addEventListener('click', async () => {
@@ -39,13 +46,23 @@ export default class SkinManager {
 		});
 	}
 
-	addSkinChangeListener(callback: SkinEventCallback) {
-		this.callbacks.add(callback);
-		return callback;
-	}
+	addSkinChangeListener(callback: SkinEventCallback): DisposableLike {
+		const existingDisposer = this.skinChangedDisposers.get(callback);
+		if (existingDisposer) return existingDisposer;
 
-	removeSkinChangeListener(callback: SkinEventCallback) {
-		this.callbacks.delete(callback);
+		const eventDisposer = this.skinChanged.subscribe(
+			callback,
+			invokeSkinEventCallback
+		);
+
+		const disposer = () => {
+			this.skinChangedDisposers.delete(callback);
+			eventDisposer();
+		};
+
+		this.skinChangedDisposers.set(callback, disposer);
+
+		return disposer;
 	}
 
 	async loadSkins() {
@@ -145,8 +162,6 @@ export default class SkinManager {
 
 		this.skins = [...(skins as SkinMetadata[])];
 
-		// console.log(this.skins);
-
 		const el = document.querySelector<HTMLDivElement>('#skinsContainer');
 		if (el) el.innerHTML = '';
 
@@ -224,9 +239,7 @@ export default class SkinManager {
 		}
 	}
 
-	private emitSkinChange() {
-		for (const callback of this.callbacks) {
-			callback(this.getCurrentSkin());
-		}
+	private emitSkinChange(): void {
+		this.skinChanged.emit(this.getCurrentSkin());
 	}
 }

@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Container, FillGradient, Graphics, Sprite, Text, type Texture } from 'pixi.js';
+import { Container, FillGradient, Graphics, Sprite, BitmapText, type Texture } from 'pixi.js';
 import ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject } from '../../../Context.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
@@ -177,7 +177,7 @@ export default class Spectrogram {
 
 		return scaleValues.map(
 			(value) =>
-				new Text({
+				new BitmapText({
 					text: value,
 					style: {
 						...defaultStyle,

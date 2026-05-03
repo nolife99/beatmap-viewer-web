@@ -88,7 +88,7 @@ fn fsMain(input: VertexOutput) -> FragmentOutput {
         discard;
     }
 
-    let blurRate = fwidth(dist) * 1.5;
+    let blurRate = fwidth(dist);
     let innerWidth = 1.0 - customUniforms.borderWidth;
 
     let factor = smoothstep(innerWidth - blurRate, innerWidth, dist);

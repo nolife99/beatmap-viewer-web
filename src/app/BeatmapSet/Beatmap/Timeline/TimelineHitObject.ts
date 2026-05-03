@@ -16,9 +16,10 @@ export default abstract class TimelineHitObject extends SkinnableElement {
 		this.object = object;
 		this.container.y = 40;
 
-		inject<TimelineConfig>('config/timeline')?.onChange('scale', (newValue) => {
-			this.container.x = this.object.startTime / (DEFAULT_SCALE / newValue);
-		});
+		this.container.onRender = () => {
+			const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
+			this.container.x = this.object.startTime / (DEFAULT_SCALE / scale);
+		}
 	}
 
 	protected _object!: StandardHitObject;
@@ -28,9 +29,6 @@ export default abstract class TimelineHitObject extends SkinnableElement {
 
 	set object(val: StandardHitObject) {
 		this._object = val;
-
-		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
-		this.container.x = val.startTime / (DEFAULT_SCALE / scale);
 	}
 
 	protected _isSelected = false;
@@ -46,10 +44,8 @@ export default abstract class TimelineHitObject extends SkinnableElement {
 
 	abstract refreshSprite(): void;
 
-	override destroy(): void {
+	override destroy() {
+		this.container.destroy();
 		super.destroy();
-
-		if (this.skinEventCallback)
-			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
 	}
 }

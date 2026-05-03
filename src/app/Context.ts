@@ -44,8 +44,6 @@ export const provide = <T = any>(key: string, value: T): T => {
 		token: Symbol(key)
 	});
 
-	if (value === undefined) console.log(key, _map);
-
 	return value;
 };
 

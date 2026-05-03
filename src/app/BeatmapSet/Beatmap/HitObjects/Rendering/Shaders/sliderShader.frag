@@ -26,7 +26,7 @@ void main() {
     // Properly union overlaps
     gl_FragDepth = dist;
 
-    float blurRate = fwidth(dist) * 1.5;
+    float blurRate = fwidth(dist);
     float innerWidth = 1.0 - borderWidth;
 
     float factor = smoothstep(innerWidth - blurRate, innerWidth, dist);

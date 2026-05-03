@@ -26,7 +26,7 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 
 		this.updateObjects(startObject, endObject);
 
-		this.skinEventCallback = this.skinManager?.addSkinChangeListener((skin) => {
+		this.lifetime.use(this.skinManager?.addSkinChangeListener((skin) => {
 			const followpoint = skin.getAnimatedTexture(
 				'followpoint',
 				this.context.consume<Skin>('beatmapSkin')
@@ -34,7 +34,7 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 
 			this.container.blendMode = skin.config.General.Argon ? 'add' : 'normal';
 			this.texturesList = followpoint;
-		});
+		}));
 	}
 
 	get duration() {
@@ -118,9 +118,5 @@ export default class DrawableFollowPoints extends AnimatedSkinnableElement {
 		super.destroy();
 
 		this.container.destroy({ children: true });
-
-		if (this.skinEventCallback) {
-			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
-		}
 	}
 }

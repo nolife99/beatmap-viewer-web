@@ -71,13 +71,13 @@ export default class Gameplays extends ScopedClass {
 			}
 		);
 
-		inject<ExperimentalConfig>('config/experimental')?.onChange(
+		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'overlapGameplays',
 			() => {
 				this.reLayoutChildren();
 				this._emitChange('change');
 			}
-		);
+		));
 	}
 
 	addGameplay(gameplay: Gameplay, index?: number) {
@@ -248,6 +248,7 @@ export default class Gameplays extends ScopedClass {
 				})
 				.start();
 
+			gameplay.container.on('destroyed', () => tween.stop());
 			tweenGroup.add(tween);
 
 			gameplay.background.visible = !overlapGameplays ||

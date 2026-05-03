@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Sprite, Text, Texture } from 'pixi.js';
+import { Sprite, BitmapText, Texture } from 'pixi.js';
 import ColorConfig from '../../Config/ColorConfig.ts';
 import { inject, provide } from '../../Context.ts';
 import { Game } from '../../Game.ts';
@@ -9,6 +9,7 @@ import ZContainer from '../core/ZContainer.ts';
 import Metadata from './Metadata.ts';
 import Modding from './Modding/index.ts';
 import Timing from './Timing/index.ts';
+import { DisposableStack } from '@esfx/disposable';
 
 export default class SidePanel {
 	tabs = [
@@ -79,7 +80,7 @@ export default class SidePanel {
 				},
 				cursor: 'pointer'
 			});
-			const text = new Text({
+			const text = new BitmapText({
 				text: title,
 				style: {
 					fontFamily: 'Rubik',
@@ -98,16 +99,19 @@ export default class SidePanel {
 				this.switchTab(idx);
 			});
 
-			inject<ColorConfig>('config/color')?.onChange(
+			const lifetime = new DisposableStack;
+			lifetime.use(inject<ColorConfig>('config/color')?.onChange(
 				'color',
 				({ base, text: textColor }) => {
 					container.layout = { backgroundColor: base };
 					text.style.fill = textColor;
 				}
-			);
+			));
 
+			container.on('destroyed', () => lifetime.dispose());
 			return container;
 		});
+
 		this.tabSwitcher.addChild(...this.headers);
 
 		const closeButtonContainer = new LayoutContainer({
@@ -133,9 +137,10 @@ export default class SidePanel {
 		closeButton.tint = inject<ColorConfig>('config/color')?.color.text ??
 			0xffffff;
 
-		inject<ColorConfig>('config/color')?.onChange('color', ({ text }) => {
+		const lifetime = new DisposableStack;
+		lifetime.use(inject<ColorConfig>('config/color')?.onChange('color', ({ text }) => {
 			closeButton.tint = text;
-		});
+		}));
 
 		closeButtonContainer.cursor = 'pointer';
 		closeButtonContainer.addEventListener(
@@ -151,7 +156,7 @@ export default class SidePanel {
 
 		this.switchTab(0);
 
-		inject<ColorConfig>('config/color')?.onChange(
+		lifetime.use(inject<ColorConfig>('config/color')?.onChange(
 			'color',
 			({ mantle, surface1, base }) => {
 				this.container.layout = {
@@ -170,7 +175,8 @@ export default class SidePanel {
 					}
 				}
 			}
-		);
+		));
+		this.container.on('destroyed', () => lifetime.dispose());
 
 		inject<ResponsiveHandler>('responsiveHandler')?.on(
 			'layout',

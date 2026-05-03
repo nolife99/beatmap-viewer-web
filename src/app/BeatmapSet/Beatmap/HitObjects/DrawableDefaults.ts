@@ -25,11 +25,7 @@ export default class DrawableDefaults extends SkinnableElement {
 		this.refreshSprites();
 
 		this.lifetime.use(
-			this.skinManager?.addSkinChangeListener(() => this.refreshSprites()),
-			(c) => {
-				if (!c) return;
-				this.skinManager?.removeSkinChangeListener(c);
-			}
+			this.skinManager?.addSkinChangeListener(() => this.refreshSprites())
 		);
 	}
 

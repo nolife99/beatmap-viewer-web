@@ -1,5 +1,5 @@
 import { ControlPoint, ControlPointType, DifficultyPoint, type SamplePoint, TimingPoint } from 'osu-classes';
-import { type ColorSource, Container, Graphics, Text } from 'pixi.js';
+import { type ColorSource, Container, Graphics, BitmapText } from 'pixi.js';
 import ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject } from '../../../Context.ts';
 import { millisecondsToMinutesString } from '../../../utils.ts';
@@ -7,9 +7,9 @@ import { millisecondsToMinutesString } from '../../../utils.ts';
 export default class Point {
 	container: Container;
 	private indicator: Graphics;
-	private timestamp: Text;
-	private content1: Text;
-	private content2: Text;
+	private timestamp: BitmapText;
+	private content1: BitmapText;
+	private content2: BitmapText;
 	private color: Graphics;
 
 	private accent: ColorSource;
@@ -34,10 +34,10 @@ export default class Point {
 			interactiveChildren: false
 		});
 
-		inject<ColorConfig>('config/color')?.onChange('color', ({ mantle }) => {
+		this.container.onRender = () => {
 			if (this._destroyed) return;
 
-			this.bg = mantle;
+			this.bg = inject<ColorConfig>('config/color')?.color.mantle ?? 0xffffff;
 			this.accent = data.pointType === ControlPointType.TimingPoint
 				? 0xf38ba8
 				: data.pointType === ControlPointType.DifficultyPoint
@@ -46,9 +46,9 @@ export default class Point {
 
 			if (this.indicator.visible) this.select();
 			if (!this.indicator.visible) this.unselect();
-		});
+		};
 
-		this.timestamp = new Text({
+		this.timestamp = new BitmapText({
 			text: millisecondsToMinutesString(data.startTime),
 			style: {
 				fontSize: 14,
@@ -59,7 +59,7 @@ export default class Point {
 			layout: false
 		});
 
-		this.content1 = new Text({
+		this.content1 = new BitmapText({
 			text: data.pointType === ControlPointType.TimingPoint
 				? `${Math.round((data as TimingPoint).bpm)} BPM`
 				: data.pointType === ControlPointType.DifficultyPoint
@@ -80,7 +80,7 @@ export default class Point {
 			x: 80
 		});
 
-		this.content2 = new Text({
+		this.content2 = new BitmapText({
 			text: data.pointType === ControlPointType.TimingPoint
 				? `Signature ${(data as TimingPoint).timeSignature}/4`
 				: data.pointType === ControlPointType.DifficultyPoint

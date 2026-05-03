@@ -7,9 +7,11 @@ import { MessageType, type WorkerPayload } from './types.ts';
 
 // @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix
 import VideoWorker from './Worker.ts?worker&inline';
+import { DisposableStack } from '@esfx/disposable';
 
 export default class Video {
 	worker = new VideoWorker();
+	private lifetime = new DisposableStack;
 
 	constructor() {
 		this.worker.postMessage({
@@ -37,14 +39,14 @@ export default class Video {
 			}
 		);
 
-		inject<BackgroundConfig>('config/background')?.onChange('video', (val) => {
+		this.lifetime.use(inject<BackgroundConfig>('config/background')?.onChange('video', (val) => {
 			const audio =
 				inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio');
 			if (!audio) return;
 
 			if (!val) this.stop(audio.currentTime);
 			if (val && audio.state === 'PLAYING') this.play(audio.currentTime);
-		});
+		}));
 	}
 
 	load(blob: Blob, offset: number) {
@@ -79,5 +81,6 @@ export default class Video {
 
 	destroy() {
 		this.worker.terminate();
+		this.lifetime.dispose();
 	}
 }

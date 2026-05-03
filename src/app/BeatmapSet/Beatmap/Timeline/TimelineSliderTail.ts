@@ -2,9 +2,11 @@ import { SliderTail } from 'osu-standard-stable';
 import Skin, { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import DrawableSlider from '../HitObjects/DrawableSlider.ts';
 import TimelineHitCircle from './TimelineHitCircle.ts';
+import { TAIL_LENIENCY } from '../HitObjects/DrawableSliderTail.ts';
 
 export default class TimelineSliderTail extends TimelineHitCircle {
 	constructor(object: SliderTail) {
+		object.startTime += TAIL_LENIENCY;
 		super(object);
 
 		this.container.removeChild(this.defaults.container);

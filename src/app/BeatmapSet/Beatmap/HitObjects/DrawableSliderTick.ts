@@ -28,6 +28,7 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		this.container = new Sprite(
 			this.skinManager?.getCurrentSkin().getTexture('sliderscorepoint')
 		);
+
 		this.container.x = object.startX + object.stackedOffset.x;
 		this.container.y = object.startY + object.stackedOffset.x;
 
@@ -48,16 +49,16 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		clonedSample.hitSound = 'slidertick';
 		this.hitSound = new HitSample([clonedSample]).hook(this.context);
 
-		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
+		this.lifetime.use(this.skinManager?.addSkinChangeListener(() =>
 			this.refreshSprite()
-		);
+		));
 		this.gameplaysEventCallback = inject<Gameplays>(
 			'ui/main/viewer/gameplays'
 		)?.on('change', () => this.refreshColor());
-		inject<ExperimentalConfig>('config/experimental')?.onChange(
+		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'overlapGameplays',
 			() => this.refreshColor()
-		);
+		));
 	}
 
 	updateObjects(object: SliderTick, parent: Slider, sample: Sample) {
@@ -193,9 +194,6 @@ export default class DrawableSliderTick extends DrawableHitObject {
 		super.destroy();
 
 		this.container.destroy();
-		if (this.skinEventCallback) {
-			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
-		}
 		if (this.gameplaysEventCallback) {
 			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
 				'change',

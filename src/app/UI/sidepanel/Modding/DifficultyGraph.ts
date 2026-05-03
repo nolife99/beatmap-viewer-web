@@ -28,9 +28,8 @@ export default class DifficultyGraph {
 
 		this.container.addChild(this.graph);
 
-		this.container?.on('layout', (layout) => {
-			const { width, height } = layout.computedLayout;
-			this.drawGraph(width, height);
+		this.container?.on('layout', () => {
+			this.drawGraph();
 		});
 
 		this.graph.tint = inject<ColorConfig>('config/color')?.color.subtext0 ??
@@ -58,7 +57,10 @@ export default class DifficultyGraph {
 		this.maxTime = audioDuration;
 	}
 
-	drawGraph(width = 360, height = 180) {
+	drawGraph() {
+		if (!this.container.layout) return;
+		const { width, height } = this.container.layout.computedLayout;
+
 		const newContext = new GraphicsContext();
 
 		const maxStrain = Math.max(...this.data.map(({ strain }) => strain));

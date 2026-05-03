@@ -4,12 +4,13 @@ import SkinningConfig from '../Config/SkinningConfig.ts';
 import { inject } from '../Context.ts';
 import SkinManager, { SkinMetadata } from './SkinManager.ts';
 
-const sanitizeINI = (str: string) =>
-	str
+function sanitizeINI(str: string) {
+	return str
 		.split('\n')
 		.filter((line) => /(^\[.*])|(^([\s\t])*[a-zA-Z0-9]+\s*:.*)/g.test(line))
 		.join('\n')
 		.replaceAll(/((\/\/)|(;)|(==)).*/g, '');
+}
 
 export type SkinConfig = {
 	General: {

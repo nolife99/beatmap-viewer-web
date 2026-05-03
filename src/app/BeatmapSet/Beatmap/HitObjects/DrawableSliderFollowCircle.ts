@@ -30,16 +30,16 @@ export default class DrawableSliderFollowCircle
 			?.getCurrentSkin()
 			.getAnimatedTexture('sliderfollowcircle') ?? [BLANK_TEXTURE];
 
-		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
+		this.lifetime.use(this.skinManager?.addSkinChangeListener(() =>
 			this.refreshSprite()
-		);
+		));
 		this.gameplaysEventCallback = inject<Gameplays>(
 			'ui/main/viewer/gameplays'
 		)?.on('change', () => this.refreshColor());
-		inject<ExperimentalConfig>('config/experimental')?.onChange(
+		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'overlapGameplays',
 			() => this.refreshColor()
-		);
+		));
 	}
 
 	private _object!: Slider;
@@ -115,9 +115,6 @@ export default class DrawableSliderFollowCircle
 		super.destroy();
 
 		this.container.destroy();
-		if (this.skinEventCallback) {
-			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
-		}
 		if (this.gameplaysEventCallback) {
 			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
 				'change',

@@ -22,7 +22,6 @@ import DrawableApproachCircle from './DrawableApproachCircle.ts';
 import DrawableDefaults from './DrawableDefaults.ts';
 import DrawableHitObject, { type IHasApproachCircle } from './DrawableHitObject.ts';
 import DrawableJudgement from './DrawableJudgement.ts';
-import ConfigSection, { ChangeRemover } from '../../../Config/ConfigSection.ts';
 
 export default class DrawableHitCircle
 	extends DrawableHitObject
@@ -47,8 +46,6 @@ export default class DrawableHitCircle
 
 	judgement: DrawableJudgement;
 	color: ColorSource = 'rgb(0, 0, 0)';
-
-	private remover: ChangeRemover;
 
 	constructor(
 		object: StandardHitObject,
@@ -81,9 +78,9 @@ export default class DrawableHitCircle
 		this.hitSound = new HitSample(object.samples).hook(this.context);
 
 		this.refreshSprite();
-		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
+		this.lifetime.use(this.skinManager?.addSkinChangeListener(() =>
 			this.refreshSprite()
-		);
+		));
 		this.gameplaysEventCallback = inject<Gameplays>(
 			'ui/main/viewer/gameplays'
 		)?.on('change', () => this.refreshColor());
@@ -94,17 +91,15 @@ export default class DrawableHitCircle
 		judgementLayer.attach(this.judgement.container);
 		this.container.addChild(this.judgement.container);
 
-		this.remover = ConfigSection.createRemover(
-			inject<ExperimentalConfig>('config/experimental')?.onChange('overlapGameplays', () => this.refreshColor()),
-			inject<GameplayConfig>('config/gameplay')?.onChange(
-				'hitAnimation',
-				(val) => {
-					if (!val) return;
+		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange('overlapGameplays', () => this.refreshColor()));
+		this.lifetime.use(inject<GameplayConfig>('config/gameplay')?.onChange(
+			'hitAnimation',
+			(val) => {
+				if (!val) return;
 
-					this.hitCircleSprite.tint = this.color;
-				}
-			)
-		)
+				this.hitCircleSprite.tint = this.color;
+			}
+		));
 	}
 
 	private _isSelected = false;
@@ -159,16 +154,7 @@ export default class DrawableHitCircle
 		this.judgement.evaluation = value;
 	}
 
-	checkCollide(rect: [Vector2, Vector2], time: number) {
-		if (
-			!(
-				this.object.startTime - this.object.timePreempt < time &&
-				time < this.object.startTime + 240
-			)
-		) {
-			return false;
-		}
-
+	checkCollide(rect: [Vector2, Vector2]) {
 		if (!this.wrapper.visible) return false;
 
 		const radius = 64 * this.object.scale * (256 / 236);
@@ -321,21 +307,16 @@ export default class DrawableHitCircle
 		this.hitCircleSprite.destroy();
 		this.flashPiece.destroy();
 		this.defaults?.destroy();
-		this.judgement.container.destroy();
+		this.judgement.destroy();
 
 		this.timelineObject?.destroy();
 		this.select.destroy();
 		this.approachCircle.destroy();
-
-		if (this.skinEventCallback)
-			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
 
 		if (this.gameplaysEventCallback)
 			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
 				'change',
 				this.gameplaysEventCallback
 			);
-
-		this.remover();
 	}
 }

@@ -120,7 +120,7 @@ export default class BeatmapSet extends ScopedClass {
 					const raw = await blob.arrayBuffer();
 					if (!raw) return null;
 
-					return new Beatmap(raw).hook(this.context);
+					return new Beatmap(raw, this).hook(this.context);
 				})
 			)
 		)
@@ -244,12 +244,13 @@ export default class BeatmapSet extends ScopedClass {
 		);
 		await audio.createBufferNode(audioFile, beatmap);
 
-		inject<DifficultyGraph>('ui/sidepanel/modding/difficulty')?.setData(
-			beatmap.strains,
-			audio.duration / 1000
-		);
-
 		console.timeEnd('Constructing audio');
+
+		const graph = inject<DifficultyGraph>('ui/sidepanel/modding/difficulty');
+		if (!graph) return;
+
+		graph.setData(beatmap.strains, audio.duration / 1000);
+		graph.drawGraph();
 	}
 
 	loadVideo(beatmap: Beatmap) {
@@ -382,8 +383,6 @@ export default class BeatmapSet extends ScopedClass {
 
 		beatmap.load();
 		return beatmap.loadHitObjects();
-
-		// console.log(beatmap);
 	}
 
 	async loadMaster(idx: number) {
@@ -407,7 +406,8 @@ export default class BeatmapSet extends ScopedClass {
 			this.slaves.delete(beatmap);
 			this.slaves.add(oldMaster);
 		} else {
-			this.master?.destroy();
+			this.master?.reset();
+			this.master = undefined;
 
 			await Promise.all([
 				this.loadPeripherals(beatmap),
@@ -445,7 +445,7 @@ export default class BeatmapSet extends ScopedClass {
 		if (!beatmap) return;
 		if (beatmap === this.master || !this.slaves.has(beatmap)) return;
 
-		beatmap.destroy();
+		beatmap.reset();
 		this.slaves.delete(beatmap);
 
 		this.setIds();
@@ -674,8 +674,6 @@ export default class BeatmapSet extends ScopedClass {
 
 		for (const slave of this.difficulties) {
 			slave.destroy();
-			slave.container.destroy();
-			slave.worker.terminate();
 		}
 
 		this.context.consume<Video>('video')?.destroy();

@@ -59,20 +59,23 @@ export default class Beatmap extends ScopedClass {
 	// Taken from https://github.com/Rian8337/osu-droid-module/blob/master/packages/osu-strain-graph-generator/src/index.ts
 	strains: StrainPoint[] = [];
 	replay?: Replay;
+
 	private loaded = false;
 	private previousConnectors = new Set<number>();
 	private workerUpdate: ((this: Worker, ev: MessageEvent) => void) | null =
 		null;
 
-	constructor(public raw: ArrayBuffer) {
+	constructor(public raw: ArrayBuffer, public beatmapSet: BeatmapSet) {
 		super();
 
 		this.md5 = crypto.createHash('md5').update(new Uint8Array(raw)).digest('hex');
 
 		const initialMods =
 			inject<ExperimentalConfig>('config/experimental')?.getModsString() ?? '';
+
+		const base = decoder.decodeFromBuffer(raw);
 		this.data = ruleset.applyToBeatmapWithMods(
-			decoder.decodeFromBuffer(raw, { parseStoryboard: false }),
+			base,
 			ruleset.createModCombination(initialMods)
 		);
 
@@ -105,7 +108,7 @@ export default class Beatmap extends ScopedClass {
 				shouldRecalculate: boolean;
 			}) => {
 				const appliedMods = ruleset.applyToBeatmapWithMods(
-					this.data,
+					base,
 					ruleset.createModCombination(val)
 				);
 
@@ -124,8 +127,18 @@ export default class Beatmap extends ScopedClass {
 				this.calculateStrainGraph(val, calculator);
 
 				this.recalculateDifficulty();
+
+				if (this.context.consume<Audio>('audio')?.state === 'STOPPED') {
+					this.postAudioClockToWorker();
+				}
 			}
 		));
+
+		this.lifetime.use(() => {
+			this.reset();
+			this.container.destroy();
+			this.worker.terminate();
+		})
 	}
 
 	load() {
@@ -271,7 +284,6 @@ export default class Beatmap extends ScopedClass {
 
 		this.postAudioClockToWorker();
 
-		// biome-ignore lint/suspicious/noExplicitAny: Can't specify event type
 		this.worker.addEventListener(
 			'message',
 			this.workerUpdate = (event) => {
@@ -318,8 +330,10 @@ export default class Beatmap extends ScopedClass {
 		this.worker.postMessage({
 			type: 'playbackRate',
 			playbackRate:
-				this.context.consume<BeatmapSet>('beatmapset')?.playbackRate ?? 1
+				this.beatmapSet.playbackRate ?? 1
 		});
+
+		this.seek(audio?.currentTime ?? 0);
 
 		if (audio?.state === 'PLAYING') {
 			this.worker.postMessage({ type: 'start' });
@@ -328,8 +342,6 @@ export default class Beatmap extends ScopedClass {
 		if (audio?.state === 'STOPPED') {
 			this.worker.postMessage({ type: 'stop' });
 		}
-
-		this.seek(audio?.currentTime ?? 0);
 	}
 
 	frame(time: number) {
@@ -409,11 +421,9 @@ export default class Beatmap extends ScopedClass {
 
 			if (
 				(obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) &&
-				obj.checkCollide(rect, obj.object.startTime)
+				obj.checkCollide(rect)
 			) {
 				this.container.addSelected(idx);
-			} else {
-				this.container.removeSelected(idx);
 			}
 		}
 	}
@@ -560,7 +570,7 @@ export default class Beatmap extends ScopedClass {
 		}
 	}
 
-	override destroy(): void {
+	reset() {
 		inject<Gameplays>('ui/main/viewer/gameplays')?.removeGameplay(
 			this.container
 		);
@@ -587,8 +597,6 @@ export default class Beatmap extends ScopedClass {
 
 		this.previousConnectors.clear();
 		this.previousObjects.clear();
-
-		super.destroy();
 	}
 
 	private calculateStrainGraph(mods: string, calculator: StandardDifficultyCalculator) {
@@ -665,6 +673,7 @@ export default class Beatmap extends ScopedClass {
 		);
 		for (let i = 0; i < this.objects.length; i++) {
 			this.objects[i].object = objs[i];
+			this.objects[i].update(this.context.consume<Audio>('audio')?.currentTime ?? 0);
 		}
 
 		let j = 0;
@@ -673,14 +682,13 @@ export default class Beatmap extends ScopedClass {
 			const endObject = this.data.hitObjects[i + 1];
 			if (endObject.isNewCombo) continue;
 
-			// console.log(this.connectors[j].startObject.startTime, this.connectors[j].endObject.startTime, startObject.startTime, endObject.startTime)
 			this.connectors[j]?.updateObjects(startObject, endObject);
 			j++;
 		}
 	}
 
 	private recalculateDifficulty() {
-		if (this.context.consume<BeatmapSet>('beatmapset')?.master !== this) return;
+		if (this.beatmapSet.master !== this) return;
 
 		this.color = getDiffColour(this.difficultyAttributes.starRating);
 		const el = document.querySelector<HTMLSpanElement>('#masterDiff');
@@ -795,10 +803,10 @@ export default class Beatmap extends ScopedClass {
 							if (object instanceof Circle) {
 								resolve(new DrawableHitCircle(object).hook(this.context));
 							}
-							if (object instanceof Slider) {
+							else if (object instanceof Slider) {
 								resolve(new DrawableSlider(object).hook(this.context));
 							}
-							if (object instanceof Spinner) {
+							else if (object instanceof Spinner) {
 								resolve(new DrawableSpinner(object).hook(this.context));
 							}
 							resolve(null);

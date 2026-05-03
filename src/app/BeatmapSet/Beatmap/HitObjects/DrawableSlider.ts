@@ -29,7 +29,6 @@ import DrawableSliderTail, { TAIL_LENIENCY } from './DrawableSliderTail.ts';
 import DrawableSliderTick from './DrawableSliderTick.ts';
 import { SliderProgressView } from './Rendering/CalculateSliderProgress.ts';
 import SliderBodyRenderer, { type SliderUniformPatch } from './Rendering/SliderBodyRenderer.ts';
-import ConfigSection, { ChangeRemover } from '../../../Config/ConfigSection.ts';
 
 export default class DrawableSlider
 	extends DrawableHitObject
@@ -55,8 +54,6 @@ export default class DrawableSlider
 	private layer2 = new RenderLayer();
 	private _selectionVisualsDirty = true;
 	private _nodesInitialized = false;
-
-	private remover: ChangeRemover;
 
 	constructor(object: Slider) {
 		super(object);
@@ -157,13 +154,13 @@ export default class DrawableSlider
 		this.sliderSlideSample = new HitSample([slideSample]).hook(this.context);
 
 		this.refreshSprite();
-		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
+		this.lifetime.use(this.skinManager?.addSkinChangeListener(() =>
 			this.refreshSprite()
-		);
+		));
 		this.gameplaysEventCallback = inject<Gameplays>(
 			'ui/main/viewer/gameplays'
 		)?.on('change', () => this.refreshColor());
-		this.remover = ConfigSection.createRemover(inject<ExperimentalConfig>('config/experimental')?.onChange(
+		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'overlapGameplays',
 			() => this.refreshColor()
 		));
@@ -187,22 +184,11 @@ export default class DrawableSlider
 	}
 
 	public get bodyAlpha() {
-		return this.renderer.alphaFilter.alpha;
+		return this.renderer.body.alpha;
 	}
 
 	public set bodyAlpha(val: number) {
-		this.renderer.alphaFilter.alpha = val;
-	}
-
-	private _isHover = false;
-
-	get isHover() {
-		return this._isHover;
-	}
-
-	set isHover(val: boolean) {
-		this._isHover = val;
-		this.nodes.visible = val || this.isSelected;
+		this.renderer.body.alpha = val;
 	}
 
 	private _isSelected = false;
@@ -331,14 +317,10 @@ export default class DrawableSlider
 		this.renderer.setSelectionUniforms(patch);
 	}
 
-	checkCollide(rect: [Vector2, Vector2], time: number) {
+	checkCollide(rect: [Vector2, Vector2]) {
 		const obj = this._object;
 
-		if (time < obj.startTime - obj.timePreempt || time > obj.endTime + 240) {
-			return false;
-		}
-
-		if (!this.wrapper.visible) return false;
+		if (this.bodyAlpha === 0) return false;
 
 		const a = rect[0];
 		const b = rect[1];
@@ -675,8 +657,6 @@ export default class DrawableSlider
 		if (updated) this.updateGeometry(updated.start, updated.end, this.getSkinBodyScale());
 
 		this.judgement.frame(time);
-
-		if (this.isHover && time > this.object.endTime + 240) this.isHover = false;
 	}
 
 	override eval(frames: LegacyReplayFrame[]) {
@@ -779,9 +759,8 @@ export default class DrawableSlider
 		this.container.destroy({ children: true });
 		this.select.destroy({ children: true });
 
-		if (this.skinEventCallback) {
-			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
-		}
+		this.judgement.destroy();
+		this.timelineObject.destroy();
 
 		if (this.gameplaysEventCallback) {
 			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
@@ -789,8 +768,6 @@ export default class DrawableSlider
 				this.gameplaysEventCallback
 			);
 		}
-
-		this.remover();
 	}
 
 	private getSkinBodyScale() {

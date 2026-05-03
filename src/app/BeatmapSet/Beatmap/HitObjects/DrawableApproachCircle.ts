@@ -26,9 +26,9 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		this.container.eventMode = 'none';
 
 		this.refreshSprite();
-		this.skinEventCallback = this.skinManager?.addSkinChangeListener(() =>
+		this.lifetime.use(this.skinManager?.addSkinChangeListener(() =>
 			this.refreshSprite()
-		);
+		));
 		this.gameplaysEventCallback = inject<Gameplays>(
 			'ui/main/viewer/gameplays'
 		)?.on('change', () => this.refreshColor());
@@ -113,9 +113,6 @@ export default class DrawableApproachCircle extends SkinnableElement {
 		super.destroy();
 
 		this.container.destroy();
-		if (this.skinEventCallback) {
-			this.skinManager?.removeSkinChangeListener(this.skinEventCallback);
-		}
 		if (this.gameplaysEventCallback) {
 			inject<Gameplays>('ui/main/viewer/gameplays')?.remove(
 				'change',

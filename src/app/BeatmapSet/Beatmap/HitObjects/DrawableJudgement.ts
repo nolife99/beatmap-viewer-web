@@ -39,7 +39,7 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 
 		this.texturesList = [BLANK_TEXTURE];
 
-		inject<SkinManager>('skinManager')?.addSkinChangeListener((skin) => {
+		this.lifetime.use(inject<SkinManager>('skinManager')?.addSkinChangeListener((skin) => {
 			this.updateFn = skin.metadata?.type === 'ARGON'
 				? argonUpdate
 				: legacyUpdate;
@@ -67,7 +67,7 @@ export default class DrawableJudgement extends AnimatedSkinnableElement {
 					this.texturesList = [BLANK_TEXTURE];
 				}
 			}
-		});
+		}));
 
 		this.legacyRotation = Math.random() * 8.6 * 2 - 8.6;
 	}

@@ -12,7 +12,6 @@ import BeatmapSet from '../../index.ts';
 import { StoryboardAnimation } from './StoryboardAnimation.ts';
 import StoryboardSprite from './StoryboardSprite.ts';
 import { Buffer } from 'node:buffer';
-import ConfigSection, { ChangeRemover } from '../../../Config/ConfigSection.ts';
 
 export default class Storyboard {
 	container: Container = new Container({
@@ -41,7 +40,6 @@ export default class Storyboard {
 	private _tree?: IntervalTree;
 	private _previous = new Set<number>();
 	private _previousMaster = new Set<number>();
-	private remover: ChangeRemover;
 
 	constructor(private blob: Blob, private resources: Map<string, Blob>) {
 		const mask = new Graphics()
@@ -73,13 +71,6 @@ export default class Storyboard {
 			480
 		);
 		this.container.mask = mask;
-
-		this.remover = ConfigSection.createRemover(inject<BackgroundConfig>('config/background')?.onChange(
-			'storyboard',
-			(val) => {
-				this.container.visible = val;
-			}
-		));
 	}
 
 	private textureMap = new Map<string, Texture>();
@@ -156,7 +147,9 @@ export default class Storyboard {
 	}
 
 	update(timestamp: number) {
-		if (!inject<BackgroundConfig>('config/background')?.storyboard || this.container.destroyed) return;
+		this.container.visible = !!inject<BackgroundConfig>('config/background')?.storyboard;
+
+		if (!this.container.visible || this.container.destroyed) return;
 		this.fill.alpha = timestamp < this.startTime ? 0 : 1;
 
 		const set = new Set<number>(
@@ -312,8 +305,6 @@ export default class Storyboard {
 		this.backgroundLayer.destroy(true);
 		this.overlayLayer.destroy(true);
 		this.container.destroy(true);
-
-		this.remover();
 	}
 
 	private async load(raw: ArrayBuffer) {

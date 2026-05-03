@@ -73,13 +73,6 @@ export default class RendererConfig extends ConfigSection {
 		return super.emitChange(key, newValue);
 	}
 
-	override onChange(
-		key: keyof RendererProps,
-		callback: (newValue: any) => void
-	) {
-		super.onChange(key, callback);
-	}
-
 	loadEventListeners() {
 		document
 			.querySelector<HTMLInputElement>('#antialiasing')
