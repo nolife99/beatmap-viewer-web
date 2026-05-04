@@ -31,6 +31,7 @@ export class SliderProgressView implements SliderProgressSource {
 
 	constructor(private path: SliderPath) {
 		this.fullBounds = computeSliderPathBounds(path);
+		this.reset(0, 1);
 	}
 
 	reset(p0: number, p1: number): this {

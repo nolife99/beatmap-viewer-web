@@ -823,10 +823,7 @@ export default class DrawableSlider
 
 		const selectionScale = this.getSkinBodyScale();
 		const selectionRadius = val.radius * (236 / 256) * selectionScale;
-		this.renderer.updateSelectionGeometry({
-			points: this.object.path.calculatedPath,
-			length: this.object.path.calculatedPath.length
-		}, selectionRadius);
+		this.renderer.updateSelectionGeometry(new SliderProgressView(this._object.path), selectionRadius);
 
 		this._selectionVisualsDirty = false;
 	}
