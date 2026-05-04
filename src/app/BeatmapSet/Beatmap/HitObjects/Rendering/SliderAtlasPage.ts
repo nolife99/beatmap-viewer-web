@@ -10,8 +10,9 @@ export default class SliderAtlasPage {
 	readonly texture: RenderTexture;
 	readonly renderRoot = new Container();
 	readonly packer: TransientAtlasPacker;
-	readonly bodyBatch: SliderInstanceBatch;
-	readonly selectionBatch: SliderInstanceBatch;
+
+	/** Unified batch. Body and selection segments both go here. */
+	readonly batch: SliderInstanceBatch;
 
 	private used = false;
 
@@ -29,18 +30,14 @@ export default class SliderAtlasPage {
 		});
 		this.texture.label = label;
 
-		this.bodyBatch = new SliderInstanceBatch(width, height);
-		this.selectionBatch = new SliderInstanceBatch(width, height);
-
-		this.renderRoot.addChild(this.bodyBatch.mesh);
-		this.renderRoot.addChild(this.selectionBatch.mesh);
+		this.batch = new SliderInstanceBatch(width, height);
+		this.renderRoot.addChild(this.batch.mesh);
 	}
 
 	beginFrame() {
 		this.used = false;
 		this.packer.reset();
-		this.bodyBatch.beginFrame();
-		this.selectionBatch.beginFrame();
+		this.batch.beginFrame();
 	}
 
 	markUsed() {
@@ -52,8 +49,11 @@ export default class SliderAtlasPage {
 	}
 
 	upload() {
-		this.bodyBatch.upload();
-		this.selectionBatch.upload();
+		this.batch.upload();
+	}
+
+	releaseStaging() {
+		this.batch.releaseStaging();
 	}
 
 	render(app: Application) {
@@ -66,14 +66,8 @@ export default class SliderAtlasPage {
 		});
 	}
 
-	releaseStaging() {
-		this.bodyBatch.releaseStaging();
-		this.selectionBatch.releaseStaging();
-	}
-
 	destroy() {
-		this.bodyBatch.destroy();
-		this.selectionBatch.destroy();
+		this.batch.destroy();
 		this.renderRoot.destroy({ children: false });
 		this.texture.destroy(true);
 	}

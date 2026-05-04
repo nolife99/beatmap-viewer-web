@@ -1,6 +1,7 @@
-import type { ColorSource, Rectangle, Sprite, Texture } from 'pixi.js';
-import type { SliderProgressSource, SliderPathBounds } from './CalculateSliderProgress.ts';
-import SliderAtlasPage from "./SliderAtlasPage.ts";
+import type { Rectangle, Sprite, Texture } from 'pixi.js';
+import type { ColorSource } from 'pixi.js';
+import type { SliderPathBounds, SliderProgressView } from './CalculateSliderProgress.ts';
+import type SliderAtlasPage from './SliderAtlasPage.ts';
 
 export type SliderUniformPatch = Partial<{
 	borderColor: ColorSource;
@@ -55,12 +56,12 @@ export type SliderVisualTarget = {
 	sprite: Sprite;
 	texture?: Texture;
 	frame: Rectangle;
-	path?: SliderProgressSource;
+	path?: SliderProgressView;
 	radius: number;
 	style: SliderInstanceStyle;
 	renderBounds: MutableBounds;
 
-	/** Geometry/data availability. This is set once update*Geometry supplies a path. */
+	/** Geometry/data availability. Set once update*Geometry supplies a path. */
 	enabled: boolean;
 
 	/** External visibility gate. Body and selection are controlled independently. */

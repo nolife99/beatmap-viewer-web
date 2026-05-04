@@ -9,11 +9,9 @@ import {
 	UPDATE_PRIORITY
 } from 'pixi.js';
 import { inject } from '../../../../Context.ts';
-import {
-	SliderProgressView,
-	type SliderProgressSource
-} from './CalculateSliderProgress.ts';
+import type { SliderProgressView } from './CalculateSliderProgress.ts';
 import SliderAtlasPage from './SliderAtlasPage.ts';
+import SliderInstanceBatch from './SliderInstanceBatch.ts';
 import type {
 	AtlasSlot,
 	MutableBounds,
@@ -49,7 +47,6 @@ export type BeatmapSliderLayerOptions = {
 	gutter?: number;
 	autoFlush?: boolean;
 };
-
 
 type FrameMetrics = {
 	viewport: MutableBounds;
@@ -104,7 +101,7 @@ export class BeatmapSliderLayer {
 			y: 0,
 			maxLocalBounds: bounds,
 			body: this.createVisualTarget(DEFAULT_BODY_STYLE, true, true),
-			selection: this.createVisualTarget(DEFAULT_SELECTION_STYLE, false, false)
+			selection: this.createVisualTarget(DEFAULT_SELECTION_STYLE, false, true)
 		};
 
 		entry.body.renderBounds = padBounds(bounds, entry.body.radius + EXTRA_AA_PIXELS);
@@ -131,32 +128,17 @@ export class BeatmapSliderLayer {
 	}
 
 	setBodyVisible(id: number, visible: boolean) {
-		const entry = this.getEntry(id);
-		this.setTargetVisible(entry.body, visible);
+		this.setTargetVisible(this.getEntry(id).body, visible);
 	}
 
 	setSelectionVisible(id: number, visible: boolean) {
-		const entry = this.getEntry(id);
-		this.setTargetVisible(entry.selection, visible);
-	}
-
-	setVisible(id: number, visible: boolean) {
-		// Compatibility helper only. Rendering no longer depends on a shared entry.visible flag.
-		this.setBodyVisible(id, visible);
-		this.setSelectionVisible(id, visible);
+		this.setTargetVisible(this.getEntry(id).selection, visible);
 	}
 
 	setPosition(id: number, x: number, y: number) {
 		const entry = this.getEntry(id);
 		entry.x = x;
 		entry.y = y;
-	}
-
-	setFullBounds(id: number, bounds: SliderBounds) {
-		const entry = this.getEntry(id);
-		entry.maxLocalBounds = cloneBounds(bounds);
-		entry.body.renderBounds = padBounds(entry.maxLocalBounds, entry.body.radius + EXTRA_AA_PIXELS);
-		entry.selection.renderBounds = padBounds(entry.maxLocalBounds, entry.selection.radius + EXTRA_AA_PIXELS);
 	}
 
 	setBodyStyle(id: number, patch: SliderUniformPatch) {
@@ -169,11 +151,7 @@ export class BeatmapSliderLayer {
 		entry.selection.style = patchStyle(entry.selection.style, patch);
 	}
 
-	setBodyGeometrySource(
-		id: number,
-		path: SliderProgressSource,
-		radius: number
-	) {
+	setBodyGeometrySource(id: number, path: SliderProgressView, radius: number) {
 		const entry = this.getEntry(id);
 		entry.body.path = path;
 		entry.body.enabled = true;
@@ -184,11 +162,7 @@ export class BeatmapSliderLayer {
 		}
 	}
 
-	setSelectionGeometrySource(
-		id: number,
-		path: SliderProgressSource,
-		radius: number
-	) {
+	setSelectionGeometrySource(id: number, path: SliderProgressView, radius: number) {
 		const entry = this.getEntry(id);
 		entry.selection.path = path;
 		entry.selection.enabled = true;
@@ -204,15 +178,13 @@ export class BeatmapSliderLayer {
 
 		this.flushing = true;
 		this.frameId++;
+
 		try {
 			this.collectRetiredTextures();
 			this.collectRetiredPages();
 			this.prepareFrame();
 			this.renderAtlasPages();
 		} finally {
-			// Staging arrays are only needed through the atlas render. The persistent
-			// Pixi/GPU buffers stay alive, while the CPU upload arrays return to the
-			// shared power-of-two array pool for other systems to reuse.
 			this.releaseStaging();
 			this.flushing = false;
 		}
@@ -232,8 +204,8 @@ export class BeatmapSliderLayer {
 		for (const entry of this.entries) {
 			if (!entry?.alive) continue;
 
-			this.prepareTarget(entry, entry.body, metrics.viewport, metrics.resolution, false);
-			this.prepareTarget(entry, entry.selection, metrics.viewport, metrics.resolution, true);
+			this.prepareTarget(entry, entry.body, metrics.viewport, metrics.resolution);
+			this.prepareTarget(entry, entry.selection, metrics.viewport, metrics.resolution);
 		}
 
 		for (const page of this.pages) page.upload();
@@ -263,14 +235,10 @@ export class BeatmapSliderLayer {
 		this.entries.length = 0;
 		this.freeIds.length = 0;
 
-		for (const retired of this.retiredTextures) {
-			retired.texture.destroy(false);
-		}
+		for (const retired of this.retiredTextures) retired.texture.destroy(false);
 		this.retiredTextures.length = 0;
 
-		for (const retired of this.retiredPages) {
-			retired.page.destroy();
-		}
+		for (const retired of this.retiredPages) retired.page.destroy();
 		this.retiredPages.length = 0;
 	}
 
@@ -305,6 +273,7 @@ export class BeatmapSliderLayer {
 			this.retireTexture(target.texture);
 			target.texture = undefined;
 		}
+
 		target.sprite.texture = Texture.EMPTY;
 		target.sprite.destroy(true);
 	}
@@ -313,8 +282,7 @@ export class BeatmapSliderLayer {
 		entry: SliderEntry,
 		target: SliderVisualTarget,
 		viewport: MutableBounds,
-		resolution: number,
-		selection: boolean
+		resolution: number
 	) {
 		if (!target.visible || !target.enabled || !target.path || target.path.length <= 0) {
 			target.sprite.visible = false;
@@ -348,11 +316,10 @@ export class BeatmapSliderLayer {
 		const renderScaleX = physicalWidth / logicalWidth;
 		const renderScaleY = physicalHeight / logicalHeight;
 		const slot = this.allocateSlot(physicalWidth, physicalHeight, renderScaleX, renderScaleY);
-		const batch = selection ? slot.page.selectionBatch : slot.page.bodyBatch;
 
-		this.reduceSegmentsIntoBatch(
+		this.reduceProgressViewIntoBatch(
 			target.path,
-			batch,
+			slot.page.batch,
 			renderRect,
 			slot,
 			target.radius,
@@ -380,10 +347,6 @@ export class BeatmapSliderLayer {
 			target.texture.frame.height !== slot.height
 		);
 
-		// Pixi sprites derive their local size from the texture's intrinsic frame/orig
-		// data. Mutating only texture.frame + UVs is enough when a slot moves, but not
-		// when a resize changes the slot dimensions. In that case, recreate the
-		// lightweight Texture wrapper so Sprite scale is based on the new frame size.
 		if (!target.texture || sourceChanged || frameSizeChanged) {
 			if (target.texture) this.retireTexture(target.texture);
 			target.texture = new Texture({
@@ -404,19 +367,13 @@ export class BeatmapSliderLayer {
 		target.sprite.visible = true;
 	}
 
-
-
 	private retirePage(page: SliderAtlasPage) {
-		// Do not destroy an old atlas page immediately when a resize forces a
-		// larger replacement. Active sprite frame textures may still reference the
-		// old RenderTexture.source for the current/next render batch. Destroying the
-		// page immediately destroys that source and can leave Pixi's GL/WebGPU
-		// texture systems trying to read a null sampler/style, e.g. addressModeU.
 		this.retiredPages.push({ page, retireFrame: this.frameId });
 	}
 
 	private collectRetiredPages() {
 		let write = 0;
+
 		for (let i = 0; i < this.retiredPages.length; i++) {
 			const retired = this.retiredPages[i];
 			if (this.frameId - retired.retireFrame >= 4) {
@@ -425,19 +382,17 @@ export class BeatmapSliderLayer {
 				this.retiredPages[write++] = retired;
 			}
 		}
+
 		this.retiredPages.length = write;
 	}
 
 	private retireTexture(texture: Texture) {
-		// Do not destroy a frame Texture in the same flush that replaces it. On WebGPU,
-		// Pixi may still have the old texture/style in the current render batch after a
-		// resize. Retiring it for a couple of flushes avoids transient null sampler/style
-		// reads such as "addressModeU" while still preventing unbounded leaks.
 		this.retiredTextures.push({ texture, retireFrame: this.frameId });
 	}
 
 	private collectRetiredTextures() {
 		let write = 0;
+
 		for (let i = 0; i < this.retiredTextures.length; i++) {
 			const retired = this.retiredTextures[i];
 			if (this.frameId - retired.retireFrame >= 2) {
@@ -446,6 +401,7 @@ export class BeatmapSliderLayer {
 				this.retiredTextures[write++] = retired;
 			}
 		}
+
 		this.retiredTextures.length = write;
 	}
 
@@ -496,27 +452,9 @@ export class BeatmapSliderLayer {
 		return page;
 	}
 
-	private reduceSegmentsIntoBatch(
-		path: SliderProgressSource,
-		batch: SliderAtlasPage['bodyBatch'],
-		renderRect: MutableBounds,
-		slot: AtlasSlot,
-		radius: number,
-		style: SliderVisualTarget['style']
-	) {
-		if (path instanceof SliderProgressView) {
-			this.reduceProgressViewIntoBatch(path, batch, renderRect, slot, radius, style);
-			return;
-		}
-
-		// Fallback for custom SliderProgressSource implementations. This path should be cold
-		// in normal use; SliderProgressView takes the direct-field hot path above.
-		this.reduceGenericSourceIntoBatch(path, batch, renderRect, slot, radius, style);
-	}
-
 	private reduceProgressViewIntoBatch(
 		path: SliderProgressView,
-		batch: SliderAtlasPage['bodyBatch'],
+		batch: SliderInstanceBatch,
 		renderRect: MutableBounds,
 		slot: AtlasSlot,
 		radius: number,
@@ -593,8 +531,6 @@ export class BeatmapSliderLayer {
 
 			this.pushClippedSegment(batch, ax, ay, bx, by, renderRect, slot, radius, style);
 
-			// This matches the original reducer: after emitting A->B, the next start is
-			// the current vertex at index i, not necessarily B after collinear extension.
 			if (i - 1 < interiorLength) {
 				const p = calcPath[interiorBase + i - 1];
 				ax = p.x;
@@ -611,74 +547,8 @@ export class BeatmapSliderLayer {
 		this.pushClippedSegment(batch, ax, ay, bx, by, renderRect, slot, radius, style);
 	}
 
-	private reduceGenericSourceIntoBatch(
-		path: SliderProgressSource,
-		batch: SliderAtlasPage['bodyBatch'],
-		renderRect: MutableBounds,
-		slot: AtlasSlot,
-		radius: number,
-		style: SliderVisualTarget['style']
-	) {
-		const pointsCount = path.length;
-		if (pointsCount <= 0) return;
-
-		if (pointsCount === 1) {
-			const x = path.getPointX(0);
-			const y = path.getPointY(0);
-			this.pushClippedSegment(batch, x, y, x, y, renderRect, slot, radius, style);
-			return;
-		}
-
-		let ax = path.getPointX(0);
-		let ay = path.getPointY(0);
-		let bx = path.getPointX(1);
-		let by = path.getPointY(1);
-
-		for (let i = 1; i < pointsCount - 1; i++) {
-			const nx = path.getPointX(i + 1);
-			const ny = path.getPointY(i + 1);
-
-			const dx = bx - ax;
-			const dy = by - ay;
-			const lenSq = dx * dx + dy * dy;
-
-			if (lenSq < REDUCE_PRECISION) {
-				bx = nx;
-				by = ny;
-				continue;
-			}
-
-			const dx2 = nx - ax;
-			const dy2 = ny - ay;
-			const cross = dx * dy2 - dy * dx2;
-
-			if ((cross * cross) / lenSq < REDUCE_PRECISION_SQ) {
-				const dot = dx * dx2 + dy * dy2;
-
-				if (dot < 0) {
-					ax = nx;
-					ay = ny;
-				} else if (dot > lenSq) {
-					bx = nx;
-					by = ny;
-				}
-
-				continue;
-			}
-
-			this.pushClippedSegment(batch, ax, ay, bx, by, renderRect, slot, radius, style);
-
-			ax = path.getPointX(i);
-			ay = path.getPointY(i);
-			bx = nx;
-			by = ny;
-		}
-
-		this.pushClippedSegment(batch, ax, ay, bx, by, renderRect, slot, radius, style);
-	}
-
 	private pushClippedSegment(
-		batch: SliderAtlasPage['bodyBatch'],
+		batch: SliderInstanceBatch,
 		ax: number,
 		ay: number,
 		bx: number,
@@ -716,6 +586,7 @@ export class BeatmapSliderLayer {
 
 	private isAttachedToStage(node: Container): boolean {
 		let cur: Container | null = node;
+
 		while (cur) {
 			if (cur === this.app.stage) return true;
 			cur = cur.parent;
@@ -736,20 +607,15 @@ export class BeatmapSliderLayer {
 		const space = this.resolveCoordinateSpace();
 		if (!space) return undefined;
 
-		// This layer is flushed before the primary scene render, so cached transforms may
-		// still describe the previous frame after resize/layout/camera changes. Force Pixi
-		// to walk the transform chain now instead of assuming the first render already did.
 		const worldTransform = space.getGlobalTransform(this.matrixScratch, false);
-
 		const scaleX = Math.hypot(worldTransform.a, worldTransform.b);
 		const scaleY = Math.hypot(worldTransform.c, worldTransform.d);
-		const scale = Math.max(scaleX, scaleY);
 
 		this.computeViewportBoundsInto(space, this.viewportBounds);
 
 		return {
 			viewport: this.viewportBounds,
-			resolution: normalizeResolution(this.app.renderer.resolution * scale)
+			resolution: normalizeResolution(this.app.renderer.resolution * Math.max(scaleX, scaleY))
 		};
 	}
 
@@ -814,12 +680,12 @@ export default class SliderBodyRenderer {
 		this.layer.setSelectionStyle(this.id, patch);
 	}
 
-	updateMainGeometry(path: SliderProgressSource, radius: number) {
+	updateMainGeometry(path: SliderProgressView, radius: number) {
 		if (this.destroyed) return;
 		this.layer.setBodyGeometrySource(this.id, path, radius);
 	}
 
-	updateSelectionGeometry(path: SliderProgressSource, radius: number) {
+	updateSelectionGeometry(path: SliderProgressView, radius: number) {
 		if (this.destroyed) return;
 		this.layer.setSelectionGeometrySource(this.id, path, radius);
 	}
@@ -832,16 +698,6 @@ export default class SliderBodyRenderer {
 	setSelectionVisible(visible: boolean) {
 		if (this.destroyed) return;
 		this.layer.setSelectionVisible(this.id, visible);
-	}
-
-	setVisible(visible: boolean) {
-		if (this.destroyed) return;
-		this.layer.setVisible(this.id, visible);
-	}
-
-	setFullBounds(bounds: SliderBounds) {
-		if (this.destroyed) return;
-		this.layer.setFullBounds(this.id, bounds);
 	}
 
 	destroy() {

@@ -1,11 +1,5 @@
 import { type SliderPath, Vector2 } from 'osu-classes';
 
-export type SliderProgressSource = {
-	readonly length: number;
-	getPointX(index: number): number;
-	getPointY(index: number): number;
-};
-
 export type SliderPathBounds = {
 	x: number;
 	y: number;
@@ -13,7 +7,7 @@ export type SliderPathBounds = {
 	height: number;
 };
 
-export class SliderProgressView implements SliderProgressSource {
+export class SliderProgressView {
 	public length = 0;
 	public readonly fullBounds: SliderPathBounds;
 
