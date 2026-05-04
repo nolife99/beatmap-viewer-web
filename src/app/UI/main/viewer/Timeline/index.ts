@@ -1,12 +1,11 @@
 import { TimingPoint } from 'osu-classes';
 import { Slider } from 'osu-standard-stable';
-import { Container, Graphics, Rectangle, Sprite } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import Audio from '../../../../Audio/index.ts';
 import DrawableHitCircle from '../../../../BeatmapSet/Beatmap/HitObjects/DrawableHitCircle.ts';
 import DrawableSlider from '../../../../BeatmapSet/Beatmap/HitObjects/DrawableSlider.ts';
 import Beatmap from '../../../../BeatmapSet/Beatmap/index.ts';
 import TimelineHitObject from '../../../../BeatmapSet/Beatmap/Timeline/TimelineHitObject.ts';
-import { getPixelTexture } from '../../../../BeatmapSet/Beatmap/Timeline/TimelineSlider.ts';
 import TimelineTimingPoint from '../../../../BeatmapSet/Beatmap/Timeline/TimelineTimingPoint.ts';
 import BeatmapSet from '../../../../BeatmapSet/index.ts';
 import FullscreenConfig from '../../../../Config/FullscreenConfig.ts';
@@ -38,8 +37,7 @@ export default class Timeline {
 		}
 	});
 
-	private _objectsContainer = new Container({ sortableChildren: true });
-
+	private _objectsContainer = new Container();
 	private _dragWindow = new Graphics({ roundPixels: true })
 		.rect(0, 0, 1, 80)
 		.fill({ color: 0xffffff, alpha: 0.3 });
@@ -53,11 +51,7 @@ export default class Timeline {
 	private _timingMarks = new Uint8Array(0);
 
 	private _range = 0;
-
-	private _ruler = new Container();
-	private _rulerLines: Sprite[] = [];
-	private _rulerLineCount = 0;
-
+	private _ruler = new Graphics();
 	private _dragWindowRange: [number, number] = [0, 0];
 	private _selected = new Set<number>();
 	private _clicked = false;
@@ -96,13 +90,6 @@ export default class Timeline {
 
 			this._range = (width / 2) * (DEFAULT_SCALE / scale) + 120;
 
-			this._ruler.boundsArea = new Rectangle(
-				-this._range,
-				0,
-				this._range * 2,
-				height
-			);
-
 			thumb.x = width / 2;
 			thumb.y = height / 2;
 
@@ -130,11 +117,11 @@ export default class Timeline {
 		inject<TimelineConfig>('config/timeline')?.onChange('scale', (newScale) => {
 			const width = this.container.layout?.computedLayout.width ?? 0;
 			this._range = (width / 2) * (DEFAULT_SCALE / newScale) + 120;
-			this.clearVisibleRuler();
+			this.buildRuler();
 		});
 
 		inject<TimelineConfig>('config/timeline')?.onChange('divisor', () => {
-			this.clearVisibleRuler();
+			this.buildRuler();
 		});
 
 		inject<FullscreenConfig>('config/fullscreen')?.onChange(
@@ -199,7 +186,7 @@ export default class Timeline {
 
 			const time = this.pointerTime(event.global.x);
 			const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
-			const padding = 40 * (DEFAULT_SCALE / scale);
+			const padding = 24 * (DEFAULT_SCALE / scale);
 
 			this._dragWindowRange = [time, time];
 
@@ -207,7 +194,6 @@ export default class Timeline {
 
 			for (let i = this._visibleObjects.length - 1; i >= 0; i--) {
 				const idx = this._visibleObjects[i];
-
 				if (this.objectIntersectsTime(idx, time - padding, time + padding)) {
 					firstSelected = idx;
 					break;
@@ -273,17 +259,10 @@ export default class Timeline {
 			.filter((object) => object !== undefined)
 			.sort((a, b) => a.object.startTime - b.object.startTime);
 
-		for (let i = 0; i < this._objects.length; i++) {
-			const obj = this._objects[i];
-
-			obj.container.zIndex = i + 1;
-			obj.container.visible = false;
-		}
-
 		this._visibleObjects.length = 0;
 		this._objectMarks = new Uint8Array(this._objects.length);
 
-		this.clearVisibleRuler();
+		this.buildRuler();
 	}
 
 	loadTimingPoints(points: TimingPoint[]) {
@@ -298,7 +277,7 @@ export default class Timeline {
 		this._visibleTiming.length = 0;
 		this._timingMarks = new Uint8Array(this._timingPoints.length);
 
-		this.clearVisibleRuler();
+		this.buildRuler();
 	}
 
 	update(timestamp: number) {
@@ -319,12 +298,8 @@ export default class Timeline {
 		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
 		const width = this.container.layout?.computedLayout.width ?? 0;
 
-		const timeToX = scale / DEFAULT_SCALE;
-
-		this._objectsContainer.x = width / 2 - timestamp * timeToX;
-		this._ruler.x = width / 2 - timestamp * timeToX;
-
-		this.drawVisibleRuler(timestamp);
+		this._objectsContainer.x = width / 2 + -timestamp / (DEFAULT_SCALE / scale);
+		this._ruler.x = width / 2 + -timestamp / (DEFAULT_SCALE / scale);
 
 		for (const idx of this._visibleTiming) {
 			const point = this._timingPoints[idx];
@@ -350,7 +325,8 @@ export default class Timeline {
 			(idx) => this._objects[idx].container,
 			this.firstObjectIndexAfter(min - 800),
 			this._objects.length,
-			(idx) => this._objects[idx].object.startTime <= max
+			(idx) => this._objects[idx].object.startTime <= max,
+			false
 		);
 	}
 
@@ -360,7 +336,7 @@ export default class Timeline {
 
 		if (this._timingPoints.length === 0) return;
 
-		const center = Math.max(
+		let start = Math.max(
 			0,
 			binarySearch(
 				timestamp,
@@ -368,8 +344,6 @@ export default class Timeline {
 				(mid, value) => mid.data.startTime - value
 			)
 		);
-
-		let start = center;
 		while (start > 0 && this._timingPoints[start - 1].data.startTime >= min) {
 			start--;
 		}
@@ -384,7 +358,8 @@ export default class Timeline {
 			(idx) => this._timingPoints[idx].container,
 			start,
 			this._timingPoints.length,
-			(idx) => this._timingPoints[idx].data.startTime <= max
+			(idx) => this._timingPoints[idx].data.startTime <= max,
+			true
 		);
 	}
 
@@ -395,7 +370,8 @@ export default class Timeline {
 		getContainer: (idx: number) => Container,
 		start: number,
 		end: number,
-		shouldContinue: (idx: number) => boolean
+		shouldContinue: (idx: number) => boolean,
+		before: boolean
 	) {
 		for (let i = visible.length - 1; i >= 0; i--) {
 			const idx = visible[i];
@@ -415,7 +391,10 @@ export default class Timeline {
 
 			marks[idx] = 1;
 			visible.push(idx);
-			this._objectsContainer.addChild(getContainer(idx));
+			if (before)
+				this._objectsContainer.addChildAt(getContainer(idx), 0);
+			else
+				this._objectsContainer.addChild(getContainer(idx));
 		}
 	}
 
@@ -427,8 +406,11 @@ export default class Timeline {
 		const min = Math.min(this._dragWindowRange[0], this._dragWindowRange[1]);
 		const max = Math.max(this._dragWindowRange[0], this._dragWindowRange[1]);
 
+		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
+		const padding = 20 * (DEFAULT_SCALE / scale);
+
 		for (const idx of this._visibleObjects) {
-			if (this.objectIntersectsTime(idx, min, max)) {
+			if (this.objectIntersectsTime(idx, min - padding, max + padding)) {
 				this.addSelected(idx);
 			} else {
 				this.removeSelected(idx);
@@ -437,7 +419,7 @@ export default class Timeline {
 	}
 
 	private drawDragWindow(timestamp: number) {
-		if (Math.abs(this._dragWindowRange[0] - this._dragWindowRange[1]) === 0) {
+		if (this._dragWindowRange[0] === this._dragWindowRange[1]) {
 			return;
 		}
 
@@ -498,133 +480,61 @@ export default class Timeline {
 		}
 	}
 
-	private clearVisibleRuler() {
-		for (let i = 0; i < this._rulerLineCount; i++) {
-			this._rulerLines[i].visible = false;
-		}
-
-		this._rulerLineCount = 0;
-	}
-
-	private rentRulerLine() {
-		let line = this._rulerLines[this._rulerLineCount++];
-
-		if (!line) {
-			line = new Sprite(getPixelTexture());
-			line.anchor.set(0, 0);
-			line.roundPixels = true;
-
-			this._rulerLines.push(line);
-			this._ruler.addChild(line);
-		}
-
-		line.visible = true;
-		return line;
-	}
-
-	private setRulerLine(
-		x: number,
-		isDominant: boolean,
-		color: number
-	) {
-		const line = this.rentRulerLine();
-
-		line.x = x;
-		line.y = isDominant ? 0 : 1;
-		line.width = 1;
-		line.height = isDominant ? 8 : 6;
-		line.tint = color;
-		line.alpha = 1;
-	}
-
-	private firstTimingPointIndexAtOrBefore(time: number) {
-		let lo = 0;
-		let hi = this._timingPoints.length;
-
-		while (lo < hi) {
-			const mid = (lo + hi) >>> 1;
-
-			if (this._timingPoints[mid].data.startTime <= time) {
-				lo = mid + 1;
-			} else {
-				hi = mid;
-			}
-		}
-
-		return Math.max(0, lo - 1);
-	}
-
-	private drawVisibleRuler(timestamp: number) {
-		if (!this._timingPoints.length || !this._objects.length) {
-			this.clearVisibleRuler();
-			return;
-		}
+	private buildRuler() {
+		if (!this._timingPoints.length || !this._objects.length) return;
 
 		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
 		const divisor = inject<TimelineConfig>('config/timeline')?.divisor ?? 4;
-		const safeDivisor = Math.max(1, divisor | 0);
+		const duration = this._objects.at(-1)!.getTimeRange().end + 5000;
 
-		const timeToX = scale / DEFAULT_SCALE;
+		this._ruler.clear();
 
-		const min = timestamp - this._range;
-		const max = timestamp + this._range;
+		for (let ti = 0; ti < this._timingPoints.length; ti++) {
+			const { beatLength, timeSignature, startTime } =
+				this._timingPoints[ti].data;
+			const sectionEnd = ti + 1 < this._timingPoints.length
+				? this._timingPoints[ti + 1].data.startTime
+				: duration;
 
-		this.clearVisibleRuler();
-		this._ruler.scale.y = 10;
+			let t = startTime;
 
-		let ti = this.firstTimingPointIndexAtOrBefore(min);
+			while (t <= sectionEnd) {
+				const isWholeBeat = Math.round(
+					t -
+					(Math.round((t - startTime) / beatLength) * beatLength + startTime)
+				) === 0;
 
-		for (; ti < this._timingPoints.length; ti++) {
-			const timing = this._timingPoints[ti].data;
-			const nextTiming = this._timingPoints[ti + 1]?.data;
-
-			const { beatLength, timeSignature, startTime } = timing;
-
-			const sectionEnd = nextTiming
-				? nextTiming.startTime
-				: max;
-
-			if (sectionEnd < min) continue;
-			if (startTime > max) break;
-
-			const step = beatLength / safeDivisor;
-			if (!Number.isFinite(step) || step <= 0) continue;
-
-			const firstIndex = Math.max(
-				0,
-				Math.ceil((min - startTime) / step)
-			);
-
-			const lastTime = Math.min(sectionEnd, max);
-
-			let subdivisionIndex = firstIndex;
-			let t = startTime + subdivisionIndex * step;
-
-			while (t <= lastTime) {
-				const beatSubdivision = subdivisionIndex % safeDivisor;
-				const isWholeBeat = beatSubdivision === 0;
-				const wholeBeatIndex = (subdivisionIndex / safeDivisor) | 0;
-
-				const isDominant =
-					isWholeBeat && wholeBeatIndex % timeSignature === 0;
+				const isDominant = isWholeBeat &&
+					Math.round((t - startTime) / beatLength) % timeSignature === 0;
 
 				let color = 0xffffff;
 
 				if (!isWholeBeat) {
-					const denominator =
-						safeDivisor / gcd(safeDivisor, beatSubdivision);
+					const nearestWholeBeat =
+						Math.floor((t - startTime) / beatLength) * beatLength + startTime;
+					const idx = Math.round(
+						(t - nearestWholeBeat) / (beatLength / divisor)
+					);
+					const denominator = divisor / gcd(divisor, idx);
 
 					color =
-						BEAT_LINE_COLOR[
-							denominator as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
-							] ?? 0x929292;
+						BEAT_LINE_COLOR[denominator as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9] ??
+						0x929292;
 				}
 
-				this.setRulerLine(t * timeToX, isDominant, color);
+				this._ruler
+					.rect(
+						t / (DEFAULT_SCALE / scale),
+						isDominant ? 0 : 1,
+						1,
+						isDominant ? 8 : 6
+					)
+					.fill({ color });
 
-				subdivisionIndex++;
-				t += step;
+				t += beatLength / divisor;
 			}
+
+			this._ruler.scale.y = 10;
 		}
 	}
 }

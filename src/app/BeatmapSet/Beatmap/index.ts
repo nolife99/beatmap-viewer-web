@@ -36,6 +36,7 @@ import Replay from './Replay.ts';
 
 // @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix
 import ObjectsWorker from './Worker/Objects.ts?worker&inline';
+import { BeatmapSliderLayer } from './HitObjects/Rendering/SliderBodyRenderer.ts';
 
 const decoder = new BeatmapDecoder();
 const ruleset = new StandardRuleset();
@@ -55,6 +56,7 @@ export default class Beatmap extends ScopedClass {
 	previousObjects = new Set<number>();
 	previousTime = 0;
 	container: Gameplay;
+	sliderRenderLayer?: BeatmapSliderLayer
 	md5: string;
 	// Taken from https://github.com/Rian8337/osu-droid-module/blob/master/packages/osu-strain-graph-generator/src/index.ts
 	strains: StrainPoint[] = [];
@@ -253,11 +255,17 @@ export default class Beatmap extends ScopedClass {
 		this.context.provide('beatmapObject', this);
 
 		console.time('Constructing hitObjects');
+
+		this.sliderRenderLayer = new BeatmapSliderLayer({
+			coordinateSpace: this.container.objectsContainer
+		});
+
 		const async = inject<ExperimentalConfig>(
 			'config/experimental'
 		)?.asyncLoading;
-		if (async) await this.loadHitObjectsAsync();
-		else this.loadHitObjectsSync();
+
+		if (async) await this.loadHitObjectsAsync(this.sliderRenderLayer);
+		else this.loadHitObjectsSync(this.sliderRenderLayer);
 
 		this.connectors = (await this.constructConnectors()).filter(
 			(conn) => conn !== null
@@ -385,6 +393,7 @@ export default class Beatmap extends ScopedClass {
 			);
 		}
 
+		this.sliderRenderLayer?.flush();
 		for (const idx of objs) {
 			this.objects[idx].update(time);
 		}
@@ -588,6 +597,8 @@ export default class Beatmap extends ScopedClass {
 			(object as DrawableHitCircle | DrawableSlider).timelineObject?.destroy();
 		}
 
+		this.sliderRenderLayer?.destroy();
+
 		for (const connector of this.connectors) {
 			connector.destroy();
 		}
@@ -777,14 +788,14 @@ export default class Beatmap extends ScopedClass {
 		return this.constructConnectorsSync();
 	}
 
-	private loadHitObjectsSync() {
+	private loadHitObjectsSync(sliderLayer: BeatmapSliderLayer) {
 		this.objects = this.data.hitObjects
 			.map((object) => {
 				if (object instanceof Circle) {
 					return new DrawableHitCircle(object).hook(this.context);
 				}
 				if (object instanceof Slider) {
-					return new DrawableSlider(object).hook(this.context);
+					return new DrawableSlider(object, sliderLayer).hook(this.context);
 				}
 				if (object instanceof Spinner) {
 					return new DrawableSpinner(object).hook(this.context);
@@ -794,7 +805,7 @@ export default class Beatmap extends ScopedClass {
 			.filter((object) => object !== null);
 	}
 
-	private async loadHitObjectsAsync() {
+	private async loadHitObjectsAsync(sliderLayer: BeatmapSliderLayer) {
 		this.objects = (
 			await Promise.all(
 				this.data.hitObjects.map((object) => {
@@ -804,7 +815,7 @@ export default class Beatmap extends ScopedClass {
 								resolve(new DrawableHitCircle(object).hook(this.context));
 							}
 							else if (object instanceof Slider) {
-								resolve(new DrawableSlider(object).hook(this.context));
+								resolve(new DrawableSlider(object, sliderLayer).hook(this.context));
 							}
 							else if (object instanceof Spinner) {
 								resolve(new DrawableSpinner(object).hook(this.context));

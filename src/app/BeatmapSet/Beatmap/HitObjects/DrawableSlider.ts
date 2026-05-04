@@ -28,14 +28,14 @@ import DrawableSliderRepeat from './DrawableSliderRepeat.ts';
 import DrawableSliderTail, { TAIL_LENIENCY } from './DrawableSliderTail.ts';
 import DrawableSliderTick from './DrawableSliderTick.ts';
 import { SliderProgressView } from './Rendering/CalculateSliderProgress.ts';
-import SliderBodyRenderer, { type SliderUniformPatch } from './Rendering/SliderBodyRenderer.ts';
+import SliderBodyRenderer, { BeatmapSliderLayer, type SliderUniformPatch } from './Rendering/SliderBodyRenderer.ts';
 
 export default class DrawableSlider
 	extends DrawableHitObject
 	implements IHasApproachCircle {
 	public drawableCircles: DrawableHitObject[] = [];
 	public select = new Container();
-	path = new SliderProgressView();
+	path!: SliderProgressView;
 	ball: DrawableSliderBall;
 	followCircle: DrawableSliderFollowCircle;
 	nodes: Graphics = new Graphics({ visible: false });
@@ -47,7 +47,7 @@ export default class DrawableSlider
 	borderColor: number[] = [0, 0, 0];
 	color = '0,0,0';
 	lastGeometryState = { head: Infinity, tail: -Infinity, scale: -Infinity };
-	private readonly renderer = new SliderBodyRenderer();
+	private readonly renderer: SliderBodyRenderer;
 	private sliderWhistleSample: HitSample;
 	private sliderSlideSample: HitSample;
 	private layer = new RenderLayer();
@@ -55,8 +55,12 @@ export default class DrawableSlider
 	private _selectionVisualsDirty = true;
 	private _nodesInitialized = false;
 
-	constructor(object: Slider) {
+	constructor(object: Slider, renderLayer: BeatmapSliderLayer) {
 		super(object);
+
+		this.path = new SliderProgressView(object.path);
+		this.renderer = new SliderBodyRenderer(renderLayer, this.path.fullBounds);
+
 		this.object = object;
 		this.context.provide<DrawableSlider>('drawable', this);
 
@@ -189,6 +193,7 @@ export default class DrawableSlider
 
 	public set bodyAlpha(val: number) {
 		this.renderer.body.alpha = val;
+		this.renderer.body.visible = val > 0;
 	}
 
 	private _isSelected = false;
@@ -203,6 +208,7 @@ export default class DrawableSlider
 		this.nodes.visible = val;
 		if (val) this.updateSelectionVisualsIfNeeded();
 
+		this.renderer.setSelectionVisible(val);
 		for (const circle of this.drawableCircles) {
 			if (
 				circle instanceof DrawableSliderHead ||
@@ -320,7 +326,7 @@ export default class DrawableSlider
 	checkCollide(rect: [Vector2, Vector2]) {
 		const obj = this._object;
 
-		if (this.bodyAlpha === 0) return false;
+		if (this.bodyAlpha === 0 || !this.path) return false;
 
 		const a = rect[0];
 		const b = rect[1];
@@ -623,7 +629,7 @@ export default class DrawableSlider
 		this.lastGeometryState.tail = tail;
 		this.lastGeometryState.scale = scale;
 
-		this.path.reset(this.object.path, head, tail);
+		this.path.reset(head, tail);
 		if (this.path.length === 0) return;
 
 		this.renderer.updateMainGeometry(this.path, this.object.radius * (236 / 256) * scale);
@@ -654,7 +660,11 @@ export default class DrawableSlider
 		}
 
 		const updated = sharedUpdate(this, time);
-		if (updated) this.updateGeometry(updated.start, updated.end, this.getSkinBodyScale());
+		if (updated) {
+			this.renderer.setBodyVisible(true);
+			this.updateGeometry(updated.start, updated.end, this.getSkinBodyScale());
+		}
+		else this.renderer.setBodyVisible(false);
 
 		this.judgement.frame(time);
 	}

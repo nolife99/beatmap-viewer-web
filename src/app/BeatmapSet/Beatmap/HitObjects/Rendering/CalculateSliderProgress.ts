@@ -1,29 +1,40 @@
 import { type SliderPath, Vector2 } from 'osu-classes';
 
-export type SliderProgressResult = {
-	points: Vector2[];
-	length: number;
-};
-
 export type SliderProgressSource = {
 	readonly length: number;
 	getPointX(index: number): number;
 	getPointY(index: number): number;
 };
 
+export type SliderPathBounds = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
+
 export class SliderProgressView implements SliderProgressSource {
 	public length = 0;
+	public readonly fullBounds: SliderPathBounds;
 
-	private calcPath: Vector2[] = [];
-	private startX = 0;
-	private startY = 0;
-	private endX = 0;
-	private endY = 0;
-	private interiorBase = 0;
-	private interiorLength = 0;
+	/**
+	 * Hot-path fields used by the batched slider renderer.
+	 * They intentionally avoid virtual getPointX/getPointY calls while reducing segments.
+	 */
+	public calcPath: Vector2[] = [];
+	public startX = 0;
+	public startY = 0;
+	public endX = 0;
+	public endY = 0;
+	public interiorBase = 0;
+	public interiorLength = 0;
 
-	reset(path: SliderPath, p0: number, p1: number): this {
-		const calcPath = path.calculatedPath;
+	constructor(private path: SliderPath) {
+		this.fullBounds = computeSliderPathBounds(path);
+	}
+
+	reset(p0: number, p1: number): this {
+		const calcPath = this.path.calculatedPath;
 		const pathLen = calcPath.length;
 
 		this.calcPath = calcPath;
@@ -39,16 +50,16 @@ export class SliderProgressView implements SliderProgressSource {
 			return this;
 		}
 
-		const d0: number = path['_progressToDistance'](p0);
-		const d1: number = path['_progressToDistance'](p1);
+		const d0: number = this.path['_progressToDistance'](p0);
+		const d1: number = this.path['_progressToDistance'](p1);
 
-		const cumLengths: number[] | Float64Array = path['_cumulativeLength'];
+		const cumLengths: number[] | Float64Array = this.path['_cumulativeLength'];
 
 		const startIdx = lowerBound(cumLengths, d0, 0, pathLen);
 		const endIdx = upperBound(cumLengths, d1, startIdx, pathLen);
 
-		const pStart: Vector2 = path['_interpolateVertices'](startIdx, d0);
-		const pEnd: Vector2 = path['_interpolateVertices'](endIdx, d1);
+		const pStart: Vector2 = this.path['_interpolateVertices'](startIdx, d0);
+		const pEnd: Vector2 = this.path['_interpolateVertices'](endIdx, d1);
 
 		this.startX = pStart.x;
 		this.startY = pStart.y;
@@ -91,49 +102,6 @@ export class SliderProgressView implements SliderProgressSource {
 
 		return this.endY;
 	}
-}
-
-export default function calculateSliderProgress(
-	path: SliderPath,
-	p0: number,
-	p1: number,
-	out: Vector2[] = []
-): SliderProgressResult {
-	const calcPath = path.calculatedPath;
-	const pathLen = calcPath.length;
-
-	const d0: number = path['_progressToDistance'](p0);
-	const d1: number = path['_progressToDistance'](p1);
-
-	const cumLengths: number[] | Float64Array = path['_cumulativeLength'];
-
-	const startIdx = lowerBound(cumLengths, d0, 0, pathLen);
-	const endIdx = upperBound(cumLengths, d1, startIdx, pathLen);
-
-	const pStart: Vector2 = path['_interpolateVertices'](startIdx, d0);
-	const pEnd: Vector2 = path['_interpolateVertices'](endIdx, d1);
-
-	let finalLen = 0;
-	out[finalLen++] = pStart;
-
-	let j = startIdx;
-	if (j < endIdx) {
-		const first = calcPath[j];
-		if (!pStart.equals(first)) {
-			out[finalLen++] = first;
-		}
-		j++;
-	}
-
-	for (; j < endIdx; j++) {
-		out[finalLen++] = calcPath[j];
-	}
-
-	if (!out[finalLen - 1].equals(pEnd)) {
-		out[finalLen++] = pEnd;
-	}
-
-	return { points: out, length: finalLen };
 }
 
 function lowerBound(
@@ -180,4 +148,37 @@ function upperBound(
 	}
 
 	return result;
+}
+
+export function computeSliderPathBounds(path: SliderPath): SliderPathBounds {
+	const points = path.calculatedPath;
+	const length = points.length;
+
+	if (length === 0) {
+		return { x: 0, y: 0, width: 0, height: 0 };
+	}
+
+	let minX = points[0].x;
+	let minY = points[0].y;
+	let maxX = minX;
+	let maxY = minY;
+
+	for (let i = 1; i < length; i++) {
+		const point = points[i];
+		const x = point.x;
+		const y = point.y;
+
+		if (x < minX) minX = x;
+		else if (x > maxX) maxX = x;
+
+		if (y < minY) minY = y;
+		else if (y > maxY) maxY = y;
+	}
+
+	return {
+		x: minX,
+		y: minY,
+		width: maxX - minX,
+		height: maxY - minY
+	};
 }
