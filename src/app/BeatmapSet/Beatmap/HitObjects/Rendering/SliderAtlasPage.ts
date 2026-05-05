@@ -1,17 +1,13 @@
 import {
 	Application,
-	Container,
+	Container, Renderer,
 	RenderTexture
 } from 'pixi.js';
 import SliderInstanceBatch from './SliderInstanceBatch.ts';
-import TransientAtlasPacker from './TransientAtlasPacker.ts';
 
 export default class SliderAtlasPage {
 	readonly texture: RenderTexture;
 	readonly renderRoot = new Container();
-	readonly packer: TransientAtlasPacker;
-
-	/** Unified batch. Body and selection segments both go here. */
 	readonly batch: SliderInstanceBatch;
 
 	private used = false;
@@ -19,10 +15,8 @@ export default class SliderAtlasPage {
 	constructor(
 		readonly width: number,
 		readonly height: number,
-		readonly gutter: number,
 		readonly label: string
 	) {
-		this.packer = new TransientAtlasPacker(width, height, gutter);
 		this.texture = RenderTexture.create({
 			width,
 			height,
@@ -34,18 +28,13 @@ export default class SliderAtlasPage {
 		this.renderRoot.addChild(this.batch.mesh);
 	}
 
-	beginFrame() {
+	beginFrame(renderer: Renderer) {
 		this.used = false;
-		this.packer.reset();
-		this.batch.beginFrame();
+		this.batch.beginFrame(renderer);
 	}
 
 	markUsed() {
 		this.used = true;
-	}
-
-	get isUsed() {
-		return this.used;
 	}
 
 	upload() {

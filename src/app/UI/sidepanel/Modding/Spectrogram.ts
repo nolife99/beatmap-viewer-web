@@ -134,7 +134,10 @@ export default class Spectrogram {
 		this._spin = val;
 
 		if (val) {
-			requestAnimationFrame((time) => this.spinFn(time));
+			this.container.onRender = renderer => this.spinFn(renderer.tick * 5);
+		}
+		else {
+			this.container.onRender = null;
 		}
 	}
 
@@ -154,9 +157,6 @@ export default class Spectrogram {
 	spinFn(t: number) {
 		this.spinner.angle += 0.4 * (t - this._lastTime);
 		this._lastTime = t;
-
-		if (!this.spin) return;
-		requestAnimationFrame((time) => this.spinFn(time));
 	}
 
 	private generateScale() {

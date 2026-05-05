@@ -165,9 +165,12 @@ export class Game {
 
 		provide('ui/loading', new Loading());
 
+		const sidepanel = provide('ui/sidepanel', new SidePanel()).container;
+		sidepanel.visible = false;
+
 		app.stage.addChild(
 			provide('ui/main', new Main()).container,
-			provide('ui/sidepanel', new SidePanel()).container
+			sidepanel
 		);
 
 		this.responsiveHandler.on('layout', (direction) => {
@@ -191,6 +194,7 @@ export class Game {
 			const ANIMATION_DURATION = 200;
 			switch (newState) {
 				case 'OPENED': {
+					sidepanel.visible = true;
 					this.animationController.addAnimation(
 						'gap',
 						0,
@@ -198,7 +202,6 @@ export class Game {
 						(val) => app.stage.layout = { gap: val },
 						ANIMATION_DURATION
 					);
-					document.body.classList.add('sidepanel');
 					break;
 				}
 				case 'CLOSED': {
@@ -207,9 +210,10 @@ export class Game {
 						10,
 						0,
 						(val) => app.stage.layout = { gap: val },
-						ANIMATION_DURATION
+						ANIMATION_DURATION,
+						undefined,
+						() => sidepanel.visible = false
 					);
-					document.body.classList.remove('sidepanel');
 					break;
 				}
 			}

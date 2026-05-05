@@ -1,20 +1,7 @@
 import { type SliderPath, Vector2 } from 'osu-classes';
 
-export type SliderPathBounds = {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-};
-
-export class SliderProgressView {
+export default class SliderProgressView {
 	public length = 0;
-	public readonly fullBounds: SliderPathBounds;
-
-	/**
-	 * Hot-path fields used by the batched slider renderer.
-	 * They intentionally avoid virtual getPointX/getPointY calls while reducing segments.
-	 */
 	public calcPath: Vector2[] = [];
 	public startX = 0;
 	public startY = 0;
@@ -24,7 +11,6 @@ export class SliderProgressView {
 	public interiorLength = 0;
 
 	constructor(private path: SliderPath) {
-		this.fullBounds = computeSliderPathBounds(path);
 		this.reset(0, 1);
 	}
 
@@ -143,37 +129,4 @@ function upperBound(
 	}
 
 	return result;
-}
-
-export function computeSliderPathBounds(path: SliderPath): SliderPathBounds {
-	const points = path.calculatedPath;
-	const length = points.length;
-
-	if (length === 0) {
-		return { x: 0, y: 0, width: 0, height: 0 };
-	}
-
-	let minX = points[0].x;
-	let minY = points[0].y;
-	let maxX = minX;
-	let maxY = minY;
-
-	for (let i = 1; i < length; i++) {
-		const point = points[i];
-		const x = point.x;
-		const y = point.y;
-
-		if (x < minX) minX = x;
-		else if (x > maxX) maxX = x;
-
-		if (y < minY) minY = y;
-		else if (y > maxY) maxY = y;
-	}
-
-	return {
-		x: minX,
-		y: minY,
-		width: maxX - minX,
-		height: maxY - minY
-	};
 }

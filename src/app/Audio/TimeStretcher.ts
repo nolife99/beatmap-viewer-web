@@ -1,4 +1,5 @@
-import pool from '@stdlib/array-pool';
+import { factory } from '@stdlib/array-pool';
+const pool = factory();
 
 /**
  * Utility class for performing time stretching on a multichannel audio signal. The input audio will be stretched by

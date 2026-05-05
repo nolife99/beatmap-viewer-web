@@ -29,6 +29,7 @@
 		"fflate": "^0.8.2",
 		"js-ini": "^1.6.0",
 		"lightningcss": "^1.32.0",
+		"maxrects-packer": "^2.7.3",
 		"mediabunny": "^1.40.1",
 		"node-vibrant": "^4.0.3",
 		"osu-classes": "npm:@fukutotojido/osu-classes",

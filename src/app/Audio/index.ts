@@ -175,7 +175,7 @@ export default class Audio extends ScopedClass {
 		}));
 
 		this.worker.onmessage = (e) => this.onWorkerMessage(e.data as WorkerOutMessage);
-		this.worker.onerror = (e) => console.error('AudioDecoderWorker error:', e);
+		this.worker.onerror = (e) => console.error('AudioDecoderWorker error:', e.error);
 		this.worker.postMessage({
 			type: 'init',
 			sabRing: this.sabRing,

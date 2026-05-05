@@ -23,8 +23,7 @@ export default class ProgressBar {
 		layout: {
 			height: 4,
 			width: '100%',
-			backgroundColor: inject<ColorConfig>('config/color')?.color.surface0,
-			borderRadius: 4
+			backgroundColor: inject<ColorConfig>('config/color')?.color.surface0
 		}
 	});
 

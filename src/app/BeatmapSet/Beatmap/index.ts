@@ -36,7 +36,7 @@ import Replay from './Replay.ts';
 
 // @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix
 import ObjectsWorker from './Worker/Objects.ts?worker&inline';
-import { BeatmapSliderLayer } from './HitObjects/Rendering/SliderBodyRenderer.ts';
+import BeatmapSliderLayer from './HitObjects/Rendering/BeatmapSliderLayer.ts';
 
 const decoder = new BeatmapDecoder();
 const ruleset = new StandardRuleset();
@@ -129,10 +129,6 @@ export default class Beatmap extends ScopedClass {
 				this.calculateStrainGraph(val, calculator);
 
 				this.recalculateDifficulty();
-
-				if (this.context.consume<Audio>('audio')?.state === 'STOPPED') {
-					this.postAudioClockToWorker();
-				}
 			}
 		));
 
@@ -297,7 +293,6 @@ export default class Beatmap extends ScopedClass {
 			this.workerUpdate = (event) => {
 				switch (event.data.type) {
 					case 'update': {
-
 						const { objects, connectors, currentTime, previousTime } = event.data;
 
 						const currentInBreak = this.data.events.breaks.some(
@@ -393,10 +388,10 @@ export default class Beatmap extends ScopedClass {
 			);
 		}
 
-		this.sliderRenderLayer?.flush();
 		for (const idx of objs) {
 			this.objects[idx].update(time);
 		}
+		this.sliderRenderLayer?.flush();
 
 		this.replay?.frame(time);
 	}
@@ -684,7 +679,6 @@ export default class Beatmap extends ScopedClass {
 		);
 		for (let i = 0; i < this.objects.length; i++) {
 			this.objects[i].object = objs[i];
-			this.objects[i].update(this.context.consume<Audio>('audio')?.currentTime ?? 0);
 		}
 
 		let j = 0;
@@ -695,6 +689,12 @@ export default class Beatmap extends ScopedClass {
 
 			this.connectors[j]?.updateObjects(startObject, endObject);
 			j++;
+		}
+
+		if (this.context.consume<Audio>('audio')?.state === 'STOPPED') {
+			this.worker.postMessage({
+				type: 'stop'
+			});
 		}
 	}
 

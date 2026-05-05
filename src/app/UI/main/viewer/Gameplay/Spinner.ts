@@ -34,7 +34,7 @@ export default class Spinner {
 			this.graphics.alpha = 1;
 			this.container.addChild(this.graphics);
 			this.objectsContainer.alpha = 0;
-			requestAnimationFrame((time) => this.spinFn(time));
+			this.graphics.onRender = renderer => this.spinFn(renderer.tick * 5);
 		} else {
 			const tween = new Tween({ value: 100 })
 				.easing(Easings.Out)
@@ -58,14 +58,13 @@ export default class Spinner {
 				.start();
 
 			tweenGroup.add(tween);
+
+			this.graphics.onRender = null;
 		}
 	}
 
 	spinFn(t: number) {
 		this.graphics.angle += (t - this._lastTime);
 		this._lastTime = t;
-
-		if (!this.spin) return;
-		requestAnimationFrame((time) => this.spinFn(time));
 	}
 }

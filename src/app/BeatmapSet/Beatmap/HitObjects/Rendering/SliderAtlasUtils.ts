@@ -1,53 +1,33 @@
-import { Color, type ColorSource } from 'pixi.js';
+import { Color, groupD8, Rectangle } from 'pixi.js';
 import { darken, lighten } from '../../../../utils.ts';
-import type { SliderBounds, MutableBounds, SliderInstanceStyle, SliderUniformPatch } from './SliderAtlasTypes.ts';
+import type SliderProgressView from './CalculateSliderProgress.ts';
+import type { SliderInstanceStyle, SliderUniformPatch } from './SliderAtlasTypes.ts';
 
 export const DEFAULT_ATLAS_SIZE = 2048;
-export const DEFAULT_GUTTER = 2;
-export const EXTRA_AA_PIXELS = 2;
+export const DEFAULT_GUTTER = 1;
 export const PHYSICAL_PIXEL_EPSILON = 1e-6;
 export const REDUCE_PRECISION = 0.01;
 export const REDUCE_PRECISION_SQ = REDUCE_PRECISION * REDUCE_PRECISION;
 
-const COLOR: ColorSource = [69 / 255, 71 / 255, 90 / 255, 0];
+const BASE_COLOR = [69 / 255, 71 / 255, 90 / 255, 0];
 
 export const DEFAULT_BODY_STYLE: SliderInstanceStyle = createStyle({
 	borderColor: [205 / 255, 214 / 255, 244 / 255],
-	innerColor: lighten(COLOR, 0.5),
-	outerColor: darken(COLOR, 0.1),
+	innerColor: lighten(BASE_COLOR, 0.5),
+	outerColor: darken(BASE_COLOR, 0.1),
 	borderWidth: 0.128,
 	bodyAlpha: 0.7
 });
 
 export const DEFAULT_SELECTION_STYLE: SliderInstanceStyle = createStyle({
 	borderColor: [49 / 255, 151 / 255, 255 / 255],
-	innerColor: lighten(COLOR, 0.5),
-	outerColor: darken(COLOR, 0.1),
+	innerColor: lighten(BASE_COLOR, 0.5),
+	outerColor: darken(BASE_COLOR, 0.1),
 	borderWidth: 0.128,
 	bodyAlpha: 0.0
 });
 
-export const EMPTY_BOUNDS: MutableBounds = { x: 0, y: 0, width: 0, height: 0 };
-
-export function cloneBounds(bounds: SliderBounds | MutableBounds): MutableBounds {
-	return {
-		x: bounds.x,
-		y: bounds.y,
-		width: bounds.width,
-		height: bounds.height
-	};
-}
-
-export function padBounds(base: MutableBounds, pad: number): MutableBounds {
-	return {
-		x: base.x - pad,
-		y: base.y - pad,
-		width: base.width + pad * 2,
-		height: base.height + pad * 2
-	};
-}
-
-export function intersectBounds(a: MutableBounds, b: MutableBounds): MutableBounds | undefined {
+export function intersectBounds(a: Rectangle, b: Rectangle): Rectangle | undefined {
 	const minX = Math.max(a.x, b.x);
 	const minY = Math.max(a.y, b.y);
 	const maxX = Math.min(a.x + a.width, b.x + b.width);
@@ -55,12 +35,12 @@ export function intersectBounds(a: MutableBounds, b: MutableBounds): MutableBoun
 
 	if (maxX <= minX || maxY <= minY) return undefined;
 
-	return {
-		x: minX,
-		y: minY,
-		width: maxX - minX,
-		height: maxY - minY
-	};
+	return new Rectangle(
+		minX,
+		minY,
+		maxX - minX,
+		maxY - minY
+	);
 }
 
 export function normalizeResolution(value: number): number {
@@ -74,10 +54,14 @@ export function toPhysicalPixels(logicalPixels: number, resolution: number): num
 	);
 }
 
-export function ceilPowerOfTwo(value: number): number {
-	let result = 1;
-	while (result < value) result <<= 1;
-	return result;
+export function ceilPowerOfTwo(n: number): number {
+	if (n-- === 0) return 1;
+	n |= n >> 1;
+	n |= n >> 2;
+	n |= n >> 4;
+	n |= n >> 8;
+	n |= n >> 16;
+	return n + 1;
 }
 
 export function segmentCapsuleIntersectsRect(
@@ -86,10 +70,9 @@ export function segmentCapsuleIntersectsRect(
 	bx: number,
 	by: number,
 	radius: number,
-	rect: MutableBounds,
-	extra = EXTRA_AA_PIXELS
+	rect: Rectangle
 ): boolean {
-	const pad = radius + extra;
+	const pad = radius;
 	const minX = Math.min(ax, bx) - pad;
 	const minY = Math.min(ay, by) - pad;
 	const maxX = Math.max(ax, bx) + pad;
@@ -104,97 +87,75 @@ export function segmentCapsuleIntersectsRect(
 export function createStyle(style: Required<Pick<SliderUniformPatch,
 	'borderColor' | 'innerColor' | 'outerColor' | 'borderWidth' | 'bodyAlpha'
 >>): SliderInstanceStyle {
-	const border = colorToRgb(style.borderColor, [205 / 255, 214 / 255, 244 / 255]);
-	const inner = colorToRgb(style.innerColor, [0, 0, 0]);
-	const outer = colorToRgb(style.outerColor, [0, 0, 0]);
-
 	return {
-		borderR: border[0],
-		borderG: border[1],
-		borderB: border[2],
-		borderA: border[3],
-
-		innerR: inner[0],
-		innerG: inner[1],
-		innerB: inner[2],
-		innerA: inner[3],
-
-		outerR: outer[0],
-		outerG: outer[1],
-		outerB: outer[2],
-		outerA: outer[3],
-
+		borderColor: new Color(style.borderColor),
+		innerColor: new Color(style.innerColor),
+		outerColor: new Color(style.outerColor),
 		borderWidth: style.borderWidth,
 		bodyAlpha: style.bodyAlpha
 	};
 }
 
 export function patchStyle(base: SliderInstanceStyle, patch: SliderUniformPatch): SliderInstanceStyle {
-	const border = patch.borderColor === undefined
-		? [base.borderR, base.borderG, base.borderB, base.borderA] as [number, number, number, number]
-		: colorToRgb(patch.borderColor, [base.borderR, base.borderG, base.borderB, base.borderA]);
-
-	const inner = patch.innerColor === undefined
-		? [base.innerR, base.innerG, base.innerB, base.innerA] as [number, number, number, number]
-		: colorToRgb(patch.innerColor, [base.innerR, base.innerG, base.innerB, base.innerA]);
-
-	const outer = patch.outerColor === undefined
-		? [base.outerR, base.outerG, base.outerB, base.outerA] as [number, number, number, number]
-		: colorToRgb(patch.outerColor, [base.outerR, base.outerG, base.outerB, base.outerA]);
-
 	return {
-		borderR: border[0],
-		borderG: border[1],
-		borderB: border[2],
-		borderA: border[3],
-
-		innerR: inner[0],
-		innerG: inner[1],
-		innerB: inner[2],
-		innerA: inner[3],
-
-		outerR: outer[0],
-		outerG: outer[1],
-		outerB: outer[2],
-		outerA: outer[3],
-
+		borderColor: patch.borderColor === undefined
+			? new Color(base.borderColor)
+			: new Color(patch.borderColor),
+		innerColor: patch.innerColor === undefined
+			? new Color(base.innerColor)
+			: new Color(patch.innerColor),
+		outerColor: patch.outerColor === undefined
+			? new Color(base.outerColor)
+			: new Color(patch.outerColor),
 		borderWidth: patch.borderWidth ?? base.borderWidth,
 		bodyAlpha: patch.bodyAlpha ?? base.bodyAlpha
 	};
 }
 
-function colorToRgb(
-	source: ColorSource,
-	fallback: readonly number[]
-): [number, number, number, number] {
-	let rgba: number[];
+export function transformD8(
+	rotation: number,
+	x: number,
+	y: number,
+	out: { x: number; y: number },
+	absolute = false
+): typeof out {
+	const ux = groupD8.uX(rotation);
+	const uy = groupD8.uY(rotation);
+	const vx = groupD8.vX(rotation);
+	const vy = groupD8.vY(rotation);
 
-	if (Array.isArray(source)) {
-		rgba = [
-			source[0] ?? fallback[0] ?? 0,
-			source[1] ?? fallback[1] ?? 0,
-			source[2] ?? fallback[2] ?? 0,
-			source[3] ?? fallback[3] ?? 1
-		];
-	} else if (typeof source === 'number') {
-		rgba = [
-			((source >> 16) & 255) / 255,
-			((source >> 8) & 255) / 255,
-			(source & 255) / 255,
-			1
-		];
+	if (absolute) {
+		out.x = x * Math.abs(ux) + y * Math.abs(vx);
+		out.y = x * Math.abs(uy) + y * Math.abs(vy);
 	} else {
-		rgba = new Color(source).toArray();
+		out.x = x * ux + y * vx;
+		out.y = x * uy + y * vy;
 	}
 
-	return [
-		clamp01(rgba[0] ?? fallback[0] ?? 0),
-		clamp01(rgba[1] ?? fallback[1] ?? 0),
-		clamp01(rgba[2] ?? fallback[2] ?? 0),
-		clamp01(rgba[3] ?? fallback[3] ?? 1)
-	];
+	return out;
 }
 
-function clamp01(value: number): number {
-	return Math.max(0, Math.min(1, value));
+export function computePathRenderBounds(path: SliderProgressView, radius: number): Rectangle {
+	let minX = path.startX;
+	let minY = path.startY;
+	let maxX = minX;
+	let maxY = minY;
+
+	for (let i = 1; i < path.length; i++) {
+		const x = path.getPointX(i);
+		const y = path.getPointY(i);
+
+		if (x < minX) minX = x;
+		else if (x > maxX) maxX = x;
+
+		if (y < minY) minY = y;
+		else if (y > maxY) maxY = y;
+	}
+
+	return new Rectangle(
+		minX - radius,
+		minY - radius,
+		maxX - minX + radius * 2,
+		maxY - minY + radius * 2
+	);
 }

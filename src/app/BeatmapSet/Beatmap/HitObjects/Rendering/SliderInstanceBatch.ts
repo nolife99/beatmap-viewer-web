@@ -2,8 +2,9 @@ import pool from '@stdlib/array-pool';
 import {
 	Buffer,
 	BufferUsage,
+	type Color,
 	Geometry,
-	Mesh,
+	Mesh, Renderer,
 	Shader,
 	UniformGroup
 } from 'pixi.js';
@@ -47,14 +48,6 @@ function createUint8InstanceBuffer() {
 }
 
 function createAtlasBatchGeometry() {
-	const segmentBuffer = createFloatInstanceBuffer();
-	const renderBuffer = createFloatInstanceBuffer();
-	const atlasBuffer = createUint16InstanceBuffer();
-	const paramsBuffer = createFloatInstanceBuffer();
-	const borderColorBuffer = createUint8InstanceBuffer();
-	const innerColorBuffer = createUint8InstanceBuffer();
-	const outerColorBuffer = createUint8InstanceBuffer();
-
 	return new Geometry({
 		attributes: {
 			aQuad: {
@@ -62,37 +55,37 @@ function createAtlasBatchGeometry() {
 				format: 'float32x2'
 			},
 			aSegment: {
-				buffer: segmentBuffer,
+				buffer: createFloatInstanceBuffer(),
 				format: 'float32x4',
 				instance: true
 			},
 			aRender: {
-				buffer: renderBuffer,
+				buffer: createFloatInstanceBuffer(),
 				format: 'float32x4',
 				instance: true
 			},
 			aAtlas: {
-				buffer: atlasBuffer,
+				buffer: createUint16InstanceBuffer(),
 				format: 'unorm16x4',
 				instance: true
 			},
 			aParams: {
-				buffer: paramsBuffer,
+				buffer: createFloatInstanceBuffer(),
 				format: 'float32x4',
 				instance: true
 			},
 			aBorderColor: {
-				buffer: borderColorBuffer,
+				buffer: createUint8InstanceBuffer(),
 				format: 'unorm8x4',
 				instance: true
 			},
 			aInnerColor: {
-				buffer: innerColorBuffer,
+				buffer: createUint8InstanceBuffer(),
 				format: 'unorm8x4',
 				instance: true
 			},
 			aOuterColor: {
-				buffer: outerColorBuffer,
+				buffer: createUint8InstanceBuffer(),
 				format: 'unorm8x4',
 				instance: true
 			}
@@ -122,6 +115,7 @@ export default class SliderInstanceBatch {
 	private outerColorData?: Uint8Array;
 
 	private capacity = 0;
+	private readonly colorScratch = new Uint8Array(3);
 
 	private readonly atlasWidth: number;
 	private readonly atlasHeight: number;
@@ -135,16 +129,11 @@ export default class SliderInstanceBatch {
 		const rendererType = inject<RendererConfig>('config/renderer')?.renderer;
 		const isWebGPU = rendererType === 'webgpu';
 
-		// The atlas shader manually maps atlas pixel coordinates to clip space.
-		// WebGL and WebGPU render targets need opposite Y mappings to sample the
-		// same Texture.frame orientation.
 		const clipYScale = isWebGPU ? -2 : 2;
 		const clipYBias = isWebGPU ? 1 : -1;
 
 		this.uniforms = new UniformGroup({
 			params: {
-				// x = atlas width, y = atlas height,
-				// z = clip-space Y scale, w = clip-space Y bias.
 				value: [atlasWidth, atlasHeight, clipYScale, clipYBias],
 				type: 'vec4<f32>'
 			}
@@ -159,11 +148,10 @@ export default class SliderInstanceBatch {
 		});
 
 		this.mesh.state.depthTest = true;
-		(this.mesh.state as { depthMask?: boolean }).depthMask = true;
 		this.mesh.visible = false;
 	}
 
-	beginFrame() {
+	beginFrame(renderer: Renderer) {
 		this.count = 0;
 		this.mesh.visible = false;
 	}
@@ -216,20 +204,9 @@ export default class SliderInstanceBatch {
 		paramsData[o + 2] = style.bodyAlpha;
 		paramsData[o + 3] = 0;
 
-		borderColorData[o] = toUnorm8(style.borderR);
-		borderColorData[o + 1] = toUnorm8(style.borderG);
-		borderColorData[o + 2] = toUnorm8(style.borderB);
-		borderColorData[o + 3] = toUnorm8(style.borderA);
-
-		innerColorData[o] = toUnorm8(style.innerR);
-		innerColorData[o + 1] = toUnorm8(style.innerG);
-		innerColorData[o + 2] = toUnorm8(style.innerB);
-		innerColorData[o + 3] = toUnorm8(style.innerA);
-
-		outerColorData[o] = toUnorm8(style.outerR);
-		outerColorData[o + 1] = toUnorm8(style.outerG);
-		outerColorData[o + 2] = toUnorm8(style.outerB);
-		outerColorData[o + 3] = toUnorm8(style.outerA);
+		writeColor(borderColorData, o, style.borderColor, this.colorScratch);
+		writeColor(innerColorData, o, style.innerColor, this.colorScratch);
+		writeColor(outerColorData, o, style.outerColor, this.colorScratch);
 
 		this.count++;
 	}
@@ -250,11 +227,6 @@ export default class SliderInstanceBatch {
 		this.outerColorBuffer.setDataWithSize(this.outerColorData!, elements, true);
 	}
 
-	/**
-	 * Release CPU staging arrays after the atlas render has consumed them.
-	 * Pixi/GPU buffers stay alive; only the transient upload arrays return to
-	 * the shared power-of-two array pool.
-	 */
 	releaseStaging() {
 		freePooled(this.segmentData);
 		freePooled(this.renderData);
@@ -381,4 +353,17 @@ function toUnorm16(value: number): number {
 function toUnorm8(value: number): number {
 	if (!Number.isFinite(value)) return 0;
 	return Math.max(0, Math.min(255, Math.round(value * 255)));
+}
+
+function writeColor(
+	out: Uint8Array,
+	offset: number,
+	color: Color,
+	scratch: Uint8Array
+) {
+	color.toUint8RgbArray(scratch);
+	out[offset] = scratch[0];
+	out[offset + 1] = scratch[1];
+	out[offset + 2] = scratch[2];
+	out[offset + 3] = toUnorm8(color.alpha);
 }

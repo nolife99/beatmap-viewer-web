@@ -86,7 +86,7 @@ function loop(): void {
 	const currentTime = nowMs();
 	const prev = previousTime || currentTime;
 
-	const visibleInterval = [currentTime - 800, currentTime + preempt] as IntervalInput;
+	const visibleInterval = [currentTime, currentTime + preempt] as IntervalInput;
 	postMessage({
 		type: 'update',
 		objects: findRange(objectsTree, visibleInterval),

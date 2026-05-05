@@ -27,8 +27,10 @@ import DrawableSliderHead from './DrawableSliderHead.ts';
 import DrawableSliderRepeat from './DrawableSliderRepeat.ts';
 import DrawableSliderTail, { TAIL_LENIENCY } from './DrawableSliderTail.ts';
 import DrawableSliderTick from './DrawableSliderTick.ts';
-import { SliderProgressView } from './Rendering/CalculateSliderProgress.ts';
-import SliderBodyRenderer, { BeatmapSliderLayer, type SliderUniformPatch } from './Rendering/SliderBodyRenderer.ts';
+import SliderProgressView from './Rendering/CalculateSliderProgress.ts';
+import SliderBodyRenderer from './Rendering/SliderBodyRenderer.ts';
+import BeatmapSliderLayer from './Rendering/BeatmapSliderLayer.ts';
+import { type SliderUniformPatch } from "./Rendering/SliderAtlasTypes.ts";
 
 export default class DrawableSlider
 	extends DrawableHitObject
@@ -59,7 +61,7 @@ export default class DrawableSlider
 		super(object);
 
 		this.path = new SliderProgressView(object.path);
-		this.renderer = new SliderBodyRenderer(renderLayer, this.path.fullBounds);
+		this.renderer = new SliderBodyRenderer(renderLayer);
 
 		this.object = object;
 		this.context.provide<DrawableSlider>('drawable', this);
@@ -367,7 +369,7 @@ export default class DrawableSlider
 			x2 = path.getPointX(i + 1) + objX;
 			y2 = path.getPointY(i + 1) + objY;
 
-			// AABB vs Capsule Bounding Box fast reject
+			// AABB vs. Capsule Bounding Box fast reject
 			segMinX = x1 < x2 ? x1 : x2;
 			segMaxX = x1 > x2 ? x1 : x2;
 			segMinY = y1 < y2 ? y1 : y2;
