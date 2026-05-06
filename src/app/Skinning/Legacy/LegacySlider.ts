@@ -47,7 +47,7 @@ export const refreshColor = (drawable: DrawableSlider) => {
 			.split(',')
 			.map((value) => +value / 255);
 	drawable.trackColor = color;
-	drawable.color = new Color(color);
+	drawable.color = new Color(comboColor.split(',').map((value) => +value / 255));
 
 	const border = beatmap?.data.colors.sliderBorderColor &&
 	!inject<SkinningConfig>('config/skinning')?.disableBeatmapSkin
