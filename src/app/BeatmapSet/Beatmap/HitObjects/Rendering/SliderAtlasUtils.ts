@@ -1,6 +1,5 @@
 import { Color, groupD8, Point, Rectangle } from 'pixi.js';
 import { darken, lighten } from '../../../../utils.ts';
-import type SliderProgressView from './CalculateSliderProgress.ts';
 import type { SliderInstanceStyle, SliderUniformPatch } from './SliderAtlasTypes.ts';
 
 export const DEFAULT_ATLAS_SIZE = 2048;
@@ -8,10 +7,6 @@ export const DEFAULT_GUTTER = 1;
 export const PHYSICAL_PIXEL_EPSILON = 1e-6;
 export const REDUCE_PRECISION = 0.01;
 export const REDUCE_PRECISION_SQ = REDUCE_PRECISION * REDUCE_PRECISION;
-
-export function getAtlasRotation(rotated: boolean): number {
-	return rotated ? groupD8.MAIN_DIAGONAL : groupD8.E;
-}
 
 export function transformD8(
 	rotation: number,
@@ -53,23 +48,6 @@ export const DEFAULT_SELECTION_STYLE: SliderInstanceStyle = createStyle({
 	borderWidth: 0.128,
 	bodyAlpha: 0.0
 });
-
-export function intersectBounds(a: Rectangle, b: Rectangle): Rectangle | undefined {
-	const minX = Math.max(a.x, b.x);
-	const minY = Math.max(a.y, b.y);
-	const maxX = Math.min(a.x + a.width, b.x + b.width);
-	const maxY = Math.min(a.y + a.height, b.y + b.height);
-
-	if (maxX <= minX || maxY <= minY) return undefined;
-
-	return new Rectangle(
-		minX,
-		minY,
-		maxX - minX,
-		maxY - minY
-	);
-}
-
 export function normalizeResolution(value: number): number {
 	return Number.isFinite(value) ? Math.max(1, value) : 1;
 }
@@ -133,29 +111,4 @@ export function patchStyle(base: SliderInstanceStyle, patch: SliderUniformPatch)
 		borderWidth: patch.borderWidth ?? base.borderWidth,
 		bodyAlpha: patch.bodyAlpha ?? base.bodyAlpha
 	};
-}
-
-export function computePathRenderBounds(path: SliderProgressView, radius: number): Rectangle {
-	let minX = path.startX;
-	let minY = path.startY;
-	let maxX = minX;
-	let maxY = minY;
-
-	for (let i = 1; i < path.length; i++) {
-		const x = path.getPointX(i);
-		const y = path.getPointY(i);
-
-		if (x < minX) minX = x;
-		else if (x > maxX) maxX = x;
-
-		if (y < minY) minY = y;
-		else if (y > maxY) maxY = y;
-	}
-
-	return new Rectangle(
-		minX - radius,
-		minY - radius,
-		maxX - minX + radius * 2,
-		maxY - minY + radius * 2
-	);
 }

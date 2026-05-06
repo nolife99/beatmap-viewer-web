@@ -1,6 +1,6 @@
 import {
 	Container,
-	type DestroyOptions,
+	type DestroyOptions, groupD8,
 	Matrix,
 	Point,
 	Rectangle,
@@ -21,12 +21,10 @@ import type {
 } from './SliderAtlasTypes.ts';
 import { type AtlasPackRequest, packAtlasTargets } from './SliderAtlasPacking.ts';
 import {
-	computePathRenderBounds,
 	DEFAULT_ATLAS_SIZE,
 	DEFAULT_BODY_STYLE,
 	DEFAULT_GUTTER,
 	DEFAULT_SELECTION_STYLE,
-	getAtlasRotation,
 	normalizeResolution,
 	patchStyle,
 	REDUCE_PRECISION,
@@ -290,7 +288,7 @@ export default class BeatmapSliderLayer extends RenderContainer {
 				for (const rect of bin.rects) {
 					const payload = rect.data as PackablePayload;
 					const target = payload.target;
-					const rotation = getAtlasRotation(!!rect.rot);
+					const rotation = rect.rot ? groupD8.MAIN_DIAGONAL : groupD8.E;
 
 					const scratch = this.pointScratch;
 
@@ -468,7 +466,9 @@ export default class BeatmapSliderLayer extends RenderContainer {
 			}
 		}
 
-		const localBounds = computePathRenderBounds(target.path, target.radius);
+		const localBounds = new Rectangle();
+		target.path.computeRenderBoundsInto(target.radius, localBounds);
+
 		if (!isUsableRect(localBounds)) return;
 
 		const worldX = handle.x + localBounds.x;
