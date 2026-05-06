@@ -37,7 +37,7 @@ export const refreshColor = (drawable: DrawableSlider) => {
 			? new Color(beatmap.randomColor).toUint8RgbArray().join(',')
 			: comboColor).split(',').map((value) => +value / 255);
 	drawable.trackColor = color;
-	drawable.color = comboColor;
+	drawable.color = new Color(color);
 
 	drawable.borderColor = color;
 

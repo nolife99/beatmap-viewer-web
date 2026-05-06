@@ -1,6 +1,6 @@
 import { HitResult, type LegacyReplayFrame, Vector2 } from 'osu-classes';
 import { StandardHitObject } from 'osu-standard-stable';
-import { type ColorSource, Container, RenderLayer, Sprite } from 'pixi.js';
+import { Color, Container, RenderLayer, Sprite } from 'pixi.js';
 import Beatmap from '..';
 import HitSample from '../../../Audio/HitSample.ts';
 import ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
@@ -45,7 +45,7 @@ export default class DrawableHitCircle
 	updateFn = legacyUpdate;
 
 	judgement: DrawableJudgement;
-	color: ColorSource = 'rgb(0, 0, 0)';
+	color = new Color('rgb(0, 0, 0)');
 
 	constructor(
 		object: StandardHitObject,

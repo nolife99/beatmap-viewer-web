@@ -11,6 +11,7 @@ import DrawableApproachCircle from './DrawableApproachCircle.ts';
 import DrawableDefaults from './DrawableDefaults.ts';
 import DrawableHitCircle from './DrawableHitCircle.ts';
 import DrawableSlider from './DrawableSlider.ts';
+import { Color } from 'pixi.js';
 
 export default class DrawableSliderHead extends DrawableHitCircle {
 	override hitSound?: HitSample;
@@ -111,7 +112,7 @@ export default class DrawableSliderHead extends DrawableHitCircle {
 				0xffffff);
 		this.hitCircleSprite.tint = color;
 		this.flashPiece.tint = color;
-		this.color = color;
+		this.color = new Color(color);
 	}
 
 	override update(time: number) {

@@ -37,6 +37,7 @@ export type SliderVisualTarget = {
 	path?: SliderProgressView;
 	radius: number;
 	style: SliderInstanceStyle;
+	placedFrame: number;
 
 	/** Geometry/data availability. Set once update*Geometry supplies a path. */
 	enabled: boolean;
@@ -45,7 +46,7 @@ export type SliderVisualTarget = {
 	visible: boolean;
 };
 
-export type SliderEntry = {
+export type SliderBodyHandle = {
 	alive: boolean;
 	x: number;
 	y: number;

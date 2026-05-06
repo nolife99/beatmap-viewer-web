@@ -45,6 +45,7 @@ export default class BeatmapSet extends ScopedClass {
 	_currentTween?: Tween;
 	isSeeking = false;
 	audioContext = new AudioContext;
+	private storyboard?: Storyboard;
 
 	constructor(private resources: Map<string, Blob>) {
 		super();
@@ -59,14 +60,14 @@ export default class BeatmapSet extends ScopedClass {
 		this.lifetime.use(
 			inject<Application>('ui/app')?.ticker.add(this.frame),
 			(t) => t?.remove(this.frame)
-		)
+		);
 
 		this.lifetime.use(inject<ExperimentalConfig>('config/experimental')?.onChange(
 			'mods',
 			({
-					   mods: val,
-					   shouldPlaybackChange
-				   }: {
+				 mods: val,
+				 shouldPlaybackChange
+			 }: {
 				mods: string;
 				shouldPlaybackChange: boolean;
 			}) => {
@@ -94,17 +95,17 @@ export default class BeatmapSet extends ScopedClass {
 		await skin.init();
 	}
 
-	async loadResources() {
+	loadResources() {
 		inject<Loading>('ui/loading')?.setText('Loading resources');
 
 		console.time('Load hitSamples');
 		const sampleManager = this.context.provide('sampleManager', new SampleManager(this.resources));
-		await sampleManager.load(this.audioContext);
-		console.timeEnd('Load hitSamples');
 
-		await this.loadBeatmapSkin();
-
-		await this.loadStoryboard();
+		return Promise.all([
+			sampleManager.load(this.audioContext).then(() => console.timeEnd('Load hitSamples')),
+			this.loadBeatmapSkin(),
+			this.loadStoryboard()
+		]);
 	}
 
 	async getDifficulties() {
@@ -265,11 +266,11 @@ export default class BeatmapSet extends ScopedClass {
 
 		this.videoKey = videoFilePath;
 		const videoResource = this.resources.get(
-				(
-					beatmap.data.events.storyboard?.layers.get('Video')?.elements.at(0)
-						?.filePath ?? ''
-				).toLowerCase()
-			);
+			(
+				beatmap.data.events.storyboard?.layers.get('Video')?.elements.at(0)
+					?.filePath ?? ''
+			).toLowerCase()
+		);
 
 		if (!videoResource) return;
 
@@ -312,7 +313,6 @@ export default class BeatmapSet extends ScopedClass {
 		URL.revokeObjectURL(url);
 	}
 
-	private storyboard?: Storyboard;
 	async loadStoryboard() {
 		const storyboardKey = this.resources.keys().find((key) => key.includes('.osb'));
 		if (!storyboardKey) return;
@@ -503,66 +503,6 @@ export default class BeatmapSet extends ScopedClass {
 		this.context.consume<Video>('video')?.seek(time);
 	}
 
-	private readonly frame: TickerCallback<undefined> = () => {
-		if (!this.master) {
-			return;
-		}
-
-		const audio = this.context.consume<Audio>('audio');
-		if (!audio) {
-			return;
-		}
-
-		const time = audio.currentTime;
-
-		this.master?.frame(time);
-		for (const slave of this.slaves) {
-			slave.frame(time);
-		}
-
-		const timestamp = inject<Timestamp>('ui/main/controls/timestamp');
-		timestamp?.updateDigit(time);
-
-		const currentBPM = this.master.data.controlPoints.timingPointAt(time);
-		const currentSV = this.master.data.controlPoints.difficultyPointAt(time);
-		const currentSample = this.master.data.controlPoints.samplePointAt(time);
-
-		if (
-			this.cacheBPM !== currentBPM ||
-			this.cacheSV !== currentSV ||
-			this.cacheSample !== currentSample
-		) {
-			const time = Math.max(
-				currentBPM.startTime,
-				currentSV.startTime,
-				currentSample.startTime
-			);
-			inject<Timing>('ui/sidepanel/timing')?.scrollToTimingPoint(time);
-		}
-
-		if (this.cacheBPM !== currentBPM) {
-			this.cacheBPM = currentBPM;
-			timestamp?.updateBPM(currentBPM.bpm);
-		}
-
-		if (this.cacheSV !== currentSV) {
-			this.cacheSV = currentSV;
-			timestamp?.updateSliderVelocity(currentSV.sliderVelocity);
-		}
-
-		if (this.cacheSample !== currentSample) {
-			this.cacheSample = currentSample;
-		}
-
-		inject<ProgressBar>('ui/main/controls/progress')?.setPercentage(
-			time / audio.duration
-		);
-		inject<Timeline>('ui/main/viewer/timeline')?.update(time);
-		inject<Timeline>('ui/main/viewer/timeline')?.draw(time);
-
-		this.storyboard?.update(time);
-	};
-
 	handleWheel(event: FederatedWheelEvent) {
 		const direction = event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0;
 		if (direction === 0) return;
@@ -683,6 +623,66 @@ export default class BeatmapSet extends ScopedClass {
 
 		super.destroy();
 	}
+
+	private readonly frame: TickerCallback<undefined> = () => {
+		if (!this.master) {
+			return;
+		}
+
+		const audio = this.context.consume<Audio>('audio');
+		if (!audio) {
+			return;
+		}
+
+		const time = audio.currentTime;
+
+		this.master?.frame(time);
+		for (const slave of this.slaves) {
+			slave.frame(time);
+		}
+
+		const timestamp = inject<Timestamp>('ui/main/controls/timestamp');
+		timestamp?.updateDigit(time);
+
+		const currentBPM = this.master.data.controlPoints.timingPointAt(time);
+		const currentSV = this.master.data.controlPoints.difficultyPointAt(time);
+		const currentSample = this.master.data.controlPoints.samplePointAt(time);
+
+		if (
+			this.cacheBPM !== currentBPM ||
+			this.cacheSV !== currentSV ||
+			this.cacheSample !== currentSample
+		) {
+			const time = Math.max(
+				currentBPM.startTime,
+				currentSV.startTime,
+				currentSample.startTime
+			);
+			inject<Timing>('ui/sidepanel/timing')?.scrollToTimingPoint(time);
+		}
+
+		if (this.cacheBPM !== currentBPM) {
+			this.cacheBPM = currentBPM;
+			timestamp?.updateBPM(currentBPM.bpm);
+		}
+
+		if (this.cacheSV !== currentSV) {
+			this.cacheSV = currentSV;
+			timestamp?.updateSliderVelocity(currentSV.sliderVelocity);
+		}
+
+		if (this.cacheSample !== currentSample) {
+			this.cacheSample = currentSample;
+		}
+
+		inject<ProgressBar>('ui/main/controls/progress')?.setPercentage(
+			time / audio.duration
+		);
+		inject<Timeline>('ui/main/viewer/timeline')?.update(time);
+		inject<Timeline>('ui/main/viewer/timeline')?.draw(time);
+
+		this.storyboard?.update(time);
+	};
 
 	private setIds() {
 		const masterId = this.master?.data.metadata.beatmapId;

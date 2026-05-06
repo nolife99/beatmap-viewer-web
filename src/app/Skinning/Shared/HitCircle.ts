@@ -5,6 +5,7 @@ import SkinningConfig from '../../Config/SkinningConfig.ts';
 import { inject } from '../../Context.ts';
 import Gameplays from '../../UI/main/viewer/Gameplay/Gameplays.ts';
 import Skin from '../Skin.ts';
+import { Color } from 'pixi.js';
 
 export const sharedRefreshSprite = (drawable: DrawableHitCircle) => {
 	const skin = drawable.skinManager?.getCurrentSkin();
@@ -52,9 +53,9 @@ export const sharedRefreshColor = (drawable: DrawableHitCircle) => {
 		beatmap?.randomColor;
 
 	if (tintByDiff) {
-		drawable.color = beatmap.randomColor;
-		drawable.hitCircleSprite.tint = beatmap.randomColor;
-		drawable.flashPiece.tint = beatmap.randomColor;
+		drawable.color = new Color(beatmap.randomColor);
+		drawable.hitCircleSprite.tint = drawable.color;
+		drawable.flashPiece.tint = drawable.color;
 		return;
 	}
 
@@ -65,10 +66,9 @@ export const sharedRefreshColor = (drawable: DrawableHitCircle) => {
 		const colors = beatmap.data.colors.comboColors;
 		const comboIndex = drawable.object.comboIndexWithOffsets % colors.length;
 
-		drawable.hitCircleSprite.tint = `rgb(${colors[comboIndex].red},${colors[comboIndex].green},${colors[comboIndex].blue})`;
-		drawable.flashPiece.tint = `rgb(${colors[comboIndex].red},${colors[comboIndex].green},${colors[comboIndex].blue})`;
-
-		drawable.color = `rgb(${colors[comboIndex].red},${colors[comboIndex].green},${colors[comboIndex].blue})`;
+		drawable.color = new Color(`rgb(${colors[comboIndex].red},${colors[comboIndex].green},${colors[comboIndex].blue})`);
+		drawable.hitCircleSprite.tint = drawable.color;
+		drawable.flashPiece.tint = drawable.color;
 
 		return;
 	}
@@ -77,7 +77,7 @@ export const sharedRefreshColor = (drawable: DrawableHitCircle) => {
 	const key = `Combo${comboIndex + 1}` as keyof typeof skin.config.Colours;
 	const color = skin.config.Colours[key] ?? skin.config.Colours.Combo1;
 
-	drawable.color = `rgb(${color})`;
-	drawable.hitCircleSprite.tint = `rgb(${color})`;
-	drawable.flashPiece.tint = `rgb(${color})`;
+	drawable.color = new Color(`rgb(${color})`);
+	drawable.hitCircleSprite.tint = drawable.color;
+	drawable.flashPiece.tint = drawable.color;
 };

@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Container, BitmapText } from 'pixi.js';
+import { BitmapText, Container } from 'pixi.js';
 import ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject, provide } from '../../../Context.ts';
 import ResponsiveHandler from '../../../ResponsiveHandler.ts';
@@ -85,7 +85,7 @@ export default class Modding {
 
 		text.onRender = () => {
 			text.style.fill = inject<ColorConfig>('config/color')?.color.subtext1 ?? 0xffffff;
-		}
+		};
 
 		container.addChild(text, children);
 

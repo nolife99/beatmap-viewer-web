@@ -314,22 +314,6 @@ export default class Timeline {
 		this.drawDragWindow(timestamp);
 	}
 
-	private updateObjects(timestamp: number) {
-		const min = timestamp - this._range;
-		const max = timestamp + this._range;
-
-		this.updateVisibleList(
-			this._visibleObjects,
-			this._objectMarks,
-			(idx) => this.objectIntersectsTime(idx, min, max),
-			(idx) => this._objects[idx].container,
-			this.firstObjectIndexAfter(min - 800),
-			this._objects.length,
-			(idx) => this._objects[idx].object.startTime <= max,
-			false
-		);
-	}
-
 	updateTiming(timestamp: number) {
 		const min = timestamp - this._range;
 		const max = timestamp + this._range;
@@ -360,6 +344,22 @@ export default class Timeline {
 			this._timingPoints.length,
 			(idx) => this._timingPoints[idx].data.startTime <= max,
 			true
+		);
+	}
+
+	private updateObjects(timestamp: number) {
+		const min = timestamp - this._range;
+		const max = timestamp + this._range;
+
+		this.updateVisibleList(
+			this._visibleObjects,
+			this._objectMarks,
+			(idx) => this.objectIntersectsTime(idx, min, max),
+			(idx) => this._objects[idx].container,
+			this.firstObjectIndexAfter(min - 800),
+			this._objects.length,
+			(idx) => this._objects[idx].object.startTime <= max,
+			false
 		);
 	}
 
@@ -487,54 +487,70 @@ export default class Timeline {
 		const divisor = inject<TimelineConfig>('config/timeline')?.divisor ?? 4;
 		const duration = this._objects.at(-1)!.getTimeRange().end + 5000;
 
+		const xMult = scale / DEFAULT_SCALE;
+
 		this._ruler.clear();
 
 		for (let ti = 0; ti < this._timingPoints.length; ti++) {
-			const { beatLength, timeSignature, startTime } =
-				this._timingPoints[ti].data;
+			const { beatLength, timeSignature, startTime } = this._timingPoints[ti].data;
 			const sectionEnd = ti + 1 < this._timingPoints.length
 				? this._timingPoints[ti + 1].data.startTime
 				: duration;
 
-			let t = startTime;
+			const beatStep = beatLength / divisor;
+			const ticksPerMeasure = timeSignature * divisor;
 
-			while (t <= sectionEnd) {
-				const isWholeBeat = Math.round(
-					t -
-					(Math.round((t - startTime) / beatLength) * beatLength + startTime)
-				) === 0;
+			const styleBatches = new Map<number, { y: number, h: number, fill: { color: number }, x: number[] }>();
+			const tickToBatch = new Array(ticksPerMeasure);
 
-				const isDominant = isWholeBeat &&
-					Math.round((t - startTime) / beatLength) % timeSignature === 0;
+			for (let i = 0; i < ticksPerMeasure; i++) {
+				const isWholeBeat = i % divisor === 0;
+				const isDominant = i === 0;
 
 				let color = 0xffffff;
-
 				if (!isWholeBeat) {
-					const nearestWholeBeat =
-						Math.floor((t - startTime) / beatLength) * beatLength + startTime;
-					const idx = Math.round(
-						(t - nearestWholeBeat) / (beatLength / divisor)
-					);
-					const denominator = divisor / gcd(divisor, idx);
-
-					color =
-						BEAT_LINE_COLOR[denominator as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9] ??
-						0x929292;
+					const tickInBeat = i % divisor;
+					const denominator = divisor / gcd(divisor, tickInBeat);
+					color = BEAT_LINE_COLOR[denominator as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9] ?? 0x929292;
 				}
 
-				this._ruler
-					.rect(
-						t / (DEFAULT_SCALE / scale),
-						isDominant ? 0 : 1,
-						1,
-						isDominant ? 8 : 6
-					)
-					.fill({ color });
+				const y = isDominant ? 0 : 1;
+				const h = isDominant ? 8 : 6;
 
-				t += beatLength / divisor;
+				const key = color | (y << 24) | (h << 25);
+
+				if (!styleBatches.has(key)) {
+					styleBatches.set(key, { y, h, fill: { color }, x: [] });
+				}
+
+				tickToBatch[i] = styleBatches.get(key)!;
 			}
 
-			this._ruler.scale.y = 10;
+			const totalTicks = Math.floor((sectionEnd - startTime) / beatStep) + 1;
+
+			for (let i = 0; i < totalTicks; i++) {
+				const t = startTime + i * beatStep;
+				if (t > sectionEnd) break;
+
+				tickToBatch[i % ticksPerMeasure].x.push(t * xMult);
+			}
+
+			for (const batch of styleBatches.values()) {
+				if (batch.x.length === 0) continue;
+
+				for (let j = 0; j < batch.x.length; j++) {
+					const xPos = batch.x[j];
+					this._ruler.moveTo(xPos, batch.y);
+					this._ruler.lineTo(xPos, batch.y + batch.h);
+				}
+
+				this._ruler.stroke({
+					color: batch.fill.color,
+					pixelLine: true
+				});
+			}
 		}
+
+		this._ruler.scale.y = 10;
 	}
 }

@@ -26,6 +26,10 @@ export default class WeakEvent<TEvent> {
 			listener.handler = undefined;
 		});
 
+	get activeEstimate(): number {
+		return this.listeners.length;
+	}
+
 	subscribe<TTarget extends object>(
 		target: TTarget,
 		handler: WeakEventHandler<TTarget, TEvent>
@@ -114,10 +118,6 @@ export default class WeakEvent<TEvent> {
 		}
 
 		this.listeners.length = 0;
-	}
-
-	get activeEstimate(): number {
-		return this.listeners.length;
 	}
 
 	private captureStack(): string | undefined {

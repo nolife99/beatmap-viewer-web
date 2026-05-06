@@ -69,11 +69,10 @@ export const update = (drawable: DrawableHitCircle, time: number) => {
 		drawable.flashPiece.visible = false;
 		drawable.sprite.blendMode = 'normal';
 
-		const opacity = Math.min(
+		drawable.wrapper.alpha = Math.min(
 			1,
 			Math.max(0, (time - startFadeInTime) / drawable.object.timeFadeIn)
 		);
-		drawable.wrapper.alpha = opacity;
 		drawable.hitCircleOverlay.alpha = 1;
 		drawable.hitCircleSprite.alpha = 1;
 
@@ -100,14 +99,12 @@ export const update = (drawable: DrawableHitCircle, time: number) => {
 			2 * Clamp((time - startTime) / (flashInDuration * 2)) - 1;
 		const scale = Clamp((time - startTime) / 400);
 
-		const color = d3.color(drawable.color as string);
+		const color = d3.color(drawable.color.toRgbaString());
 		const white = d3.color('white');
 
 		if (color && white) {
 			const interpolator = d3.interpolateRgb(color, white);
-			const interpolated = interpolator(fadeProgress);
-
-			drawable.hitCircleSprite.tint = interpolated;
+			drawable.hitCircleSprite.tint = interpolator(fadeProgress);
 		}
 
 		drawable.wrapper.alpha = 1 - Easings.OutQuad(opacity);
@@ -126,8 +123,7 @@ export const update = (drawable: DrawableHitCircle, time: number) => {
 	}
 
 	if (!shouldHit && time > maxThreshold) {
-		const opacity = 1 - Math.min(1, Math.max(0, (time - maxThreshold) / 100));
-		drawable.wrapper.alpha = opacity;
+		drawable.wrapper.alpha = 1 - Math.min(1, Math.max(0, (time - maxThreshold) / 100));
 	}
 };
 

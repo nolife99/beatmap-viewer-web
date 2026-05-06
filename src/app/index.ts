@@ -3,7 +3,6 @@ import Audio from './Audio/index.ts';
 import BeatmapSet from './BeatmapSet/index.ts';
 import { inject, provide } from './Context.ts';
 import { Game } from './Game.ts';
-import { loadBitmapFonts } from '../assets/loadBitmapFonts.ts';
 
 document.addEventListener('keydown', (event) => {
 	const bms = inject<BeatmapSet>('beatmapset');

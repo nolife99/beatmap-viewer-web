@@ -160,8 +160,6 @@ export default class Audio extends ScopedClass {
 	private mediaSessionPositionTimer?: ReturnType<typeof setInterval>;
 	private pendingWorkerLoad?: { resolve: () => void; reject: (err: unknown) => void };
 
-	private _currentTime = 0;
-
 	constructor(private masterNode: AudioNode, private beatmapSet: BeatmapSet) {
 		super();
 		const config = inject<AudioConfig>('config/audio');
@@ -184,6 +182,8 @@ export default class Audio extends ScopedClass {
 
 		this.setupMediaSession();
 	}
+
+	private _currentTime = 0;
 
 	get currentTime(): number {
 		if (this.state === 'STOPPED') return this._currentTime;

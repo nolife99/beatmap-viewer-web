@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Sprite, BitmapText, Texture } from 'pixi.js';
+import { BitmapText, Sprite, Texture } from 'pixi.js';
 import ColorConfig from '../../Config/ColorConfig.ts';
 import { inject, provide } from '../../Context.ts';
 import { Game } from '../../Game.ts';

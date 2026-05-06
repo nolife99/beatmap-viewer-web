@@ -32,11 +32,11 @@ import DrawableHitCircle from './HitObjects/DrawableHitCircle.ts';
 import DrawableHitObject, { IHasApproachCircle } from './HitObjects/DrawableHitObject.ts';
 import DrawableSlider from './HitObjects/DrawableSlider.ts';
 import DrawableSpinner from './HitObjects/DrawableSpinner.ts';
+import BeatmapSliderLayer from './HitObjects/Rendering/BeatmapSliderLayer.ts';
 import Replay from './Replay.ts';
 
 // @ts-expect-error: Deno LSP struggles with Vite's ?worker suffix
 import ObjectsWorker from './Worker/Objects.ts?worker&inline';
-import BeatmapSliderLayer from './HitObjects/Rendering/BeatmapSliderLayer.ts';
 
 const decoder = new BeatmapDecoder();
 const ruleset = new StandardRuleset();
@@ -56,7 +56,7 @@ export default class Beatmap extends ScopedClass {
 	previousObjects = new Set<number>();
 	previousTime = 0;
 	container: Gameplay;
-	sliderRenderLayer?: BeatmapSliderLayer
+	sliderRenderLayer?: BeatmapSliderLayer;
 	md5: string;
 	// Taken from https://github.com/Rian8337/osu-droid-module/blob/master/packages/osu-strain-graph-generator/src/index.ts
 	strains: StrainPoint[] = [];
@@ -136,7 +136,7 @@ export default class Beatmap extends ScopedClass {
 			this.reset();
 			this.container.destroy();
 			this.worker.terminate();
-		})
+		});
 	}
 
 	load() {
@@ -252,9 +252,8 @@ export default class Beatmap extends ScopedClass {
 
 		console.time('Constructing hitObjects');
 
-		this.sliderRenderLayer = new BeatmapSliderLayer({
-			coordinateSpace: this.container.objectsContainer
-		});
+		this.sliderRenderLayer = new BeatmapSliderLayer();
+		this.container.objectsContainer.addChildAt(this.sliderRenderLayer, 0);
 
 		const async = inject<ExperimentalConfig>(
 			'config/experimental'
@@ -391,45 +390,8 @@ export default class Beatmap extends ScopedClass {
 		for (const idx of objs) {
 			this.objects[idx].update(time);
 		}
-		this.sliderRenderLayer?.flush();
 
 		this.replay?.frame(time);
-	}
-
-	private updateSelectorAndDragSelection() {
-		const [globalA, globalB] = this.container.dragWindow;
-
-		if (globalA.distance(globalB) <= 0) {
-			this.container.selector.scale.set(0, 0);
-			return;
-		}
-
-		const localA = this.container.wrapper.toLocal(globalA);
-		const localB = this.container.wrapper.toLocal(globalB);
-
-		const x = Math.min(localA.x, localB.x);
-		const y = Math.min(localA.y, localB.y);
-		const w = Math.abs(localB.x - localA.x);
-		const h = Math.abs(localB.y - localA.y);
-
-		this.container.selector.position.set(x, y);
-		this.container.selector.scale.set(w, h);
-
-		const rect: [Vector2, Vector2] = [
-			this.container.objectsContainer.toLocal(this.container.dragWindow[0]),
-			this.container.objectsContainer.toLocal(this.container.dragWindow[1])
-		];
-
-		for (const idx of this.previousObjects) {
-			const obj = this.objects[idx];
-
-			if (
-				(obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) &&
-				obj.checkCollide(rect)
-			) {
-				this.container.addSelected(idx);
-			}
-		}
 	}
 
 	getNearestSamplePoint(time: number) {
@@ -487,16 +449,6 @@ export default class Beatmap extends ScopedClass {
 		for (const idx of objects) {
 			this.objects[idx]?.playHitSound(time);
 		}
-	}
-
-	private postAudioClockToWorker(): void {
-		const audio = this.context.consume<Audio>('audio');
-		if (!audio) return;
-
-		this.worker.postMessage({
-			type: 'clock',
-			sabClock: audio.encodedClock
-		});
 	}
 
 	onPlaybackRateChange(rate: number) {
@@ -603,6 +555,52 @@ export default class Beatmap extends ScopedClass {
 
 		this.previousConnectors.clear();
 		this.previousObjects.clear();
+	}
+
+	private updateSelectorAndDragSelection() {
+		const [globalA, globalB] = this.container.dragWindow;
+
+		if (globalA.distance(globalB) <= 0) {
+			this.container.selector.scale.set(0, 0);
+			return;
+		}
+
+		const localA = this.container.wrapper.toLocal(globalA);
+		const localB = this.container.wrapper.toLocal(globalB);
+
+		const x = Math.min(localA.x, localB.x);
+		const y = Math.min(localA.y, localB.y);
+		const w = Math.abs(localB.x - localA.x);
+		const h = Math.abs(localB.y - localA.y);
+
+		this.container.selector.position.set(x, y);
+		this.container.selector.scale.set(w, h);
+
+		const rect: [Vector2, Vector2] = [
+			this.container.objectsContainer.toLocal(this.container.dragWindow[0]),
+			this.container.objectsContainer.toLocal(this.container.dragWindow[1])
+		];
+
+		for (const idx of this.previousObjects) {
+			const obj = this.objects[idx];
+
+			if (
+				(obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) &&
+				obj.checkCollide(rect)
+			) {
+				this.container.addSelected(idx);
+			}
+		}
+	}
+
+	private postAudioClockToWorker(): void {
+		const audio = this.context.consume<Audio>('audio');
+		if (!audio) return;
+
+		this.worker.postMessage({
+			type: 'clock',
+			sabClock: audio.encodedClock
+		});
 	}
 
 	private calculateStrainGraph(mods: string, calculator: StandardDifficultyCalculator) {
@@ -813,11 +811,9 @@ export default class Beatmap extends ScopedClass {
 						setTimeout(() => {
 							if (object instanceof Circle) {
 								resolve(new DrawableHitCircle(object).hook(this.context));
-							}
-							else if (object instanceof Slider) {
+							} else if (object instanceof Slider) {
 								resolve(new DrawableSlider(object, sliderLayer).hook(this.context));
-							}
-							else if (object instanceof Spinner) {
+							} else if (object instanceof Spinner) {
 								resolve(new DrawableSpinner(object).hook(this.context));
 							}
 							resolve(null);

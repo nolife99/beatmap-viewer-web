@@ -3,13 +3,13 @@ import { LayoutContainer } from '@pixi/layout/components';
 import { Tween } from '@tweenjs/tween.js';
 import { Vector2 } from 'osu-classes';
 import {
+	BitmapText,
 	Color,
 	Container,
 	Graphics,
 	Rectangle,
 	Sprite,
 	type StrokeStyle,
-	BitmapText,
 	type TextStyleOptions,
 	Texture
 } from 'pixi.js';
@@ -102,8 +102,7 @@ export default class Gameplay extends ScopedClass {
 			.fill({ color: 0xffffff, alpha: 0.3 });
 
 		this.objectsContainer = new Container({
-			boundsArea: new Rectangle(0, 0, 512, 384),
-			isRenderGroup: true
+			boundsArea: new Rectangle(0, 0, 512, 384)
 		});
 
 		this.cursorLayer = new Container({
@@ -144,84 +143,6 @@ export default class Gameplay extends ScopedClass {
 		this.loadGlobalEventHandlers();
 
 		this.reLayout();
-	}
-
-	private loadGlobalEventHandlers() {
-		const colorConfig = inject<ColorConfig>('config/color');
-		const backgroundConfig = inject<BackgroundConfig>('config/background');
-		const gameplayConfig = inject<GameplayConfig>('config/gameplay');
-
-		this.lifetime.use(
-			colorConfig?.onChange('color', ({ base, text }) => {
-				if (this._destroyed) return;
-
-				this.closeButton.layout = { backgroundColor: base };
-				this.statsContainer.layout = { backgroundColor: base };
-				this.diffName.style.fill = text;
-			}));
-
-		this.lifetime.use(backgroundConfig?.onChange('backgroundDim', (value: number) => {
-				if (this._destroyed) return;
-
-				this.background.layout = {
-					backgroundColor: [0, 0, 0, Math.max(0.01, value / 100)]
-				};
-			}));
-
-		this.lifetime.use(backgroundConfig?.onChange('breakSection', (isBreak: boolean) => {
-				if (this._destroyed) return;
-
-				this.stopCurrentTween();
-
-				const tween = new Tween({
-					value: this.background.alpha
-				})
-					.easing(Easings.Out)
-					.to(
-						{
-							value: isBreak ? 0.6 : 1
-						},
-						1000
-					)
-					.onUpdate(({ value }) => {
-						if (!this._destroyed) {
-							this.background.alpha = value;
-						}
-					})
-					.onComplete(() => {
-						tweenGroup.remove(tween);
-
-						if (this._currentTween === tween) {
-							this._currentTween = undefined;
-						}
-					})
-					.onStop(() => {
-						tweenGroup.remove(tween);
-
-						if (this._currentTween === tween) {
-							this._currentTween = undefined;
-						}
-					})
-					.start();
-
-				tweenGroup.add(tween);
-				this._currentTween = tween;
-			}));
-
-		this.lifetime.use(gameplayConfig?.onChange('showGrid', (val: boolean) => {
-				if (this._destroyed) return;
-
-				this.grid.visible = val;
-			}));
-	}
-
-	private stopCurrentTween() {
-		const tween = this._currentTween;
-		if (!tween) return;
-
-		this._currentTween = undefined;
-		tween.stop();
-		tweenGroup.remove(tween);
 	}
 
 	reLayout() {
@@ -423,32 +344,6 @@ export default class Gameplay extends ScopedClass {
 		}
 	}
 
-	private clearSelectionState() {
-		const beatmap = this.beatmap;
-		if (!beatmap) {
-			this.selected.clear();
-			return;
-		}
-
-		for (const idx of this.selected) {
-			const obj = beatmap.objects[idx];
-
-			if (obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) {
-				obj.isSelected = false;
-
-				if (obj.timelineObject) {
-					obj.timelineObject.isSelected = false;
-				}
-
-				if (obj.select.parent === this.selectContainer) {
-					this.selectContainer.removeChild(obj.select);
-				}
-			}
-		}
-
-		this.selected.clear();
-	}
-
 	checkInBound(point: Vector2) {
 		const start = this.objectsContainer.toLocal(this.dragWindow[0]);
 		const end = this.objectsContainer.toLocal(this.dragWindow[1]);
@@ -612,5 +507,109 @@ export default class Gameplay extends ScopedClass {
 		this.selected.clear();
 
 		super.destroy();
+	}
+
+	private loadGlobalEventHandlers() {
+		const colorConfig = inject<ColorConfig>('config/color');
+		const backgroundConfig = inject<BackgroundConfig>('config/background');
+		const gameplayConfig = inject<GameplayConfig>('config/gameplay');
+
+		this.lifetime.use(
+			colorConfig?.onChange('color', ({ base, text }) => {
+				if (this._destroyed) return;
+
+				this.closeButton.layout = { backgroundColor: base };
+				this.statsContainer.layout = { backgroundColor: base };
+				this.diffName.style.fill = text;
+			}));
+
+		this.lifetime.use(backgroundConfig?.onChange('backgroundDim', (value: number) => {
+			if (this._destroyed) return;
+
+			this.background.layout = {
+				backgroundColor: [0, 0, 0, Math.max(0.01, value / 100)]
+			};
+		}));
+
+		this.lifetime.use(backgroundConfig?.onChange('breakSection', (isBreak: boolean) => {
+			if (this._destroyed) return;
+
+			this.stopCurrentTween();
+
+			const tween = new Tween({
+				value: this.background.alpha
+			})
+				.easing(Easings.Out)
+				.to(
+					{
+						value: isBreak ? 0.6 : 1
+					},
+					1000
+				)
+				.onUpdate(({ value }) => {
+					if (!this._destroyed) {
+						this.background.alpha = value;
+					}
+				})
+				.onComplete(() => {
+					tweenGroup.remove(tween);
+
+					if (this._currentTween === tween) {
+						this._currentTween = undefined;
+					}
+				})
+				.onStop(() => {
+					tweenGroup.remove(tween);
+
+					if (this._currentTween === tween) {
+						this._currentTween = undefined;
+					}
+				})
+				.start();
+
+			tweenGroup.add(tween);
+			this._currentTween = tween;
+		}));
+
+		this.lifetime.use(gameplayConfig?.onChange('showGrid', (val: boolean) => {
+			if (this._destroyed) return;
+
+			this.grid.visible = val;
+		}));
+	}
+
+	private stopCurrentTween() {
+		const tween = this._currentTween;
+		if (!tween) return;
+
+		this._currentTween = undefined;
+		tween.stop();
+		tweenGroup.remove(tween);
+	}
+
+	private clearSelectionState() {
+		const beatmap = this.beatmap;
+		if (!beatmap) {
+			this.selected.clear();
+			return;
+		}
+
+		for (const idx of this.selected) {
+			const obj = beatmap.objects[idx];
+
+			if (obj instanceof DrawableHitCircle || obj instanceof DrawableSlider) {
+				obj.isSelected = false;
+
+				if (obj.timelineObject) {
+					obj.timelineObject.isSelected = false;
+				}
+
+				if (obj.select.parent === this.selectContainer) {
+					this.selectContainer.removeChild(obj.select);
+				}
+			}
+		}
+
+		this.selected.clear();
 	}
 }

@@ -1,5 +1,5 @@
 import { ControlPoint, ControlPointType, DifficultyPoint, type SamplePoint, TimingPoint } from 'osu-classes';
-import { type ColorSource, Container, Graphics, BitmapText } from 'pixi.js';
+import { BitmapText, type ColorSource, Container, Graphics } from 'pixi.js';
 import ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject } from '../../../Context.ts';
 import { millisecondsToMinutesString } from '../../../utils.ts';

@@ -1,9 +1,5 @@
 import IntervalTree, { type IntervalInput, Node } from '@flatten-js/interval-tree';
-import {
-	CLOCK_BIG_AUDIO_POS,
-	CLOCK_INT_PLAYING,
-	CLOCK_INT_SEQNO
-} from '../../../Audio/RingBuffer.ts';
+import { CLOCK_BIG_AUDIO_POS, CLOCK_INT_PLAYING, CLOCK_INT_SEQNO } from '../../../Audio/RingBuffer.ts';
 
 type HitObjectMini = {
 	startTime: number;

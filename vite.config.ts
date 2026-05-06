@@ -115,6 +115,10 @@ export default defineConfig({
 			},
 		},
 	},
+	esbuild: {
+		sourcemap: true,
+		keepNames: true
+	},
 	optimizeDeps: {
 		exclude: ['web-demuxer', 'wavesurfer.js'],
 	},

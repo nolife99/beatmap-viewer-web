@@ -4,14 +4,48 @@ import {
 	BufferUsage,
 	type Color,
 	Geometry,
-	Mesh, Renderer,
+	Mesh,
+	type Renderer,
+	RendererType,
 	Shader,
 	UniformGroup
 } from 'pixi.js';
-import RendererConfig from '../../../../Config/RendererConfig.ts';
-import { inject } from '../../../../Context.ts';
 import { ATLAS_GL, ATLAS_GPU, quadPositions } from './SliderAtlasPrograms.ts';
 import type { SliderInstanceStyle } from './SliderAtlasTypes.ts';
+
+const MIN_CAPACITY = 60;
+const GROWTH_FACTOR = 0.5 * (1 + Math.sqrt(5));
+const GROWTH_HEADROOM = 1.15;
+const SHRINK_USAGE_RATIO = 0.35;
+const SHRINK_AFTER_RELEASES = 90;
+const EMPTY_RELEASES_BEFORE_FREE = 180;
+
+//  0: aSegment     float32x4  ax, ay, bx, by
+// 16: aRender      float32x4  renderX, renderY, renderScaleX, renderScaleY
+// 32: aAtlas       unorm16x4  atlasX, atlasY, atlasW, atlasH normalized to atlas size
+// 40: aParams      float32x2  radius, borderWidth
+// 48: aBorderColor unorm8x4   border rgb, unused alpha
+// 52: aInnerColor  unorm8x4   inner rgb, bodyAlpha in alpha
+// 56: aOuterColor  unorm8x4   outer rgb, unused alpha
+const INSTANCE_STRIDE_BYTES = 60;
+const INSTANCE_STRIDE_U32 = INSTANCE_STRIDE_BYTES >>> 2;
+const INSTANCE_STRIDE_U16 = INSTANCE_STRIDE_BYTES >>> 1;
+
+const OFFSET_SEGMENT = 0;
+const OFFSET_RENDER = 16;
+const OFFSET_ATLAS = 32;
+const OFFSET_PARAMS = 40;
+const OFFSET_BORDER_COLOR = 48;
+const OFFSET_INNER_COLOR = 52;
+const OFFSET_OUTER_COLOR = 56;
+
+const SEGMENT_F32 = OFFSET_SEGMENT >>> 2;
+const RENDER_F32 = OFFSET_RENDER >>> 2;
+const ATLAS_U16 = OFFSET_ATLAS >>> 1;
+const PARAMS_F32 = OFFSET_PARAMS >>> 2;
+const BORDER_COLOR_U32 = OFFSET_BORDER_COLOR >>> 2;
+const INNER_COLOR_U32 = OFFSET_INNER_COLOR >>> 2;
+const OUTER_COLOR_U32 = OFFSET_OUTER_COLOR >>> 2;
 
 function createShader(uniforms: UniformGroup) {
 	return new Shader({
@@ -23,31 +57,17 @@ function createShader(uniforms: UniformGroup) {
 	});
 }
 
-function createFloatInstanceBuffer() {
+function createInstanceBuffer() {
 	return new Buffer({
-		data: new Float32Array(4),
-		usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
-		shrinkToFit: false
-	});
-}
-
-function createUint16InstanceBuffer() {
-	return new Buffer({
-		data: new Uint16Array(4),
-		usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
-		shrinkToFit: false
-	});
-}
-
-function createUint8InstanceBuffer() {
-	return new Buffer({
-		data: new Uint8Array(4),
+		data: new Uint8Array(INSTANCE_STRIDE_BYTES),
 		usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
 		shrinkToFit: false
 	});
 }
 
 function createAtlasBatchGeometry() {
+	const instanceBuffer = createInstanceBuffer();
+
 	return new Geometry({
 		attributes: {
 			aQuad: {
@@ -55,38 +75,52 @@ function createAtlasBatchGeometry() {
 				format: 'float32x2'
 			},
 			aSegment: {
-				buffer: createFloatInstanceBuffer(),
+				buffer: instanceBuffer,
 				format: 'float32x4',
+				stride: INSTANCE_STRIDE_BYTES,
+				offset: OFFSET_SEGMENT,
 				instance: true
 			},
 			aRender: {
-				buffer: createFloatInstanceBuffer(),
+				buffer: instanceBuffer,
 				format: 'float32x4',
+				stride: INSTANCE_STRIDE_BYTES,
+				offset: OFFSET_RENDER,
 				instance: true
 			},
 			aAtlas: {
-				buffer: createUint16InstanceBuffer(),
+				buffer: instanceBuffer,
 				format: 'unorm16x4',
+				stride: INSTANCE_STRIDE_BYTES,
+				offset: OFFSET_ATLAS,
 				instance: true
 			},
 			aParams: {
-				buffer: createFloatInstanceBuffer(),
-				format: 'float32x4',
+				buffer: instanceBuffer,
+				format: 'float32x2',
+				stride: INSTANCE_STRIDE_BYTES,
+				offset: OFFSET_PARAMS,
 				instance: true
 			},
 			aBorderColor: {
-				buffer: createUint8InstanceBuffer(),
+				buffer: instanceBuffer,
 				format: 'unorm8x4',
+				stride: INSTANCE_STRIDE_BYTES,
+				offset: OFFSET_BORDER_COLOR,
 				instance: true
 			},
 			aInnerColor: {
-				buffer: createUint8InstanceBuffer(),
+				buffer: instanceBuffer,
 				format: 'unorm8x4',
+				stride: INSTANCE_STRIDE_BYTES,
+				offset: OFFSET_INNER_COLOR,
 				instance: true
 			},
 			aOuterColor: {
-				buffer: createUint8InstanceBuffer(),
+				buffer: instanceBuffer,
 				format: 'unorm8x4',
+				stride: INSTANCE_STRIDE_BYTES,
+				offset: OFFSET_OUTER_COLOR,
 				instance: true
 			}
 		}
@@ -97,63 +131,54 @@ export default class SliderInstanceBatch {
 	readonly geometry = createAtlasBatchGeometry();
 	readonly uniforms: UniformGroup;
 	readonly mesh: Mesh<Geometry, Shader>;
-
-	private readonly segmentBuffer = this.geometry.attributes.aSegment.buffer;
-	private readonly renderBuffer = this.geometry.attributes.aRender.buffer;
-	private readonly atlasBuffer = this.geometry.attributes.aAtlas.buffer;
-	private readonly paramsBuffer = this.geometry.attributes.aParams.buffer;
-	private readonly borderColorBuffer = this.geometry.attributes.aBorderColor.buffer;
-	private readonly innerColorBuffer = this.geometry.attributes.aInnerColor.buffer;
-	private readonly outerColorBuffer = this.geometry.attributes.aOuterColor.buffer;
-
-	private segmentData?: Float32Array;
-	private renderData?: Float32Array;
-	private atlasData?: Uint16Array;
-	private paramsData?: Float32Array;
-	private borderColorData?: Uint8Array;
-	private innerColorData?: Uint8Array;
-	private outerColorData?: Uint8Array;
-
-	private capacity = 0;
-	private readonly colorScratch = new Uint8Array(3);
-
-	private readonly atlasWidth: number;
-	private readonly atlasHeight: number;
-
 	count = 0;
+	private readonly instanceBuffer = this.geometry.attributes.aSegment.buffer;
+	private instanceData32?: Uint32Array;
+	private instanceData16?: Uint16Array;
+	private instanceDataF32?: Float32Array;
+	private instanceDataBytes?: Uint8Array;
+	private capacity = 0;
+	private recentPeak = 0;
+	private lowUsageReleaseCount = 0;
+	private emptyReleaseCount = 0;
+	private readonly invAtlasWidth: number;
+	private readonly invAtlasHeight: number;
+	private readonly uniformParams: Float32Array;
 
 	constructor(atlasWidth: number, atlasHeight: number) {
-		this.atlasWidth = atlasWidth;
-		this.atlasHeight = atlasHeight;
+		this.invAtlasWidth = 1 / atlasWidth;
+		this.invAtlasHeight = 1 / atlasHeight;
 
-		const rendererType = inject<RendererConfig>('config/renderer')?.renderer;
-		const isWebGPU = rendererType === 'webgpu';
-
-		const clipYScale = isWebGPU ? -2 : 2;
-		const clipYBias = isWebGPU ? 1 : -1;
-
+		this.uniformParams = new Float32Array([atlasWidth, atlasHeight, 2, -1]);
 		this.uniforms = new UniformGroup({
 			params: {
-				value: [atlasWidth, atlasHeight, clipYScale, clipYBias],
+				value: this.uniformParams,
 				type: 'vec4<f32>'
 			}
 		});
 
-		const blendMode = isWebGPU ? 'max' : 'none';
-
 		this.mesh = new Mesh({
 			geometry: this.geometry,
-			shader: createShader(this.uniforms),
-			blendMode
+			shader: createShader(this.uniforms)
 		});
 
 		this.mesh.state.depthTest = true;
-		this.mesh.visible = false;
+		this.mesh.renderable = false;
 	}
 
-	beginFrame(renderer: Renderer) {
+	beginFrame() {
 		this.count = 0;
-		this.mesh.visible = false;
+		this.mesh.renderable = false;
+	}
+
+	applyRenderState(renderer: Renderer) {
+		const isWebGPU = renderer.type === RendererType.WEBGPU;
+
+		this.mesh.groupBlendMode = isWebGPU ? 'max' : 'none';
+		this.uniformParams[2] = isWebGPU ? -2 : 2;
+		this.uniformParams[3] = isWebGPU ? 1 : -1;
+
+		this.uniforms.update();
 	}
 
 	pushSegment(
@@ -174,88 +199,97 @@ export default class SliderInstanceBatch {
 	) {
 		this.ensureCapacity(this.count + 1);
 
-		const o = this.count * 4;
+		const i = this.count;
+		const base32 = i * INSTANCE_STRIDE_U32;
+		const base16 = i * INSTANCE_STRIDE_U16;
 
-		const segmentData = this.segmentData!;
-		const renderData = this.renderData!;
-		const atlasData = this.atlasData!;
-		const paramsData = this.paramsData!;
-		const borderColorData = this.borderColorData!;
-		const innerColorData = this.innerColorData!;
-		const outerColorData = this.outerColorData!;
+		const f32 = this.instanceDataF32!;
+		const u16 = this.instanceData16!;
+		const u32 = this.instanceData32!;
 
-		segmentData[o] = ax;
-		segmentData[o + 1] = ay;
-		segmentData[o + 2] = bx;
-		segmentData[o + 3] = by;
+		f32[base32 + SEGMENT_F32] = ax;
+		f32[base32 + SEGMENT_F32 + 1] = ay;
+		f32[base32 + SEGMENT_F32 + 2] = bx;
+		f32[base32 + SEGMENT_F32 + 3] = by;
 
-		renderData[o] = renderX;
-		renderData[o + 1] = renderY;
-		renderData[o + 2] = renderScaleX;
-		renderData[o + 3] = renderScaleY;
+		f32[base32 + RENDER_F32] = renderX;
+		f32[base32 + RENDER_F32 + 1] = renderY;
+		f32[base32 + RENDER_F32 + 2] = renderScaleX;
+		f32[base32 + RENDER_F32 + 3] = renderScaleY;
 
-		atlasData[o] = toUnorm16(atlasX / this.atlasWidth);
-		atlasData[o + 1] = toUnorm16(atlasY / this.atlasHeight);
-		atlasData[o + 2] = toUnorm16(atlasW / this.atlasWidth);
-		atlasData[o + 3] = toUnorm16(atlasH / this.atlasHeight);
+		u16[base16 + ATLAS_U16] = packUnorm16(atlasX * this.invAtlasWidth);
+		u16[base16 + ATLAS_U16 + 1] = packUnorm16(atlasY * this.invAtlasHeight);
+		u16[base16 + ATLAS_U16 + 2] = packUnorm16(atlasW * this.invAtlasWidth);
+		u16[base16 + ATLAS_U16 + 3] = packUnorm16(atlasH * this.invAtlasHeight);
 
-		paramsData[o] = radius;
-		paramsData[o + 1] = style.borderWidth;
-		paramsData[o + 2] = style.bodyAlpha;
-		paramsData[o + 3] = 0;
+		f32[base32 + PARAMS_F32] = radius;
+		f32[base32 + PARAMS_F32 + 1] = style.borderWidth;
 
-		writeColor(borderColorData, o, style.borderColor, this.colorScratch);
-		writeColor(innerColorData, o, style.innerColor, this.colorScratch);
-		writeColor(outerColorData, o, style.outerColor, this.colorScratch);
+		const bodyAlphaByte = packUnorm8(style.bodyAlpha);
+
+		u32[base32 + BORDER_COLOR_U32] = packRgbAlphaByte(style.borderColor, 255);
+		u32[base32 + INNER_COLOR_U32] = packRgbAlphaByte(style.innerColor, bodyAlphaByte);
+		u32[base32 + OUTER_COLOR_U32] = packRgbAlphaByte(style.outerColor, 255);
 
 		this.count++;
 	}
 
 	upload() {
 		this.geometry.instanceCount = this.count;
-		this.mesh.visible = this.count > 0;
+		this.mesh.renderable = this.count > 0;
 
 		if (this.count <= 0) return;
 
-		const elements = this.count * 4;
-		this.segmentBuffer.setDataWithSize(this.segmentData!, elements, true);
-		this.renderBuffer.setDataWithSize(this.renderData!, elements, true);
-		this.atlasBuffer.setDataWithSize(this.atlasData!, elements, true);
-		this.paramsBuffer.setDataWithSize(this.paramsData!, elements, true);
-		this.borderColorBuffer.setDataWithSize(this.borderColorData!, elements, true);
-		this.innerColorBuffer.setDataWithSize(this.innerColorData!, elements, true);
-		this.outerColorBuffer.setDataWithSize(this.outerColorData!, elements, true);
+		this.recentPeak = Math.max(this.recentPeak, this.count);
+
+		this.instanceBuffer.setDataWithSize(
+			this.instanceDataBytes!,
+			this.count * INSTANCE_STRIDE_BYTES,
+			false
+		);
 	}
 
 	releaseStaging() {
-		freePooled(this.segmentData);
-		freePooled(this.renderData);
-		freePooled(this.atlasData);
-		freePooled(this.paramsData);
-		freePooled(this.borderColorData);
-		freePooled(this.innerColorData);
-		freePooled(this.outerColorData);
+		if (this.capacity <= 0) return;
 
-		this.segmentData = undefined;
-		this.renderData = undefined;
-		this.atlasData = undefined;
-		this.paramsData = undefined;
-		this.borderColorData = undefined;
-		this.innerColorData = undefined;
-		this.outerColorData = undefined;
-		this.capacity = 0;
+		if (this.count <= 0) {
+			this.emptyReleaseCount++;
+
+			if (this.emptyReleaseCount >= EMPTY_RELEASES_BEFORE_FREE) {
+				this.freeStaging();
+			}
+
+			return;
+		}
+
+		this.emptyReleaseCount = 0;
+
+		const usageRatio = this.count / this.capacity;
+
+		if (usageRatio >= SHRINK_USAGE_RATIO) {
+			this.lowUsageReleaseCount = 0;
+			this.recentPeak = Math.max(this.recentPeak, this.count);
+			return;
+		}
+
+		this.lowUsageReleaseCount++;
+
+		if (this.lowUsageReleaseCount < SHRINK_AFTER_RELEASES) return;
+
+		const targetCapacity = this.computeRetainedCapacity(this.recentPeak || this.count);
+
+		if (targetCapacity < this.capacity) {
+			this.resizeStaging(targetCapacity);
+		}
+
+		this.lowUsageReleaseCount = 0;
+		this.recentPeak = this.count;
 	}
 
 	destroy() {
-		this.releaseStaging();
+		this.freeStaging();
 
-		this.segmentBuffer.destroy();
-		this.renderBuffer.destroy();
-		this.atlasBuffer.destroy();
-		this.paramsBuffer.destroy();
-		this.borderColorBuffer.destroy();
-		this.innerColorBuffer.destroy();
-		this.outerColorBuffer.destroy();
+		this.instanceBuffer.destroy();
 
 		this.geometry.destroy();
 		this.mesh.shader?.destroy();
@@ -265,105 +299,130 @@ export default class SliderInstanceBatch {
 	private ensureCapacity(requiredInstances: number) {
 		if (requiredInstances <= this.capacity) return;
 
-		let nextCapacity = this.capacity || 16;
-		while (nextCapacity < requiredInstances) nextCapacity <<= 1;
+		const nextCapacity = this.computeGrowthCapacity(requiredInstances);
 
-		const usedElements = this.count * 4;
-		const requiredElements = nextCapacity * 4;
-
-		this.segmentData = rentCopyFreeFloat32(this.segmentData, usedElements, requiredElements);
-		this.renderData = rentCopyFreeFloat32(this.renderData, usedElements, requiredElements);
-		this.atlasData = rentCopyFreeUint16(this.atlasData, usedElements, requiredElements);
-		this.paramsData = rentCopyFreeFloat32(this.paramsData, usedElements, requiredElements);
-		this.borderColorData = rentCopyFreeUint8(this.borderColorData, usedElements, requiredElements);
-		this.innerColorData = rentCopyFreeUint8(this.innerColorData, usedElements, requiredElements);
-		this.outerColorData = rentCopyFreeUint8(this.outerColorData, usedElements, requiredElements);
+		this.instanceData32 = rentCopyFreeInstanceBuffer(
+			this.instanceData32,
+			this.count,
+			nextCapacity
+		);
+		this.createViews(nextCapacity);
 
 		this.capacity = nextCapacity;
 	}
+
+	private computeGrowthCapacity(requiredInstances: number) {
+		let nextCapacity = this.capacity || MIN_CAPACITY;
+		const requiredWithHeadroom = Math.ceil(requiredInstances * GROWTH_HEADROOM);
+
+		while (nextCapacity < requiredWithHeadroom) {
+			nextCapacity = Math.ceil(nextCapacity * GROWTH_FACTOR);
+		}
+
+		return nextCapacity;
+	}
+
+	private computeRetainedCapacity(referenceInstances: number) {
+		const target = Math.max(
+			MIN_CAPACITY,
+			Math.ceil(referenceInstances * GROWTH_HEADROOM)
+		);
+
+		let capacity = MIN_CAPACITY;
+
+		while (capacity < target) {
+			capacity = Math.ceil(capacity * GROWTH_FACTOR);
+		}
+
+		return capacity;
+	}
+
+	private resizeStaging(nextCapacity: number) {
+		if (nextCapacity <= 0) {
+			this.freeStaging();
+			return;
+		}
+
+		if (nextCapacity === this.capacity) return;
+
+		freePooled(this.instanceData32);
+
+		this.instanceData32 = rentInstanceBuffer(nextCapacity);
+		this.createViews(nextCapacity);
+
+		this.capacity = nextCapacity;
+	}
+
+	private createViews(capacity: number) {
+		const data32 = this.instanceData32!;
+		const byteLength = capacity * INSTANCE_STRIDE_BYTES;
+
+		this.instanceDataBytes = new Uint8Array(data32.buffer, data32.byteOffset, byteLength);
+		this.instanceData16 = new Uint16Array(data32.buffer, data32.byteOffset, byteLength >>> 1);
+		this.instanceDataF32 = new Float32Array(data32.buffer, data32.byteOffset, byteLength >>> 2);
+	}
+
+	private freeStaging() {
+		freePooled(this.instanceData32);
+
+		this.instanceData32 = undefined;
+		this.instanceData16 = undefined;
+		this.instanceDataF32 = undefined;
+		this.instanceDataBytes = undefined;
+
+		this.capacity = 0;
+		this.recentPeak = 0;
+		this.lowUsageReleaseCount = 0;
+		this.emptyReleaseCount = 0;
+	}
 }
 
-function rentFloat32(elements: number): Float32Array {
-	const value = pool(elements, 'float32') as Float32Array | undefined;
-	if (!value) throw new Error(`Failed to rent Float32Array(${elements}).`);
+function rentInstanceBuffer(instances: number): Uint32Array {
+	const words = instances * INSTANCE_STRIDE_U32;
+	const value = pool(words, 'uint32') as Uint32Array | undefined;
+	if (!value) throw new Error(`Failed to rent Uint32Array(${words}).`);
 	return value;
 }
 
-function rentUint16(elements: number): Uint16Array {
-	const value = pool(elements, 'uint16') as Uint16Array | undefined;
-	if (!value) throw new Error(`Failed to rent Uint16Array(${elements}).`);
-	return value;
-}
+function rentCopyFreeInstanceBuffer(
+	old: Uint32Array | undefined,
+	usedInstances: number,
+	requiredInstances: number
+): Uint32Array {
+	const next = rentInstanceBuffer(requiredInstances);
 
-function rentUint8(elements: number): Uint8Array {
-	const value = pool(elements, 'uint8') as Uint8Array | undefined;
-	if (!value) throw new Error(`Failed to rent Uint8Array(${elements}).`);
-	return value;
-}
-
-function rentCopyFreeFloat32(
-	old: Float32Array | undefined,
-	usedElements: number,
-	requiredElements: number
-): Float32Array {
-	const next = rentFloat32(requiredElements);
 	if (old) {
-		next.set(old.subarray(0, usedElements));
+		next.set(old.subarray(0, usedInstances * INSTANCE_STRIDE_U32));
 		freePooled(old);
 	}
+
 	return next;
 }
 
-function rentCopyFreeUint16(
-	old: Uint16Array | undefined,
-	usedElements: number,
-	requiredElements: number
-): Uint16Array {
-	const next = rentUint16(requiredElements);
-	if (old) {
-		next.set(old.subarray(0, usedElements));
-		freePooled(old);
-	}
-	return next;
-}
-
-function rentCopyFreeUint8(
-	old: Uint8Array | undefined,
-	usedElements: number,
-	requiredElements: number
-): Uint8Array {
-	const next = rentUint8(requiredElements);
-	if (old) {
-		next.set(old.subarray(0, usedElements));
-		freePooled(old);
-	}
-	return next;
-}
-
-function freePooled(value: Float32Array | Uint16Array | Uint8Array | undefined) {
+function freePooled(value: Uint32Array | undefined) {
 	if (!value) return;
 	pool.free(value);
 }
 
-function toUnorm16(value: number): number {
-	if (!Number.isFinite(value)) return 0;
-	return Math.max(0, Math.min(65535, Math.round(value * 65535)));
+function packUnorm16(value: number): number {
+	return (clamp01(value) * 65535 + 0.5) | 0;
 }
 
-function toUnorm8(value: number): number {
-	if (!Number.isFinite(value)) return 0;
-	return Math.max(0, Math.min(255, Math.round(value * 255)));
+function packUnorm8(value: number): number {
+	return (clamp01(value) * 255 + 0.5) | 0;
 }
 
-function writeColor(
-	out: Uint8Array,
-	offset: number,
-	color: Color,
-	scratch: Uint8Array
-) {
-	color.toUint8RgbArray(scratch);
-	out[offset] = scratch[0];
-	out[offset + 1] = scratch[1];
-	out[offset + 2] = scratch[2];
-	out[offset + 3] = toUnorm8(color.alpha);
+function clamp01(value: number): number {
+	return value <= 0 ? 0 : value >= 1 ? 1 : value;
+}
+
+function packRgbAlphaByte(color: Color, alphaByte: number): number {
+	const rgb = color.toNumber(); // 0xRRGGBB
+
+	// Uint32 little-endian bytes become RGBA for unorm8x4.
+	return (((alphaByte & 0xFF) << 24) |
+		((rgb & 0xFF) << 16) |          // B
+		(((rgb >> 8) & 0xFF) << 8) |    // G
+		((rgb >> 16) & 0xFF)            // R
+	) >>> 0;
 }

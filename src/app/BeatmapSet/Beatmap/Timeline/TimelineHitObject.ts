@@ -19,7 +19,7 @@ export default abstract class TimelineHitObject extends SkinnableElement {
 		this.container.onRender = () => {
 			const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
 			this.container.x = this.object.startTime / (DEFAULT_SCALE / scale);
-		}
+		};
 	}
 
 	protected _object!: StandardHitObject;

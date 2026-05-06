@@ -40,6 +40,7 @@ export default class Storyboard {
 	private _tree?: IntervalTree;
 	private _previous = new Set<number>();
 	private _previousMaster = new Set<number>();
+	private textureMap = new Map<string, Texture>();
 
 	constructor(private blob: Blob, private resources: Map<string, Blob>) {
 		const mask = new Graphics()
@@ -73,7 +74,6 @@ export default class Storyboard {
 		this.container.mask = mask;
 	}
 
-	private textureMap = new Map<string, Texture>();
 	async loadTextures() {
 		const promises = [...this.resources].map(async ([key, resource]) => {
 			if (

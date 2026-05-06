@@ -8,13 +8,7 @@ import {
 	SpinnerTick,
 	type StandardHitObject
 } from 'osu-standard-stable';
-import {
-	Container,
-	Sprite,
-	BitmapText,
-	Texture,
-	type ColorSource, Color, Rectangle
-} from 'pixi.js';
+import { BitmapText, Color, type ColorSource, Container, Rectangle, Sprite, Texture } from 'pixi.js';
 import Beatmap from '..';
 import TimelineConfig from '../../../Config/TimelineConfig.ts';
 import { type Context, inject } from '../../../Context.ts';
@@ -224,20 +218,16 @@ export default class TimelineSlider extends TimelineHitObject {
 
 	body = new Container();
 	select = new Container({ visible: false });
-
+	length = 0;
 	private readonly outlineHead = new Sprite(getSolidCapTexture());
 	private readonly outlineMid = new Sprite(getPixelTexture());
 	private readonly outlineTail = new Sprite(getSolidCapTexture());
-
 	private readonly fillHead = new Sprite(getDefaultCapTexture());
 	private readonly fillMid = new Sprite(getDefaultMidTexture());
 	private readonly fillTail = new Sprite(getDefaultCapTexture());
-
 	private readonly selectHead = new Sprite(getSelectCapTexture());
 	private readonly selectMid = new Sprite(getSelectMidTexture());
 	private readonly selectTail = new Sprite(getSelectCapTexture());
-
-	length = 0;
 
 	constructor(object: Slider) {
 		super(object);
@@ -348,86 +338,6 @@ export default class TimelineSlider extends TimelineHitObject {
 		this.refreshSprite();
 	}
 
-	private setupSprites() {
-		this.body.addChild(
-			this.outlineMid,
-			this.outlineHead,
-			this.outlineTail,
-			this.fillMid,
-			this.fillHead,
-			this.fillTail
-		);
-
-		this.select.addChild(
-			this.selectMid,
-			this.selectHead,
-			this.selectTail
-		);
-
-		this.setupCap(this.outlineHead);
-		this.setupCap(this.outlineTail);
-		this.setupCap(this.fillHead);
-		this.setupCap(this.fillTail);
-		this.setupCap(this.selectHead);
-		this.setupCap(this.selectTail);
-
-		this.outlineMid.anchor.set(0, 0.5);
-		this.fillMid.anchor.set(0, 0.5);
-		this.selectMid.anchor.set(0, 0.5);
-	}
-
-	private setupCap(sprite: Sprite) {
-		sprite.anchor.set(1, 0.5);
-	}
-
-	private setCapsule(
-		head: Sprite,
-		mid: Sprite,
-		tail: Sprite,
-		length: number,
-		diameter: number,
-		tint: ColorSource,
-		visible: boolean
-	) {
-		const safeLength = Math.max(0, length);
-		const safeDiameter = Math.max(0, diameter);
-		const radius = safeDiameter * 0.5;
-
-		head.visible = visible;
-		mid.visible = visible;
-		tail.visible = visible;
-
-		head.tint = tint;
-		mid.tint = tint;
-		tail.tint = tint;
-
-		mid.position.set(0, 0);
-		mid.width = safeLength;
-		mid.height = safeDiameter;
-
-		head.scale.x = 1;
-		head.position.set(0, 0);
-		head.width = radius;
-		head.height = safeDiameter;
-
-		tail.scale.x = 1;
-		tail.position.set(safeLength, 0);
-		tail.width = radius;
-		tail.height = safeDiameter;
-		tail.scale.x = -Math.abs(tail.scale.x);
-	}
-
-	private getSliderTint(): ColorSource {
-		const color = this.context.consume<DrawableSlider>('object')?.color;
-
-		if (typeof color === 'number') return color;
-		if (!color) return 'rgb(0,0,0)';
-		if (color.includes('rgb')) return color;
-		if (color.includes('#')) return color;
-
-		return `rgb(${color})`;
-	}
-
 	updateVelocity() {
 		const beatmap = this.context.consume<Beatmap>('beatmapObject');
 		if (!beatmap) return;
@@ -464,7 +374,7 @@ export default class TimelineSlider extends TimelineHitObject {
 		const isArgon =
 			this.skinManager?.getCurrentSkin().config.General.Argon ?? false;
 
-		const tint = this.getSliderTint();
+		const tint = this.context.consume<DrawableSlider>('object')?.color ?? 'rgb(0,0,0)';
 
 		this.body.alpha = isArgon ? ARGON_ALPHA : DEFAULT_ALPHA;
 
@@ -550,5 +460,74 @@ export default class TimelineSlider extends TimelineHitObject {
 						: 0)) /
 				(DEFAULT_SCALE / scale);
 		}
+	}
+
+	private setupSprites() {
+		this.body.addChild(
+			this.outlineMid,
+			this.outlineHead,
+			this.outlineTail,
+			this.fillMid,
+			this.fillHead,
+			this.fillTail
+		);
+
+		this.select.addChild(
+			this.selectMid,
+			this.selectHead,
+			this.selectTail
+		);
+
+		this.setupCap(this.outlineHead);
+		this.setupCap(this.outlineTail);
+		this.setupCap(this.fillHead);
+		this.setupCap(this.fillTail);
+		this.setupCap(this.selectHead);
+		this.setupCap(this.selectTail);
+
+		this.outlineMid.anchor.set(0, 0.5);
+		this.fillMid.anchor.set(0, 0.5);
+		this.selectMid.anchor.set(0, 0.5);
+	}
+
+	private setupCap(sprite: Sprite) {
+		sprite.anchor.set(1, 0.5);
+	}
+
+	private setCapsule(
+		head: Sprite,
+		mid: Sprite,
+		tail: Sprite,
+		length: number,
+		diameter: number,
+		tint: ColorSource,
+		visible: boolean
+	) {
+		const safeLength = Math.max(0, length);
+		const safeDiameter = Math.max(0, diameter);
+		const radius = safeDiameter * 0.5;
+
+		head.visible = visible;
+		mid.visible = visible;
+		tail.visible = visible;
+
+		head.tint = tint;
+		mid.tint = tint;
+		tail.tint = tint;
+
+		mid.position.set(0, 0);
+		mid.width = safeLength;
+		mid.height = safeDiameter;
+
+		head.scale.x = 1;
+		head.position.set(0, 0);
+		head.width = radius;
+		head.height = safeDiameter;
+
+		tail.scale.x = 1;
+		tail.position.set(safeLength, 0);
+		tail.width = radius;
+		tail.height = safeDiameter;
+		tail.scale.x = -Math.abs(tail.scale.x);
 	}
 }

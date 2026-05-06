@@ -385,13 +385,13 @@ type WorkletInMessage =
 	| SeekMessage
 	| PlayMessage
 	| {
-		type: 'pause';
-		generation: number;
-	}
+	type: 'pause';
+	generation: number;
+}
 	| {
-		type: 'setRate';
-		rate: number;
-		pitchMode: PitchMode;
-	};
+	type: 'setRate';
+	rate: number;
+	pitchMode: PitchMode;
+};
 
 registerProcessor('clock-bridge-processor', ClockBridgeProcessor);

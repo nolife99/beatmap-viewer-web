@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Container, FillGradient, Graphics, Sprite, BitmapText, type Texture } from 'pixi.js';
+import { BitmapText, Container, FillGradient, Graphics, Sprite, type Texture } from 'pixi.js';
 import ColorConfig from '../../../Config/ColorConfig.ts';
 import { inject } from '../../../Context.ts';
 import { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
@@ -135,8 +135,7 @@ export default class Spectrogram {
 
 		if (val) {
 			this.container.onRender = renderer => this.spinFn(renderer.tick * 5);
-		}
-		else {
+		} else {
 			this.container.onRender = null;
 		}
 	}

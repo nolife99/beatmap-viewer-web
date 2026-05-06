@@ -1,6 +1,6 @@
 import { HitResult, HitSample as Sample, LegacyReplayFrame, Vector2 } from 'osu-classes';
 import { type Slider, SliderHead, SliderRepeat, SliderTail, SliderTick, StandardHitObject } from 'osu-standard-stable';
-import { Container, Graphics, RenderLayer } from 'pixi.js';
+import { Color, Container, Graphics, RenderLayer } from 'pixi.js';
 import Beatmap from '..';
 import HitSample from '../../../Audio/HitSample.ts';
 import ExperimentalConfig from '../../../Config/ExperimentalConfig.ts';
@@ -30,7 +30,7 @@ import DrawableSliderTick from './DrawableSliderTick.ts';
 import SliderProgressView from './Rendering/CalculateSliderProgress.ts';
 import SliderBodyRenderer from './Rendering/SliderBodyRenderer.ts';
 import BeatmapSliderLayer from './Rendering/BeatmapSliderLayer.ts';
-import { type SliderUniformPatch } from "./Rendering/SliderAtlasTypes.ts";
+import { type SliderUniformPatch } from './Rendering/SliderAtlasTypes.ts';
 
 export default class DrawableSlider
 	extends DrawableHitObject
@@ -47,7 +47,7 @@ export default class DrawableSlider
 	judgement: DrawableJudgement;
 	trackColor: number[] = [0, 0, 0];
 	borderColor: number[] = [0, 0, 0];
-	color = '0,0,0';
+	color = new Color([0, 0, 0]);
 	lastGeometryState = { head: Infinity, tail: -Infinity, scale: -Infinity };
 	private readonly renderer: SliderBodyRenderer;
 	private sliderWhistleSample: HitSample;
@@ -397,10 +397,12 @@ export default class DrawableSlider
 			// Segment intersections with Rect Edges
 
 			// Edge 1: Top (minX, minY) to (maxX, minY)
-			cdx = maxX - minX; cdy = 0;
+			cdx = maxX - minX;
+			cdy = 0;
 			denom = abx * cdy - aby * cdx;
 			if (denom !== 0) {
-				acx = minX - x1; acy = minY - y1;
+				acx = minX - x1;
+				acy = minY - y1;
 				tInt = (acx * cdy - acy * cdx) / denom;
 				if (tInt >= 0 && tInt <= 1) {
 					uInt = (acx * aby - acy * abx) / denom;
@@ -409,10 +411,12 @@ export default class DrawableSlider
 			}
 
 			// Edge 2: Bottom (maxX, minY) to (maxX, maxY)
-			cdx = 0; cdy = maxY - minY;
+			cdx = 0;
+			cdy = maxY - minY;
 			denom = abx * cdy - aby * cdx;
 			if (denom !== 0) {
-				acx = maxX - x1; acy = minY - y1;
+				acx = maxX - x1;
+				acy = minY - y1;
 				tInt = (acx * cdy - acy * cdx) / denom;
 				if (tInt >= 0 && tInt <= 1) {
 					uInt = (acx * aby - acy * abx) / denom;
@@ -421,10 +425,12 @@ export default class DrawableSlider
 			}
 
 			// Edge 3: Right (maxX, maxY) to (minX, maxY)
-			cdx = minX - maxX; cdy = 0;
+			cdx = minX - maxX;
+			cdy = 0;
 			denom = abx * cdy - aby * cdx;
 			if (denom !== 0) {
-				acx = maxX - x1; acy = maxY - y1;
+				acx = maxX - x1;
+				acy = maxY - y1;
 				tInt = (acx * cdy - acy * cdx) / denom;
 				if (tInt >= 0 && tInt <= 1) {
 					uInt = (acx * aby - acy * abx) / denom;
@@ -433,10 +439,12 @@ export default class DrawableSlider
 			}
 
 			// Edge 4: Left (minX, maxY) to (minX, minY)
-			cdx = 0; cdy = minY - maxY;
+			cdx = 0;
+			cdy = minY - maxY;
 			denom = abx * cdy - aby * cdx;
 			if (denom !== 0) {
-				acx = minX - x1; acy = maxY - y1;
+				acx = minX - x1;
+				acy = maxY - y1;
 				tInt = (acx * cdy - acy * cdx) / denom;
 				if (tInt >= 0 && tInt <= 1) {
 					uInt = (acx * aby - acy * abx) / denom;
@@ -449,40 +457,48 @@ export default class DrawableSlider
 
 			if (lenSq <= 0) {
 				// Corner 1 (minX, minY)
-				ox = minX - x1; oy = minY - y1;
+				ox = minX - x1;
+				oy = minY - y1;
 				if (ox * ox + oy * oy <= radiusSq) return true;
 				// Corner 2 (maxX, minY)
-				ox = maxX - x1; oy = minY - y1;
+				ox = maxX - x1;
+				oy = minY - y1;
 				if (ox * ox + oy * oy <= radiusSq) return true;
 				// Corner 3 (maxX, maxY)
-				ox = maxX - x1; oy = maxY - y1;
+				ox = maxX - x1;
+				oy = maxY - y1;
 				if (ox * ox + oy * oy <= radiusSq) return true;
 				// Corner 4 (minX, maxY)
-				ox = minX - x1; oy = maxY - y1;
+				ox = minX - x1;
+				oy = maxY - y1;
 				if (ox * ox + oy * oy <= radiusSq) return true;
 			} else {
 				// Corner 1: (minX, minY)
 				tDist = ((minX - x1) * abx + (minY - y1) * aby) / lenSq;
 				if (tDist < 0) tDist = 0; else if (tDist > 1) tDist = 1;
-				ox = minX - (x1 + tDist * abx); oy = minY - (y1 + tDist * aby);
+				ox = minX - (x1 + tDist * abx);
+				oy = minY - (y1 + tDist * aby);
 				if (ox * ox + oy * oy <= radiusSq) return true;
 
 				// Corner 2: (maxX, minY)
 				tDist = ((maxX - x1) * abx + (minY - y1) * aby) / lenSq;
 				if (tDist < 0) tDist = 0; else if (tDist > 1) tDist = 1;
-				ox = maxX - (x1 + tDist * abx); oy = minY - (y1 + tDist * aby);
+				ox = maxX - (x1 + tDist * abx);
+				oy = minY - (y1 + tDist * aby);
 				if (ox * ox + oy * oy <= radiusSq) return true;
 
 				// Corner 3: (maxX, maxY)
 				tDist = ((maxX - x1) * abx + (maxY - y1) * aby) / lenSq;
 				if (tDist < 0) tDist = 0; else if (tDist > 1) tDist = 1;
-				ox = maxX - (x1 + tDist * abx); oy = maxY - (y1 + tDist * aby);
+				ox = maxX - (x1 + tDist * abx);
+				oy = maxY - (y1 + tDist * aby);
 				if (ox * ox + oy * oy <= radiusSq) return true;
 
 				// Corner 4: (minX, maxY)
 				tDist = ((minX - x1) * abx + (maxY - y1) * aby) / lenSq;
 				if (tDist < 0) tDist = 0; else if (tDist > 1) tDist = 1;
-				ox = minX - (x1 + tDist * abx); oy = maxY - (y1 + tDist * aby);
+				ox = minX - (x1 + tDist * abx);
+				oy = maxY - (y1 + tDist * aby);
 				if (ox * ox + oy * oy <= radiusSq) return true;
 			}
 		}
@@ -665,8 +681,7 @@ export default class DrawableSlider
 		if (updated) {
 			this.renderer.setBodyVisible(true);
 			this.updateGeometry(updated.start, updated.end, this.getSkinBodyScale());
-		}
-		else this.renderer.setBodyVisible(false);
+		} else this.renderer.setBodyVisible(false);
 
 		this.judgement.frame(time);
 	}

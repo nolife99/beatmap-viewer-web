@@ -1,13 +1,8 @@
-import {
-	Application,
-	Container, Renderer,
-	RenderTexture
-} from 'pixi.js';
+import { Mesh, type Renderer, RenderTexture } from 'pixi.js';
 import SliderInstanceBatch from './SliderInstanceBatch.ts';
 
 export default class SliderAtlasPage {
 	readonly texture: RenderTexture;
-	readonly renderRoot = new Container();
 	readonly batch: SliderInstanceBatch;
 
 	private used = false;
@@ -25,12 +20,11 @@ export default class SliderAtlasPage {
 		this.texture.label = label;
 
 		this.batch = new SliderInstanceBatch(width, height);
-		this.renderRoot.addChild(this.batch.mesh);
 	}
 
-	beginFrame(renderer: Renderer) {
+	beginFrame() {
 		this.used = false;
-		this.batch.beginFrame(renderer);
+		this.batch.beginFrame();
 	}
 
 	markUsed() {
@@ -45,19 +39,23 @@ export default class SliderAtlasPage {
 		this.batch.releaseStaging();
 	}
 
-	render(app: Application) {
+	render(renderer: Renderer) {
 		if (!this.used) return;
 
-		app.renderer.render({
-			container: this.renderRoot,
-			target: this.texture,
-			clear: true
-		});
+		const renderTarget = renderer.renderTarget;
+		renderTarget.push(this.texture, true);
+
+		this.batch.applyRenderState(renderer);
+
+		try {
+			renderer.renderPipes.mesh.execute(this.batch.mesh as Mesh);
+		} finally {
+			renderTarget.pop();
+		}
 	}
 
 	destroy() {
 		this.batch.destroy();
-		this.renderRoot.destroy({ children: false });
 		this.texture.destroy(true);
 	}
 }

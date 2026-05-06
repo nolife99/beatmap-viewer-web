@@ -55,11 +55,13 @@ export default class SpectrogramProcessor {
 	private destroyed = false;
 	private renderToken = 0;
 
-	private columnAccum: Float32Array;
-	private columnCounts: Uint16Array;
+	private readonly activeColumnAccum: Float32Array;
+	private activeColumn = -1;
+	private activeColumnCount = 0;
+
 	private readonly smoothingBins: number;
-	private windowBuffer: Float32Array;
-	private carryBuffer: Float32Array;
+	private readonly windowBuffer: Float32Array;
+	private readonly carryBuffer: Float32Array;
 	private carryLength = 0;
 
 	private writeColumn = 0;
@@ -117,8 +119,7 @@ export default class SpectrogramProcessor {
 		);
 
 		this.smoothingBins = this.fftSamples / 2;
-		this.columnAccum = pool(this.width * this.smoothingBins, 'float32') as Float32Array;
-		this.columnCounts = pool(this.width, 'uint16') as Uint16Array;
+		this.activeColumnAccum = pool(this.smoothingBins, 'float32') as Float32Array;
 		this.windowBuffer = pool(this.fftSamples, 'float32') as Float32Array;
 		this.carryBuffer = pool(this.fftSamples * 2, 'float32') as Float32Array;
 
@@ -170,8 +171,7 @@ export default class SpectrogramProcessor {
 		this.destroyed = true;
 		this.renderToken++;
 
-		pool.free(this.columnAccum);
-		pool.free(this.columnCounts);
+		pool.free(this.activeColumnAccum);
 		pool.free(this.windowBuffer);
 		pool.free(this.carryBuffer);
 
@@ -182,9 +182,9 @@ export default class SpectrogramProcessor {
 		this.writeColumn = 0;
 		this.lastFlushedColumn = 0;
 		this.carryLength = 0;
-
-		this.columnAccum.fill(0);
-		this.columnCounts.fill(0);
+		this.activeColumn = -1;
+		this.activeColumnCount = 0;
+		this.activeColumnAccum.fill(0);
 
 		this.fillImageDataBlack();
 		this.ctx.clearRect(0, 0, this.width, this.height);
@@ -273,6 +273,14 @@ export default class SpectrogramProcessor {
 
 		if (column < 0 || column >= this.width) return;
 
+		if (this.activeColumn !== column) {
+			this.drawActiveColumn();
+
+			this.activeColumn = column;
+			this.activeColumnCount = 0;
+			this.activeColumnAccum.fill(0);
+		}
+
 		let spectrum = this.fft.calculateSpectrum(samples);
 
 		if (this.filterBank) {
@@ -280,14 +288,13 @@ export default class SpectrogramProcessor {
 		}
 
 		const bins = Math.min(this.smoothingBins, spectrum.length);
-		const base = column * this.smoothingBins;
 
 		for (let i = 0; i < bins; i++) {
-			this.columnAccum[base + i] += spectrum[i];
+			this.activeColumnAccum[i] += spectrum[i];
 		}
 
-		if (this.columnCounts[column] < 65535) {
-			this.columnCounts[column]++;
+		if (this.activeColumnCount < 65535) {
+			this.activeColumnCount++;
 		}
 
 		if (column >= this.writeColumn) {
@@ -295,10 +302,21 @@ export default class SpectrogramProcessor {
 		}
 	}
 
+	private drawActiveColumn() {
+		if (
+			this.activeColumn < 0 ||
+			this.activeColumn >= this.width ||
+			this.activeColumnCount === 0
+		) {
+			return;
+		}
+
+		this.drawAveragedColumn(this.activeColumn, this.activeColumnCount);
+	}
+
 	private drawAveragedColumn(x: number, count: number) {
 		const data = this.imageData.data;
 		const bins = this.smoothingBins;
-		const base = x * bins;
 		const gainPlusRange = this.gainDB + this.rangeDB;
 		const invCount = 1 / count;
 
@@ -310,7 +328,7 @@ export default class SpectrogramProcessor {
 				Math.max(0, Math.floor((freq / (this.sampleRate / 2)) * bins))
 			);
 
-			const magnitude = Math.max(1e-12, this.columnAccum[base + bin] * invCount);
+			const magnitude = Math.max(1e-12, this.activeColumnAccum[bin] * invCount);
 			const valueDB = 20 * Math.log10(magnitude);
 
 			let colorIndex: number;
@@ -342,16 +360,9 @@ export default class SpectrogramProcessor {
 	private flush(force: boolean) {
 		if (!force && this.writeColumn === this.lastFlushedColumn) return;
 
-		const start = this.lastFlushedColumn;
-		const end = Math.min(this.writeColumn, this.width);
+		this.drawActiveColumn();
 
-		for (let x = start; x < end; x++) {
-			const count = this.columnCounts[x];
-			if (count === 0) continue;
-			this.drawAveragedColumn(x, count);
-		}
-
-		this.lastFlushedColumn = end;
+		this.lastFlushedColumn = this.writeColumn;
 		this.drawFullFrameWithProgress();
 		this.updateTexture();
 	}

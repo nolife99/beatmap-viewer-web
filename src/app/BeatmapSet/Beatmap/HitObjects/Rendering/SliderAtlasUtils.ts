@@ -1,4 +1,4 @@
-import { Color, groupD8, Rectangle } from 'pixi.js';
+import { Color, groupD8, Point, Rectangle } from 'pixi.js';
 import { darken, lighten } from '../../../../utils.ts';
 import type SliderProgressView from './CalculateSliderProgress.ts';
 import type { SliderInstanceStyle, SliderUniformPatch } from './SliderAtlasTypes.ts';
@@ -9,20 +9,47 @@ export const PHYSICAL_PIXEL_EPSILON = 1e-6;
 export const REDUCE_PRECISION = 0.01;
 export const REDUCE_PRECISION_SQ = REDUCE_PRECISION * REDUCE_PRECISION;
 
-const BASE_COLOR = [69 / 255, 71 / 255, 90 / 255, 0];
+export function getAtlasRotation(rotated: boolean): number {
+	return rotated ? groupD8.MAIN_DIAGONAL : groupD8.E;
+}
+
+export function transformD8(
+	rotation: number,
+	x: number,
+	y: number,
+	out: Point,
+	absolute = false
+): Point {
+	const ux = groupD8.uX(rotation);
+	const uy = groupD8.uY(rotation);
+	const vx = groupD8.vX(rotation);
+	const vy = groupD8.vY(rotation);
+
+	if (absolute) {
+		out.x = x * Math.abs(ux) + y * Math.abs(vx);
+		out.y = x * Math.abs(uy) + y * Math.abs(vy);
+	} else {
+		out.x = x * ux + y * vx;
+		out.y = x * uy + y * vy;
+	}
+
+	return out;
+}
+
+const BASE_COLOR = new Color([69 / 255, 71 / 255, 90 / 255, 0]);
 
 export const DEFAULT_BODY_STYLE: SliderInstanceStyle = createStyle({
 	borderColor: [205 / 255, 214 / 255, 244 / 255],
-	innerColor: lighten(BASE_COLOR, 0.5),
-	outerColor: darken(BASE_COLOR, 0.1),
+	innerColor: lighten(BASE_COLOR.toArray(), 0.5),
+	outerColor: darken(BASE_COLOR.toArray(), 0.1),
 	borderWidth: 0.128,
 	bodyAlpha: 0.7
 });
 
 export const DEFAULT_SELECTION_STYLE: SliderInstanceStyle = createStyle({
 	borderColor: [49 / 255, 151 / 255, 255 / 255],
-	innerColor: lighten(BASE_COLOR, 0.5),
-	outerColor: darken(BASE_COLOR, 0.1),
+	innerColor: lighten(BASE_COLOR.toArray(), 0.5),
+	outerColor: darken(BASE_COLOR.toArray(), 0.1),
 	borderWidth: 0.128,
 	bodyAlpha: 0.0
 });
@@ -54,14 +81,10 @@ export function toPhysicalPixels(logicalPixels: number, resolution: number): num
 	);
 }
 
-export function ceilPowerOfTwo(n: number): number {
-	if (n-- === 0) return 1;
-	n |= n >> 1;
-	n |= n >> 2;
-	n |= n >> 4;
-	n |= n >> 8;
-	n |= n >> 16;
-	return n + 1;
+export function ceilPowerOfTwo(value: number): number {
+	let result = 1;
+	while (result < value) result <<= 1;
+	return result;
 }
 
 export function segmentCapsuleIntersectsRect(
@@ -110,29 +133,6 @@ export function patchStyle(base: SliderInstanceStyle, patch: SliderUniformPatch)
 		borderWidth: patch.borderWidth ?? base.borderWidth,
 		bodyAlpha: patch.bodyAlpha ?? base.bodyAlpha
 	};
-}
-
-export function transformD8(
-	rotation: number,
-	x: number,
-	y: number,
-	out: { x: number; y: number },
-	absolute = false
-): typeof out {
-	const ux = groupD8.uX(rotation);
-	const uy = groupD8.uY(rotation);
-	const vx = groupD8.vX(rotation);
-	const vy = groupD8.vY(rotation);
-
-	if (absolute) {
-		out.x = x * Math.abs(ux) + y * Math.abs(vx);
-		out.y = x * Math.abs(uy) + y * Math.abs(vy);
-	} else {
-		out.x = x * ux + y * vx;
-		out.y = x * uy + y * vy;
-	}
-
-	return out;
 }
 
 export function computePathRenderBounds(path: SliderProgressView, radius: number): Rectangle {

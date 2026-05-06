@@ -11,6 +11,36 @@ export default class ConfigSection {
 	constructor(private config: Config) {
 	}
 
+	public static createRemover(
+		...removers: readonly (ChangeRemover | undefined)[]
+	): ChangeRemover {
+		let removed = false;
+
+		// Copy into mutable storage so we can clear it after removal.
+		let list: (ChangeRemover | undefined)[] | undefined = removers.slice();
+
+		return () => {
+			if (removed) return;
+			removed = true;
+
+			const current = list;
+			list = undefined;
+
+			if (!current) return;
+
+			for (let i = 0; i < current.length; i++) {
+				const remover = current[i];
+
+				// Clear before calling. This helps even if remover throws.
+				current[i] = undefined;
+
+				remover?.();
+			}
+
+			current.length = 0;
+		};
+	}
+
 	onChange<T = any>(key: string, callback: ChangeCallback<T>): ChangeRemover {
 		let callbacks = this._callbacks.get(key);
 
@@ -50,36 +80,6 @@ export default class ConfigSection {
 		if (callbacks.size === 0) {
 			this._callbacks.delete(key);
 		}
-	}
-
-	public static createRemover(
-		...removers: readonly (ChangeRemover | undefined)[]
-	): ChangeRemover {
-		let removed = false;
-
-		// Copy into mutable storage so we can clear it after removal.
-		let list: (ChangeRemover | undefined)[] | undefined = removers.slice();
-
-		return () => {
-			if (removed) return;
-			removed = true;
-
-			const current = list;
-			list = undefined;
-
-			if (!current) return;
-
-			for (let i = 0; i < current.length; i++) {
-				const remover = current[i];
-
-				// Clear before calling. This helps even if remover throws.
-				current[i] = undefined;
-
-				remover?.();
-			}
-
-			current.length = 0;
-		};
 	}
 
 	emitChange<T = any>(key: string, newValue: T): Promise<any[]> {

@@ -1,5 +1,5 @@
 import { LayoutContainer } from '@pixi/layout/components';
-import { Container, BitmapText, Texture } from 'pixi.js';
+import { BitmapText, Container, Texture } from 'pixi.js';
 import ColorConfig from '../../../../../Config/ColorConfig.ts';
 import FullscreenConfig from '../../../../../Config/FullscreenConfig.ts';
 import TimelineConfig from '../../../../../Config/TimelineConfig.ts';

@@ -1,4 +1,5 @@
 import { factory } from '@stdlib/array-pool';
+
 const pool = factory();
 
 /**
@@ -96,7 +97,6 @@ export class TimeStretcher {
 		this.bufferEndIndex += frameCount;
 		return this.process();
 	}
-
 
 	reset(factor: number = this.factor): void {
 		this.assertAlive();

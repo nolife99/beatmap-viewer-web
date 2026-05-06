@@ -1,28 +1,23 @@
 #version 300 es
-precision highp float;
 
 in vec2 aQuad;
 in vec4 aSegment;
 in vec4 aRender;
 in vec4 aAtlas;
-in vec4 aParams;
+in vec2 aParams;
 in vec4 aBorderColor;
 in vec4 aInnerColor;
 in vec4 aOuterColor;
 
 uniform vec4 params;
-// params.x = atlasWidth
-// params.y = atlasHeight
-// params.z = clipYScale
-// params.w = clipYBias
 
 out vec3 vCapsule;
 out vec2 vAtlasPx;
 out vec4 vAtlasRect;
-out vec4 vParams;
-out vec4 vBorderColor;
-out vec4 vInnerColor;
-out vec4 vOuterColor;
+out vec2 vParams; // x = borderWidth, y = bodyAlpha
+out vec3 vBorderColor;
+out vec3 vInnerColor;
+out vec3 vOuterColor;
 
 void main() {
     vec2 A = aSegment.xy;
@@ -38,9 +33,9 @@ void main() {
     float uOffset = aQuad.x == 0.0 ? -1.0 : 1.0;
 
     vec2 localPos =
-        mix(A, B, aQuad.x) +
-        ndir * uOffset * radius +
-        norm * aQuad.y * radius;
+    mix(A, B, aQuad.x) +
+    ndir * uOffset * radius +
+    norm * aQuad.y * radius;
 
     float lenNorm = len / radius;
     float u = mix(0.0, lenNorm, aQuad.x) + uOffset;
@@ -67,8 +62,8 @@ void main() {
     vCapsule = vec3(u, v, lenNorm);
     vAtlasPx = atlasPx;
     vAtlasRect = atlasRectPx;
-    vParams = aParams;
-    vBorderColor = vec4(aBorderColor.rgb, 1.0);
-    vInnerColor = vec4(aInnerColor.rgb, 1.0);
-    vOuterColor = vec4(aOuterColor.rgb, 1.0);
+    vParams = vec2(aParams.y, aInnerColor.a);
+    vBorderColor = aBorderColor.rgb;
+    vInnerColor = aInnerColor.rgb;
+    vOuterColor = aOuterColor.rgb;
 }
