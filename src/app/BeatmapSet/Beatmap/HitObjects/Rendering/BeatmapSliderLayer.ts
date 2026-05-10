@@ -12,7 +12,8 @@ import {
 } from 'pixi.js';
 import type SliderProgressView from './CalculateSliderProgress.ts';
 import SliderAtlasPage from './SliderAtlasPage.ts';
-import SliderInstanceBatch from './SliderInstanceBatch.ts';
+import SliderCoverageScratch from './SliderCoverageScratch.ts';
+import SliderCoverageBatch from './SliderCoverageBatch.ts';
 import type {
 	AtlasSlot,
 	SliderBodyHandle,
@@ -66,6 +67,7 @@ export default class BeatmapSliderLayer extends RenderContainer {
 	readonly handles: SliderBodyHandle[] = [];
 
 	private readonly pages: SliderAtlasPage[] = [];
+	private readonly coverageScratch = new SliderCoverageScratch();
 	private readonly atlasWidth: number;
 	private readonly atlasHeight: number;
 	private readonly gutter: number;
@@ -177,6 +179,7 @@ export default class BeatmapSliderLayer extends RenderContainer {
 		this.retiredTextures.length = this.retiredPages.length = 0;
 		this.previouslyRenderedTargets.length = this.currentlyRenderedTargets.length = 0;
 		this.visibleAncestorCache.clear();
+		this.coverageScratch.destroy();
 		super.destroy(options);
 	}
 
@@ -200,7 +203,7 @@ export default class BeatmapSliderLayer extends RenderContainer {
 		this.lastAtlasRenderedFrameId = this.frameId;
 
 		try {
-			for (const page of this.pages) page.render(renderer);
+			for (const page of this.pages) page.render(renderer, this.coverageScratch);
 		} finally {
 			for (const page of this.pages) page.releaseStaging();
 		}
@@ -270,8 +273,9 @@ export default class BeatmapSliderLayer extends RenderContainer {
 
 				this.reduceProgressViewIntoBatch(
 					payload.target.path!, page.batch, payload.renderRect,
-					slot, payload.target.radius, payload.target.style, rotation
+					slot, payload.target.radius, rotation
 				);
+				page.resolveBatch.pushSlot(slot, payload.target.style, payload.target.radius);
 
 				page.markUsed();
 				this.updateSprite(payload.handle, payload.target, slot, payload.renderRect, rotation);
@@ -522,11 +526,10 @@ export default class BeatmapSliderLayer extends RenderContainer {
 
 	private reduceProgressViewIntoBatch(
 		path: SliderProgressView,
-		batch: SliderInstanceBatch,
+		batch: SliderCoverageBatch,
 		renderRect: Rectangle,
 		slot: AtlasSlot,
 		radius: number,
-		style: SliderVisualTarget['style'],
 		rotation: number
 	) {
 		const pointsCount = path.length;
@@ -540,7 +543,7 @@ export default class BeatmapSliderLayer extends RenderContainer {
 		let ay = path.startY;
 
 		if (pointsCount === 1) {
-			this.pushVisibleSegment(batch, renderRect, slot, radius, style, rotation, originX, originY, ax, ay, ax, ay);
+			this.pushVisibleSegment(batch, renderRect, slot, radius, rotation, originX, originY, ax, ay, ax, ay);
 			return;
 		}
 
@@ -576,22 +579,21 @@ export default class BeatmapSliderLayer extends RenderContainer {
 				continue;
 			}
 
-			this.pushVisibleSegment(batch, renderRect, slot, radius, style, rotation, originX, originY, ax, ay, bx, by);
+			this.pushVisibleSegment(batch, renderRect, slot, radius, rotation, originX, originY, ax, ay, bx, by);
 			ax = pathPointX(path, i);
 			ay = pathPointY(path, i);
 			bx = nx;
 			by = ny;
 		}
 
-		this.pushVisibleSegment(batch, renderRect, slot, radius, style, rotation, originX, originY, ax, ay, bx, by);
+		this.pushVisibleSegment(batch, renderRect, slot, radius, rotation, originX, originY, ax, ay, bx, by);
 	}
 
 	private pushVisibleSegment(
-		batch: SliderInstanceBatch,
+		batch: SliderCoverageBatch,
 		renderRect: Rectangle,
 		slot: AtlasSlot,
 		radius: number,
-		style: SliderInstanceStyle,
 		rotation: number,
 		originX: number,
 		originY: number,
@@ -609,7 +611,7 @@ export default class BeatmapSliderLayer extends RenderContainer {
 		transformD8(rotation, bx, by, scratch);
 		batch.pushSegment(
 			rAx, rAy, scratch.x, scratch.y, originX, originY,
-			slot.scaleX, slot.scaleY, slot.x, slot.y, slot.width, slot.height, radius, style
+			slot.scaleX, slot.scaleY, slot.x, slot.y, slot.width, slot.height, radius
 		);
 	}
 

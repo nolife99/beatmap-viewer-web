@@ -2,7 +2,6 @@ import {
 	Application,
 	Assets,
 	CanvasTextMetrics,
-	GpuBlendModesToPixi,
 	RenderTarget,
 	Spritesheet,
 	UPDATE_PRIORITY
@@ -98,19 +97,6 @@ export class Game {
 			height: app.screen.height,
 			flexDirection: 'row',
 			gap: 0
-		};
-
-		GpuBlendModesToPixi.max = {
-			color: {
-				operation: 'add',
-				srcFactor: 'one',
-				dstFactor: 'zero'
-			},
-			alpha: {
-				operation: 'add',
-				srcFactor: 'one',
-				dstFactor: 'zero'
-			}
 		};
 
 		const divApp = document.querySelector<HTMLDivElement>('#app');
