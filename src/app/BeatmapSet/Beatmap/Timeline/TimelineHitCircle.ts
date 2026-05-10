@@ -122,5 +122,6 @@ export default class TimelineHitCircle extends TimelineHitObject {
 
 	override destroy() {
 		super.destroy();
+		this.defaults.destroy();
 	}
 }

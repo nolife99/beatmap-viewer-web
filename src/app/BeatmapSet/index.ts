@@ -251,7 +251,6 @@ export default class BeatmapSet extends ScopedClass {
 		if (!graph) return;
 
 		graph.setData(beatmap.strains, audio.duration / 1000);
-		graph.drawGraph();
 	}
 
 	loadVideo(beatmap: Beatmap) {

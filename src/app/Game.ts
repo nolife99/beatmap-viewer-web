@@ -1,4 +1,12 @@
-import { Application, Assets, GpuBlendModesToPixi, RenderTarget, Spritesheet, UPDATE_PRIORITY } from 'pixi.js';
+import {
+	Application,
+	Assets,
+	CanvasTextMetrics,
+	GpuBlendModesToPixi,
+	RenderTarget,
+	Spritesheet,
+	UPDATE_PRIORITY
+} from 'pixi.js';
 import uiJsonData from '../assets/atlas/ui.json' with { type: 'json' };
 
 import uiImageAtlas from '../assets/atlas/ui.png';
@@ -21,6 +29,7 @@ import Loading from './UI/loading/index.ts';
 import Main from './UI/main/index.ts';
 import SidePanel from './UI/sidepanel/index.ts';
 import ZipHandler from './ZipHandler/index.ts';
+import { initDevtools } from '@pixi/devtools';
 
 export class Game {
 	app?: Application;
@@ -66,33 +75,23 @@ export class Game {
 		});
 	}
 
-	resizeFrame = (app: Application, width: number, height: number) => {
-		app.renderer.resize(width, height);
-		app.render();
-	};
-
 	async initApplication() {
 		RenderTarget.defaultOptions.depth = true;
 
 		const app = new Application();
 		await app.init({
-			// // biome-ignore lint/style/noNonNullAssertion: It should be there already lol
-			// resizeTo: document.querySelector<HTMLDivElement>("#app")!,
 			antialias: this.config.renderer.antialiasing,
 			backgroundAlpha: 0,
 			premultipliedAlpha: false,
-			// useBackBuffer: true,
-			// clearBeforeRender: true,
 			depth: true,
 			autoDensity: true,
 			resolution: devicePixelRatio,
-			sharedTicker: true,
+			sharedTicker: false,
+			autoStart: true,
 			preference: this.config.renderer.renderer
 		});
 
-		(globalThis as typeof globalThis & {
-			__PIXI_APP__: typeof app;
-		}).__PIXI_APP__ = app;
+		CanvasTextMetrics.experimentalLetterSpacing = true;
 
 		app.stage.layout = {
 			width: app.screen.width,
@@ -116,27 +115,49 @@ export class Game {
 
 		const divApp = document.querySelector<HTMLDivElement>('#app');
 		if (divApp) {
-			const resizeObserver = new ResizeObserver((entries) => {
-				for (const entry of entries) {
-					if (entry.target !== divApp) continue;
+			const divApp = document.querySelector<HTMLDivElement>('#app');
 
-					const width = Math.round(
-						+getComputedStyle(divApp).width.replaceAll('px', '')
-					);
-					const height = Math.round(
-						+getComputedStyle(divApp).height.replaceAll('px', '')
-					);
+			if (divApp) {
+				let lastWidth = 0;
+				let lastHeight = 0;
+				let resizeQueued = false;
+				let pendingWidth = 0;
+				let pendingHeight = 0;
 
-					app.ticker.addOnce(
-						() => this.resizeFrame(app, width, height),
-						UPDATE_PRIORITY.HIGH
-					);
-				}
-			});
+				const resizeObserver = new ResizeObserver((entries) => {
+					for (const entry of entries) {
+						if (entry.target !== divApp) continue;
 
-			resizeObserver.observe(divApp);
+						const box = entry.borderBoxSize?.[0];
+						const width = Math.round(box?.inlineSize ?? entry.contentRect.width);
+						const height = Math.round(box?.blockSize ?? entry.contentRect.height);
+
+						if (width === lastWidth && height === lastHeight) return;
+
+						lastWidth = width;
+						lastHeight = height;
+						pendingWidth = width;
+						pendingHeight = height;
+
+						if (resizeQueued) return;
+						resizeQueued = true;
+
+						app.ticker.addOnce(
+							() => {
+								resizeQueued = false;
+								this.resizeFrame(app, pendingWidth, pendingHeight);
+							},
+							undefined,
+							UPDATE_PRIORITY.HIGH
+						);
+					}
+				});
+
+				resizeObserver.observe(divApp);
+			}
 		}
 
+		await initDevtools({ app });
 		return app;
 	}
 
@@ -152,7 +173,6 @@ export class Game {
 		const app = provide('ui/app', await this.initApplication());
 		app.ticker.add(
 			() => {
-				this.resize(app);
 				tweenGroup.update();
 			},
 			undefined,
@@ -162,6 +182,8 @@ export class Game {
 		this.config.fullscreen.fullscreen =
 			new URLSearchParams(globalThis.location.search).get('fullscreen') ===
 			'true';
+
+		document.querySelector<HTMLDivElement>('#app')?.append(app.canvas);
 
 		provide('ui/loading', new Loading());
 
@@ -218,8 +240,6 @@ export class Game {
 				}
 			}
 		});
-
-		document.querySelector<HTMLDivElement>('#app')?.append(app.canvas);
 
 		document
 			.querySelector<HTMLInputElement>('#idInput')
@@ -295,6 +315,17 @@ export class Game {
 		await this.processFile(file);
 
 		inject<Loading>('ui/loading')?.off();
+	}
+
+	private resizeFrame(app: Application, width: number, height: number) {
+		app.renderer.resize(width, height);
+
+		app.stage.layout = {
+			width: app.screen.width,
+			height: app.screen.height
+		};
+
+		this.responsiveHandler.responsive();
 	}
 
 	private async processFile(file: File) {
@@ -656,22 +687,5 @@ export class Game {
 		} finally {
 			inject<Loading>('ui/loading')?.off();
 		}
-	}
-
-	private resize(app: Application) {
-		const width = app.screen.width;
-		const height = app.screen.height;
-
-		const _width = app.stage.layout?._computedLayout.width;
-		const _height = app.stage.layout?._computedLayout.height;
-
-		this.responsiveHandler.responsive();
-
-		if (_width === width && _height === height) return;
-
-		app.stage.layout = {
-			width,
-			height
-		};
 	}
 }

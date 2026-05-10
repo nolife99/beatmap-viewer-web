@@ -48,6 +48,7 @@ export const DEFAULT_SELECTION_STYLE: SliderInstanceStyle = createStyle({
 	borderWidth: 0.128,
 	bodyAlpha: 0.0
 });
+
 export function normalizeResolution(value: number): number {
 	return Number.isFinite(value) ? Math.max(1, value) : 1;
 }

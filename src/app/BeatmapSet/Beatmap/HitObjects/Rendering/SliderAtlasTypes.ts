@@ -34,6 +34,7 @@ export type SliderVisualTarget = {
 	sprite: Sprite;
 	texture?: Texture;
 	frame: Rectangle;
+	renderRect: Rectangle;
 	path?: SliderProgressView;
 	radius: number;
 	style: SliderInstanceStyle;

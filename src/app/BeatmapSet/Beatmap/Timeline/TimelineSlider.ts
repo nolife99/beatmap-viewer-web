@@ -1,14 +1,14 @@
 import {
 	type Slider,
+	SliderEnd,
 	SliderHead,
 	SliderRepeat,
-	SliderTail,
 	SliderTick,
 	SpinnerBonusTick,
 	SpinnerTick,
 	type StandardHitObject
 } from 'osu-standard-stable';
-import { BitmapText, Color, type ColorSource, Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { BitmapText, Color, type ColorSource, Container, Sprite, Texture } from 'pixi.js';
 import Beatmap from '..';
 import TimelineConfig from '../../../Config/TimelineConfig.ts';
 import { type Context, inject } from '../../../Context.ts';
@@ -39,7 +39,6 @@ const INNER_GRADIENT_COLOR = '#e6e6e6';
 let solidCapTexture: Texture | null = null;
 let defaultCapTexture: Texture | null = null;
 let defaultMidTexture: Texture | null = null;
-let solidPixelTexture: Texture | null = null;
 let selectCapTexture: Texture | null = null;
 let selectMidTexture: Texture | null = null;
 
@@ -147,20 +146,6 @@ function getDefaultMidTexture(): Texture {
 	return defaultMidTexture;
 }
 
-export function getPixelTexture(): Texture {
-	if (solidPixelTexture) return solidPixelTexture;
-
-	const cap = getSolidCapTexture();
-	const radius = TEXTURE_DIAMETER / 2;
-
-	solidPixelTexture = new Texture({
-		source: cap.source,
-		frame: new Rectangle(radius - 2, radius, 1, 1)
-	});
-
-	return solidPixelTexture;
-}
-
 function getSelectCapTexture(): Texture {
 	if (selectCapTexture) return selectCapTexture;
 
@@ -220,7 +205,7 @@ export default class TimelineSlider extends TimelineHitObject {
 	select = new Container({ visible: false });
 	length = 0;
 	private readonly outlineHead = new Sprite(getSolidCapTexture());
-	private readonly outlineMid = new Sprite(getPixelTexture());
+	private readonly outlineMid = new Sprite(Texture.WHITE);
 	private readonly outlineTail = new Sprite(getSolidCapTexture());
 	private readonly fillHead = new Sprite(getDefaultCapTexture());
 	private readonly fillMid = new Sprite(getDefaultMidTexture());
@@ -251,6 +236,7 @@ export default class TimelineSlider extends TimelineHitObject {
 			.map((object) => {
 				const obj = object.clone();
 				obj.startTime = obj.startTime - this.object.startTime;
+				if (object instanceof SliderRepeat) (obj as SliderRepeat).repeatIndex = object.repeatIndex;
 				return obj;
 			})
 			.toReversed()) {
@@ -259,13 +245,9 @@ export default class TimelineSlider extends TimelineHitObject {
 					? new TimelineSliderHead(object, this.object as Slider).hook(
 						this.context
 					)
-					: object instanceof SliderTail
-						? new TimelineSliderTail(object).hook(this.context)
-						: object instanceof SliderRepeat
-							? new TimelineSliderRepeat(object).hook(this.context)
-							: new TimelineSliderTail(object as unknown as SliderTail).hook(
-								this.context
-							);
+					: object instanceof SliderRepeat
+						? new TimelineSliderRepeat(this.object as Slider, object).hook(this.context)
+						: new TimelineSliderTail(this.object as Slider, object as SliderEnd).hook(this.context);
 
 			obj.container.y = 0;
 			obj.container.visible = true;
@@ -383,7 +365,7 @@ export default class TimelineSlider extends TimelineHitObject {
 			: getDefaultCapTexture();
 
 		this.fillMid.texture = isArgon
-			? getPixelTexture()
+			? Texture.WHITE
 			: getDefaultMidTexture();
 
 		this.fillTail.texture = this.fillHead.texture;

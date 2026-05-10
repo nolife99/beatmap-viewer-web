@@ -3,13 +3,13 @@ import { LayoutContainer } from '@pixi/layout/components';
 import { Tween } from '@tweenjs/tween.js';
 import { Vector2 } from 'osu-classes';
 import {
-	BitmapText,
 	Color,
 	Container,
 	Graphics,
 	Rectangle,
 	Sprite,
 	type StrokeStyle,
+	Text,
 	type TextStyleOptions,
 	Texture
 } from 'pixi.js';
@@ -47,7 +47,7 @@ export default class Gameplay extends ScopedClass {
 	objectsContainer: Container;
 	selector: Graphics;
 	selectContainer: Container;
-	diffName!: BitmapText;
+	diffName!: Text;
 	statsContainer!: LayoutContainer;
 	closeButton!: LayoutContainer;
 	spinner: Spinner;
@@ -102,7 +102,8 @@ export default class Gameplay extends ScopedClass {
 			.fill({ color: 0xffffff, alpha: 0.3 });
 
 		this.objectsContainer = new Container({
-			boundsArea: new Rectangle(0, 0, 512, 384)
+			boundsArea: new Rectangle(0, 0, 512, 384),
+			isRenderGroup: true
 		});
 
 		this.cursorLayer = new Container({
@@ -242,7 +243,7 @@ export default class Gameplay extends ScopedClass {
 			.arc(cornerRadius, height - cornerRadius, cornerRadius, Math.PI / 2, Math.PI)
 			.lineTo(0, height - halfUnit).stroke(cornerStroke)
 
-			.cacheAsTexture(true);
+			.cacheAsTexture({ antialias: false });
 	}
 
 	loadEventListeners() {
@@ -483,7 +484,7 @@ export default class Gameplay extends ScopedClass {
 			}
 		});
 
-		this.diffName = new BitmapText({
+		this.diffName = new Text({
 			text: this.beatmap.data.metadata.version,
 			style: {
 				...defaultStyle,

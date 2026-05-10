@@ -9,7 +9,7 @@ export const update = (drawable: DrawableDefaults, time: number) => {
 	const startTime = object?.evaluation?.hitTime ?? drawable.object.startTime;
 
 	if (!inject<GameplayConfig>('config/gameplay')?.hitAnimation) {
-		return surpressAnimation(drawable, time);
+		return suppressAnimation(drawable, time);
 	}
 
 	if (time <= startTime) {
@@ -18,9 +18,8 @@ export const update = (drawable: DrawableDefaults, time: number) => {
 	}
 
 	if (time > startTime && time <= startTime + fadeOutDuration) {
-		const opacity = 1 -
+		drawable.container.alpha = 1 -
 			Math.min(1, Math.max(0, (time - startTime) / fadeOutDuration));
-		drawable.container.alpha = opacity;
 
 		return;
 	}
@@ -28,7 +27,7 @@ export const update = (drawable: DrawableDefaults, time: number) => {
 	drawable.container.alpha = 0;
 };
 
-const surpressAnimation = (drawable: DrawableDefaults, _: number) => {
+const suppressAnimation = (drawable: DrawableDefaults, _: number) => {
 	drawable.container.alpha = 1;
 	return;
 };

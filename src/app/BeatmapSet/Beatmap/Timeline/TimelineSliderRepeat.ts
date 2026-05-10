@@ -1,8 +1,7 @@
-import { SliderRepeat } from 'osu-standard-stable';
+import { Slider, SliderRepeat } from 'osu-standard-stable';
 import { Graphics, GraphicsContext, Sprite } from 'pixi.js';
 import Skin from '../../../Skinning/Skin.ts';
 import TimelineSliderTail from './TimelineSliderTail.ts';
-import { TAIL_LENIENCY } from '../HitObjects/DrawableSliderTail.ts';
 
 const ctx = new GraphicsContext().circle(0, 0, 15).fill([0, 0, 0, 0.3]);
 
@@ -12,12 +11,13 @@ export default class TimelineSliderRepeat extends TimelineSliderTail {
 	});
 	graphics = new Graphics({ context: ctx });
 
-	constructor(object: SliderRepeat) {
-		object.startTime -= TAIL_LENIENCY;
-		super(object);
+	constructor(parent: Slider, object: SliderRepeat) {
+		super(parent, object);
 
 		this.container.addChild(this.sprite, this.graphics);
 		this.refreshSprite();
+
+		this.actualTime = parent.spanDuration * (object.repeatIndex + 1);
 	}
 
 	override refreshSprite() {

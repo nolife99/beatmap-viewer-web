@@ -23,6 +23,7 @@ export default class WeakEvent<TEvent> {
 	private readonly cleanupRegistry =
 		new FinalizationRegistry<WeakEventListener<object, TEvent>>((listener) => {
 			listener.active = false;
+			console.log(listener.stack);
 			listener.handler = undefined;
 		});
 

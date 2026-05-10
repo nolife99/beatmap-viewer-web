@@ -12,56 +12,51 @@ in vec4 aOuterColor;
 uniform vec4 params;
 
 out vec3 vCapsule;
-out vec2 vAtlasPx;
-out vec4 vAtlasRect;
-out vec2 vParams; // x = borderWidth, y = bodyAlpha
-out vec3 vBorderColor;
-out vec3 vInnerColor;
-out vec3 vOuterColor;
+out vec2 vAtlasLocalPx;
+
+flat out vec2 vAtlasSizePx;
+flat out vec2 vParams; // x = borderWidth, y = bodyAlpha
+flat out vec3 vBorderColor;
+flat out vec3 vInnerColor;
+flat out vec3 vOuterColor;
 
 void main() {
-    vec2 A = aSegment.xy;
-    vec2 B = aSegment.zw;
+    vec2 a = aSegment.xy;
+    vec2 dir = aSegment.zw - a;
 
-    vec2 dir = B - A;
-    float len = length(dir);
+    float lenSq = dot(dir, dir);
+    float invLen = inversesqrt(lenSq);
+    float len = lenSq * invLen;
+    vec2 ndir = dir * invLen;
 
     float radius = max(aParams.x, 0.0001);
-    vec2 ndir = len > 0.000001 ? dir / len : vec2(1.0, 0.0);
-    vec2 norm = vec2(-ndir.y, ndir.x);
+    float invRadius = 1.0 / radius;
 
-    float uOffset = aQuad.x == 0.0 ? -1.0 : 1.0;
+    float uOffset = aQuad.x * 2.0 - 1.0;
 
-    vec2 localPos =
-    mix(A, B, aQuad.x) +
-    ndir * uOffset * radius +
-    norm * aQuad.y * radius;
+    vec2 offset = vec2(
+    ndir.x * uOffset - ndir.y * aQuad.y,
+    ndir.y * uOffset + ndir.x * aQuad.y
+    ) * radius;
 
-    float lenNorm = len / radius;
-    float u = mix(0.0, lenNorm, aQuad.x) + uOffset;
-    float v = aQuad.y;
+    vec2 localPos = a + dir * aQuad.x + offset;
 
-    vec4 atlasRectPx = vec4(
-        aAtlas.x * params.x,
-        aAtlas.y * params.y,
-        aAtlas.z * params.x,
-        aAtlas.w * params.y
-    );
+    float lenNorm = len * invRadius;
+    float u = aQuad.x * lenNorm + uOffset;
 
-    vec2 atlasPx = vec2(
-        (localPos.x - aRender.x) * aRender.z + atlasRectPx.x,
-        (localPos.y - aRender.y) * aRender.w + atlasRectPx.y
-    );
+    vec2 atlasOriginPx = aAtlas.xy * params.xy;
+    vec2 atlasSizePx = aAtlas.zw * params.xy;
 
-    vec2 clip = vec2(
-        (atlasPx.x / params.x) * 2.0 - 1.0,
-        (atlasPx.y / params.y) * params.z + params.w
-    );
+    vec2 atlasLocalPx = (localPos - aRender.xy) * aRender.zw;
+    vec2 atlasPx = atlasLocalPx + atlasOriginPx;
+
+    vec2 clip = atlasPx * vec2(2.0 / params.x, params.z / params.y) + vec2(-1.0, params.w);
 
     gl_Position = vec4(clip, 0.0, 1.0);
-    vCapsule = vec3(u, v, lenNorm);
-    vAtlasPx = atlasPx;
-    vAtlasRect = atlasRectPx;
+
+    vCapsule = vec3(u, aQuad.y, lenNorm);
+    vAtlasLocalPx = atlasLocalPx;
+    vAtlasSizePx = atlasSizePx;
     vParams = vec2(aParams.y, aInnerColor.a);
     vBorderColor = aBorderColor.rgb;
     vInnerColor = aInnerColor.rgb;

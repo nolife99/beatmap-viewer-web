@@ -1,5 +1,5 @@
 import { HitResult, HitSample as Sample, LegacyReplayFrame, Vector2 } from 'osu-classes';
-import { type Slider, SliderHead, SliderRepeat, SliderTail, SliderTick, StandardHitObject } from 'osu-standard-stable';
+import { type Slider, SliderEnd, SliderHead, SliderRepeat, SliderTick, StandardHitObject } from 'osu-standard-stable';
 import { Color, Container, Graphics, RenderLayer } from 'pixi.js';
 import Beatmap from '..';
 import HitSample from '../../../Audio/HitSample.ts';
@@ -25,7 +25,7 @@ import DrawableSliderBall from './DrawableSliderBall.ts';
 import DrawableSliderFollowCircle from './DrawableSliderFollowCircle.ts';
 import DrawableSliderHead from './DrawableSliderHead.ts';
 import DrawableSliderRepeat from './DrawableSliderRepeat.ts';
-import DrawableSliderTail, { TAIL_LENIENCY } from './DrawableSliderTail.ts';
+import DrawableSliderTail from './DrawableSliderTail.ts';
 import DrawableSliderTick from './DrawableSliderTick.ts';
 import SliderProgressView from './Rendering/CalculateSliderProgress.ts';
 import SliderBodyRenderer from './Rendering/SliderBodyRenderer.ts';
@@ -91,7 +91,7 @@ export default class DrawableSlider
 						).hook(this.context);
 					}
 
-					if (object instanceof SliderTail) {
+					if (object instanceof SliderEnd) {
 						return new DrawableSliderTail(
 							object,
 							this.object,
@@ -589,12 +589,7 @@ export default class DrawableSlider
 		if (!beatmap || isSeeking) return;
 
 		for (const object of this.drawableCircles) {
-			const offset =
-				object instanceof DrawableSliderTail &&
-				!(object instanceof DrawableSliderRepeat)
-					? TAIL_LENIENCY
-					: 0;
-			object.playHitSound(time, offset);
+			object.playHitSound(time, 0);
 		}
 
 		const currentSamplePoint = beatmap.getNearestSamplePoint(
@@ -669,12 +664,7 @@ export default class DrawableSlider
 		this.followCircle.container.position = this.ball.container.position;
 
 		for (const circle of this.drawableCircles) {
-			const offset =
-				circle instanceof DrawableSliderTail &&
-				!(circle instanceof DrawableSliderRepeat)
-					? TAIL_LENIENCY
-					: 0;
-			circle.update(time - offset);
+			circle.update(time);
 		}
 
 		const updated = sharedUpdate(this, time);

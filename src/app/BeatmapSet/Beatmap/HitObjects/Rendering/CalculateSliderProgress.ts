@@ -37,6 +37,10 @@ export default class SliderProgressView {
 		this.reset(0, 1);
 	}
 
+	static invalidateBoundsIndex(calcPath: Vector2[]): void {
+		pathAabbIndexes.delete(calcPath);
+	}
+
 	reset(p0: number, p1: number): this {
 		const calcPath = this.path.calculatedPath;
 		const pathLen = calcPath.length;
@@ -156,20 +160,15 @@ export default class SliderProgressView {
 	invalidateBoundsIndex(): void {
 		pathAabbIndexes.delete(this.calcPath);
 	}
-
-	static invalidateBoundsIndex(calcPath: Vector2[]): void {
-		pathAabbIndexes.delete(calcPath);
-	}
 }
 
 class PathAabbIndex {
-	private readonly points: Vector2[];
-	private readonly blockMinX: Float64Array;
-	private readonly blockMinY: Float64Array;
-	private readonly blockMaxX: Float64Array;
-	private readonly blockMaxY: Float64Array;
-
 	readonly length: number;
+	private readonly points: Vector2[];
+	private readonly blockMinX: Float32Array;
+	private readonly blockMinY: Float32Array;
+	private readonly blockMaxX: Float32Array;
+	private readonly blockMaxY: Float32Array;
 
 	constructor(points: Vector2[]) {
 		this.points = points;
@@ -177,10 +176,10 @@ class PathAabbIndex {
 
 		const blockCount = Math.ceil(this.length / AABB_BLOCK_SIZE);
 
-		this.blockMinX = new Float64Array(blockCount);
-		this.blockMinY = new Float64Array(blockCount);
-		this.blockMaxX = new Float64Array(blockCount);
-		this.blockMaxY = new Float64Array(blockCount);
+		this.blockMinX = new Float32Array(blockCount);
+		this.blockMinY = new Float32Array(blockCount);
+		this.blockMaxX = new Float32Array(blockCount);
+		this.blockMaxY = new Float32Array(blockCount);
 
 		for (let block = 0; block < blockCount; block++) {
 			const start = block << AABB_BLOCK_SHIFT;

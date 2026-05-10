@@ -417,12 +417,11 @@ function clamp01(value: number): number {
 }
 
 function packRgbAlphaByte(color: Color, alphaByte: number): number {
-	const rgb = color.toNumber(); // 0xRRGGBB
+	const rgb = color.toNumber();
 
-	// Uint32 little-endian bytes become RGBA for unorm8x4.
 	return (((alphaByte & 0xFF) << 24) |
-		((rgb & 0xFF) << 16) |          // B
-		(((rgb >> 8) & 0xFF) << 8) |    // G
-		((rgb >> 16) & 0xFF)            // R
-	) >>> 0;
+		((rgb & 0xFF) << 16) |
+		(((rgb >> 8) & 0xFF) << 8) |
+		((rgb >> 16) & 0xFF)
+	);
 }

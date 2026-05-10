@@ -57,7 +57,7 @@ export const update = (drawable: DrawableHitCircle, time: number) => {
 
 	if (isHD) return applyHidden(drawable, time);
 	if (!inject<GameplayConfig>('config/gameplay')?.hitAnimation) {
-		return surpressAnimation(drawable, time);
+		return suppressAnimation(drawable, time);
 	}
 
 	if (time <= startTime) {
@@ -151,7 +151,7 @@ const applyHidden = (drawable: DrawableHitCircle, time: number) => {
 	return;
 };
 
-const surpressAnimation = (drawable: DrawableHitCircle, time: number) => {
+const suppressAnimation = (drawable: DrawableHitCircle, time: number) => {
 	const startFadeInTime = drawable.object.startTime -
 		drawable.object.timePreempt;
 

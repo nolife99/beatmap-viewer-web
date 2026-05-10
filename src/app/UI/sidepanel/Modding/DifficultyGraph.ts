@@ -55,6 +55,7 @@ export default class DifficultyGraph {
 	setData(data: StrainPoint[], audioDuration: number) {
 		this._data = data;
 		this.maxTime = audioDuration;
+		this.drawGraph();
 	}
 
 	drawGraph() {

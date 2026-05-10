@@ -1,48 +1,47 @@
 #version 300 es
 
 in vec3 vCapsule;
-in vec2 vAtlasPx;
-in vec4 vAtlasRect;
-in vec2 vParams;
-in vec3 vBorderColor;
-in vec3 vInnerColor;
-in vec3 vOuterColor;
+in vec2 vAtlasLocalPx;
+
+flat in vec2 vAtlasSizePx;
+flat in vec2 vParams;
+flat in vec3 vBorderColor;
+flat in vec3 vInnerColor;
+flat in vec3 vOuterColor;
 
 out vec4 finalColor;
 
 void main() {
-    if (
-        vAtlasPx.x < vAtlasRect.x ||
-        vAtlasPx.y < vAtlasRect.y ||
-        vAtlasPx.x >= vAtlasRect.x + vAtlasRect.z ||
-        vAtlasPx.y >= vAtlasRect.y + vAtlasRect.w
-    ) {
-        discard;
-    }
-
     float u = vCapsule.x;
     float v = vCapsule.y;
     float len = vCapsule.z;
 
-    float dx = clamp(u, 0.0, len);
-    float dist = length(vec2(u - dx, v));
+    float du = u - clamp(u, 0.0, len);
+    float distSq = du * du + v * v;
 
-    if (dist > 1.0) {
+    bool inRect =
+    all(greaterThanEqual(vAtlasLocalPx, vec2(0.0))) &&
+    all(lessThan(vAtlasLocalPx, vAtlasSizePx));
+
+    if (!(inRect && distSq <= 1.0)) {
         discard;
     }
+
+    float dist = sqrt(distSq);
 
     float borderWidth = vParams.x;
     float bodyAlpha = vParams.y;
 
     float blurRate = fwidth(dist);
     float innerWidth = 1.0 - borderWidth;
-    float factor = smoothstep(innerWidth - blurRate, innerWidth, dist);
+
+    float borderFactor = smoothstep(innerWidth - blurRate, innerWidth, dist);
+    float alphaFade = 1.0 - smoothstep(1.0 - blurRate, 1.0, dist);
 
     vec3 innerBody = mix(vInnerColor, vOuterColor, dist);
-    vec3 color = mix(innerBody, vBorderColor, factor);
+    vec3 color = mix(innerBody, vBorderColor, borderFactor);
 
-    float alphaFade = 1.0 - smoothstep(1.0 - blurRate, 1.0, dist);
-    float alpha = mix(bodyAlpha, 1.0, factor) * alphaFade;
+    float alpha = mix(bodyAlpha, 1.0, borderFactor) * alphaFade;
 
     finalColor = vec4(color * alpha, alpha);
     gl_FragDepth = dist;

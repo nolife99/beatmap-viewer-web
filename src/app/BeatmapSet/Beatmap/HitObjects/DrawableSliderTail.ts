@@ -1,5 +1,5 @@
 import { HitResult, type HitSample as Sample, type LegacyReplayFrame, Vector2 } from 'osu-classes';
-import { Slider, SliderTail } from 'osu-standard-stable';
+import { Slider, SliderEnd } from 'osu-standard-stable';
 import Beatmap from '..';
 import HitSample from '../../../Audio/HitSample.ts';
 import { inject } from '../../../Context.ts';
@@ -11,18 +11,23 @@ import BeatmapSet from '../../index.ts';
 import DrawableSliderHead from './DrawableSliderHead.ts';
 
 export const TAIL_LENIENCY = 36;
+
 export default class DrawableSliderTail extends DrawableSliderHead {
 	override hitSound?: HitSample;
 	tailUpdateFn: null | typeof update = null;
+	protected actualStartTime: number;
 
 	constructor(
-		object: SliderTail,
+		object: SliderEnd,
 		public override parent: Slider,
 		samples: Sample[]
 	) {
 		super(object, parent, samples, false);
+
 		this.hitSound = new HitSample(samples).hook(this.context);
 		this.refreshSprite();
+
+		this.actualStartTime = this.parent.startTime + this.parent.spanDuration * (object.repeatIndex + 1);
 	}
 
 	override refreshSprite() {
@@ -81,8 +86,8 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 		if (!beatmap || isSeeking) return;
 		if (
 			!(
-				beatmap.previousTime <= this.object.startTime + offset &&
-				this.object.startTime + offset < time &&
+				beatmap.previousTime <= this.actualStartTime + offset &&
+				this.actualStartTime + offset < time &&
 				time - beatmap.previousTime < 30
 			)
 		) {
@@ -90,7 +95,7 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 		}
 
 		const currentSamplePoint = beatmap.getNearestSamplePoint(
-			this.object.startTime + offset
+			this.actualStartTime + offset
 		);
 
 		this.hitSound?.play(currentSamplePoint);
@@ -98,7 +103,7 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 
 	override eval(frames: LegacyReplayFrame[]) {
 		const frame = frames.findLast(
-			(frames) => frames.startTime <= this.object.startTime
+			(frames) => frames.startTime <= this.actualStartTime
 		);
 
 		if (!frame || !(frame.mouseLeft || frame.mouseRight)) {
@@ -109,7 +114,7 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 		}
 
 		const completionProgress = Clamp(
-			(this.object.startTime - this.parent.startTime) / this.parent.duration
+			(this.actualStartTime - this.parent.startTime) / this.parent.duration
 		);
 
 		const position = this.parent.path.curvePositionAt(
@@ -135,7 +140,7 @@ export default class DrawableSliderTail extends DrawableSliderHead {
 
 		return {
 			value: HitResult.LargeTickHit,
-			hitTime: this.object.startTime
+			hitTime: this.actualStartTime
 		};
 	}
 

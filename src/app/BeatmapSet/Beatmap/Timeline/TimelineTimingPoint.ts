@@ -1,17 +1,14 @@
 import { TimingPoint } from 'osu-classes';
-import { BitmapText, Container, Sprite } from 'pixi.js';
+import { BitmapText, Container, Sprite, Texture } from 'pixi.js';
 import TimelineConfig from '../../../Config/TimelineConfig.ts';
 import { inject } from '../../../Context.ts';
 import { DEFAULT_SCALE } from '../../../UI/main/viewer/Timeline/index.ts';
-import { getPixelTexture } from './TimelineSlider.ts';
 
 export default class TimelineTimingPoint {
 	container: Container = new Container();
 
-	private readonly timelineConfig = inject<TimelineConfig>('config/timeline');
-
-	private readonly background = new Sprite(getPixelTexture());
-	private readonly line = new Sprite(getPixelTexture());
+	private readonly background = new Sprite(Texture.WHITE);
+	private readonly line = new Sprite(Texture.WHITE);
 	private readonly text: BitmapText;
 
 	constructor(public data: TimingPoint) {
@@ -55,7 +52,7 @@ export default class TimelineTimingPoint {
 		this.container.y = 40;
 
 		this.container.onRender = () => {
-			const scale = this.timelineConfig?.scale ?? 1;
+			const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
 			this.container.x = this.data.startTime / (DEFAULT_SCALE / scale);
 		};
 	}

@@ -5,27 +5,35 @@ import SampleManager from '../BeatmapSet/SampleManager.ts';
 import SkinManager from '../Skinning/SkinManager.ts';
 import AudioConfig from '../Config/AudioConfig.ts';
 import { inject, ScopedClass } from '../Context.ts';
-import { DisposableStack } from '@esfx/disposable';
+import { DisposableLike } from '@esfx/disposable';
 
-const DEFAULT_LOOP_POLL_MS = 25;
-const MIN_LOOP_POLL_MS = 4;
-const MAX_LOOP_POLL_MS = 50;
+const SHARED_LOOP_TICK_MS = 33;
 const GAIN_EPSILON = 0.0001;
 
 export default class HitSample extends ScopedClass {
+	private static activeLoops = new Set<HitSample>();
+	private static loopTimer?: ReturnType<typeof setTimeout>;
+	private static nextTickAt = 0;
+
+	private static sampleRevision = 0;
+	private static removeHitsoundListener?: DisposableLike;
+	private static removeSkinListener?: DisposableLike;
+
 	localGainNode?: GainNode;
 	srcs: AudioBufferSourceNode[] = [];
 
 	private isPlaying = false;
-	private _pollInterval?: ReturnType<typeof setInterval>;
-	private loopPollMs = DEFAULT_LOOP_POLL_MS;
 
 	private loopSamplePoint?: SamplePoint;
 	private loopStart = 0;
 	private loopEnd = 0;
 
-	private loopInvalidators?: DisposableStack;
-	private invalidatingLoopSamples = false;
+	private localRevision = 0;
+	private activeGlobalRevision = -1;
+	private activeLocalRevision = -1;
+	private activeSampleSet = '';
+	private activeSampleIndex = -1;
+	private activeHitsoundOverride = false;
 
 	constructor(hitSamples: Sample[]) {
 		super();
@@ -40,7 +48,97 @@ export default class HitSample extends ScopedClass {
 
 	set hitSamples(val: Sample[]) {
 		this._hitSamples = val;
-		this.invalidateLoopSamples();
+		this.localRevision++;
+
+		if (this.loopSamplePoint) {
+			this.stopSources();
+			HitSample.scheduleTick(0);
+		}
+	}
+
+	private static registerLoop(sample: HitSample) {
+		this.ensureSharedInvalidators();
+		this.activeLoops.add(sample);
+		this.scheduleTick(0);
+	}
+
+	private static unregisterLoop(sample: HitSample) {
+		this.activeLoops.delete(sample);
+
+		if (this.activeLoops.size === 0) {
+			this.clearTimer();
+		}
+	}
+
+	private static ensureSharedInvalidators() {
+		if (!this.removeHitsoundListener) {
+			const audioConfig = inject<AudioConfig>('config/audio');
+
+			const removeHitsoundListener = audioConfig?.onChange('hitsound', () => {
+				HitSample.sampleRevision++;
+				HitSample.scheduleTick(0);
+			});
+
+			if (removeHitsoundListener) {
+				this.removeHitsoundListener = removeHitsoundListener;
+			}
+		}
+
+		if (!this.removeSkinListener) {
+			const skinManager = inject<SkinManager>('skinManager');
+
+			const removeSkinListener = skinManager?.addSkinChangeListener(() => {
+				HitSample.sampleRevision++;
+				HitSample.scheduleTick(0);
+			});
+
+			if (removeSkinListener) {
+				this.removeSkinListener = removeSkinListener;
+			}
+		}
+	}
+
+	private static scheduleTick(delayMs = SHARED_LOOP_TICK_MS) {
+		if (this.activeLoops.size === 0) {
+			this.clearTimer();
+			return;
+		}
+
+		const now = performance.now();
+		const nextTickAt = now + delayMs;
+
+		if (this.loopTimer && this.nextTickAt <= nextTickAt + 0.5) {
+			return;
+		}
+
+		this.clearTimer();
+
+		this.nextTickAt = nextTickAt;
+		this.loopTimer = setTimeout(() => {
+			HitSample.loopTimer = undefined;
+			HitSample.nextTickAt = 0;
+			HitSample.tickAllLoops();
+		}, delayMs);
+	}
+
+	private static clearTimer() {
+		if (!this.loopTimer) return;
+
+		clearTimeout(this.loopTimer);
+		this.loopTimer = undefined;
+		this.nextTickAt = 0;
+	}
+
+	private static tickAllLoops() {
+		if (this.activeLoops.size === 0) return;
+
+		const loops = Array.from(this.activeLoops);
+
+		for (const loop of loops) {
+			loop.tickLoop();
+		}
+
+		this.scheduleTick(SHARED_LOOP_TICK_MS);
 	}
 
 	play(samplePoint: SamplePoint, isLoop = false) {
@@ -51,54 +149,33 @@ export default class HitSample extends ScopedClass {
 		const masterNode = this.context.consume<GainNode>('masterGainNode');
 		if (!sampleManager || !masterNode) return;
 
+		const audioConfig = inject<AudioConfig>('config/audio');
+		const hitsoundOverride = audioConfig?.hitsound === true;
+		const sampleIndex = hitsoundOverride ? 0 : samplePoint.customIndex;
+
 		const gain = this.ensureGainNode(masterNode);
-		this.updateGain(samplePoint);
+		this.updateGain(samplePoint, audioConfig);
 
 		if (isLoop) this.stopSources();
 
-		const sources: AudioBufferSourceNode[] = [];
-
-		for (const hitSample of this.hitSamples) {
-			const { sampleSet, sampleName } = this.resolveSample(hitSample, samplePoint, isLoop);
-
-			const buffer = sampleManager.get(
-				sampleSet,
-				sampleName,
-				inject<AudioConfig>('config/audio')?.hitsound
-					? 0
-					: samplePoint.customIndex
-			);
-
-			if (!buffer) continue;
-
-			const src = masterNode.context.createBufferSource();
-
-			src.buffer = buffer;
-			src.loop = isLoop;
-			src.playbackRate.value = 1;
-
-			if (isLoop) {
-				src.loopStart = 0;
-				src.loopEnd = buffer.duration;
-			}
-
-			src.connect(gain);
-
-			src.addEventListener('ended', () => {
-				try {
-					src.disconnect();
-				} catch {
-					// Already disconnected.
-				}
-			}, { once: true });
-
-			src.start();
-			sources.push(src);
-		}
+		const sources = this.createSources(
+			sampleManager,
+			masterNode,
+			gain,
+			samplePoint,
+			sampleIndex,
+			isLoop
+		);
 
 		if (isLoop) {
 			this.srcs = sources;
 			this.isPlaying = sources.length > 0;
+
+			this.activeGlobalRevision = HitSample.sampleRevision;
+			this.activeLocalRevision = this.localRevision;
+			this.activeSampleSet = samplePoint.sampleSet;
+			this.activeSampleIndex = sampleIndex;
+			this.activeHitsoundOverride = hitsoundOverride;
 		}
 	}
 
@@ -107,76 +184,27 @@ export default class HitSample extends ScopedClass {
 		this.loopStart = start;
 		this.loopEnd = end;
 
-		this.ensureLoopInvalidators();
-
-		const pollMs = this.getLoopPollMs(samplePoint);
-
-		if (pollMs !== this.loopPollMs) {
-			this.loopPollMs = pollMs;
-			this.restartPolling();
-		}
-
-		if (!this._pollInterval) {
-			this._pollInterval = setInterval(() => this.tickLoop(), this.loopPollMs);
-		}
+		HitSample.registerLoop(this);
 
 		this.tickLoop(target);
 	}
 
 	stopLoop() {
-		this.stopSources();
-		this.stopPolling();
-		this.disposeLoopInvalidators();
 		this.loopSamplePoint = undefined;
+		this.loopStart = 0;
+		this.loopEnd = 0;
+
+		this.stopSources();
+		HitSample.unregisterLoop(this);
 	}
 
 	invalidateLoopSamples() {
-		if (!this.loopSamplePoint || this.invalidatingLoopSamples) return;
+		this.localRevision++;
 
-		this.invalidatingLoopSamples = true;
+		if (!this.loopSamplePoint) return;
 
-		try {
-			const wasPlaying = this.isPlaying;
-
-			this.stopSources();
-
-			if (wasPlaying) {
-				this.tickLoop();
-			}
-		} finally {
-			this.invalidatingLoopSamples = false;
-		}
-	}
-
-	private ensureLoopInvalidators() {
-		if (this.loopInvalidators) return;
-
-		const stack = new DisposableStack();
-
-		const audioConfig = inject<AudioConfig>('config/audio');
-		const removeHitsoundListener = audioConfig?.onChange('hitsound', () => {
-			this.invalidateLoopSamples();
-		});
-
-		if (removeHitsoundListener) {
-			stack.use(removeHitsoundListener);
-		}
-
-		const skinManager = inject<SkinManager>('skinManager');
-		const removeSkinListener = skinManager?.addSkinChangeListener(() => {
-			this.invalidateLoopSamples();
-		});
-
-		if (removeSkinListener) {
-			stack.use(removeSkinListener);
-		}
-
-		this.loopInvalidators = stack;
-	}
-
-	private disposeLoopInvalidators() {
-		this.loopInvalidators?.dispose();
-		this.loopInvalidators = undefined;
+		this.stopSources();
+		HitSample.scheduleTick(0);
 	}
 
 	private tickLoop(target?: number) {
@@ -205,36 +233,62 @@ export default class HitSample extends ScopedClass {
 			return;
 		}
 
-		this.updateGain(samplePoint);
+		const audioConfig = inject<AudioConfig>('config/audio');
+		this.updateGain(samplePoint, audioConfig);
 
-		if (!this.isPlaying) {
-			this.play(samplePoint, true);
+		const hitsoundOverride = audioConfig?.hitsound === true;
+		const sampleIndex = hitsoundOverride ? 0 : samplePoint.customIndex;
+
+		if (
+			this.isPlaying &&
+			this.activeGlobalRevision === HitSample.sampleRevision &&
+			this.activeLocalRevision === this.localRevision &&
+			this.activeSampleSet === samplePoint.sampleSet &&
+			this.activeSampleIndex === sampleIndex &&
+			this.activeHitsoundOverride === hitsoundOverride
+		) {
+			return;
 		}
+
+		this.play(samplePoint, true);
 	}
 
-	private getLoopPollMs(samplePoint: SamplePoint): number {
-		const sampleManager = this.context.consume<SampleManager>('sampleManager');
-		if (!sampleManager) return DEFAULT_LOOP_POLL_MS;
-
-		let shortestMs = Infinity;
+	private createSources(
+		sampleManager: SampleManager,
+		masterNode: GainNode,
+		gain: GainNode,
+		samplePoint: SamplePoint,
+		sampleIndex: number,
+		isLoop: boolean
+	): AudioBufferSourceNode[] {
+		const sources: AudioBufferSourceNode[] = [];
 
 		for (const hitSample of this.hitSamples) {
-			const { sampleSet, sampleName } = this.resolveSample(hitSample, samplePoint, true);
-
-			const buffer = sampleManager.get(
-				sampleSet,
-				sampleName,
-				inject<AudioConfig>('config/audio')?.hitsound
-					? 0
-					: samplePoint.customIndex
-			);
+			const { sampleSet, sampleName } = this.resolveSample(hitSample, samplePoint, isLoop);
+			const buffer = sampleManager.get(sampleSet, sampleName, sampleIndex);
 
 			if (!buffer) continue;
 
-			shortestMs = Math.min(shortestMs, buffer.duration * 1000);
+			const src = masterNode.context.createBufferSource();
+
+			src.buffer = buffer;
+			src.loop = isLoop;
+			src.playbackRate.value = 1;
+
+			if (isLoop) {
+				src.loopStart = 0;
+				src.loopEnd = buffer.duration;
+			}
+
+			src.connect(gain);
+			src.start();
+
+			if (isLoop) {
+				sources.push(src);
+			}
 		}
 
-		return clampPollMs(shortestMs);
+		return sources;
 	}
 
 	private resolveSample(hitSample: Sample, samplePoint: SamplePoint, isLoop: boolean) {
@@ -285,13 +339,13 @@ export default class HitSample extends ScopedClass {
 		return this.localGainNode;
 	}
 
-	private updateGain(samplePoint: SamplePoint) {
+	private updateGain(samplePoint: SamplePoint, audioConfig = inject<AudioConfig>('config/audio')) {
 		const gain = this.localGainNode;
 		if (!gain) return;
 
 		const beatmapset = inject<BeatmapSet>('beatmapset');
 		const clientLength = 1 + (beatmapset?.slaves.size ?? 0);
-		const effectVolume = inject<AudioConfig>('config/audio')?.effectVolume ?? 1;
+		const effectVolume = audioConfig?.effectVolume ?? 1;
 
 		const volume = (samplePoint.volume * effectVolume) / clientLength / 100;
 
@@ -319,29 +373,11 @@ export default class HitSample extends ScopedClass {
 
 		this.srcs.length = 0;
 		this.isPlaying = false;
+
+		this.activeGlobalRevision = -1;
+		this.activeLocalRevision = -1;
+		this.activeSampleSet = '';
+		this.activeSampleIndex = -1;
+		this.activeHitsoundOverride = false;
 	}
-
-	private restartPolling() {
-		this.stopPolling();
-
-		if (this.loopSamplePoint) {
-			this._pollInterval = setInterval(() => this.tickLoop(), this.loopPollMs);
-		}
-	}
-
-	private stopPolling() {
-		if (!this._pollInterval) return;
-
-		clearInterval(this._pollInterval);
-		this._pollInterval = undefined;
-	}
-}
-
-function clampPollMs(ms: number): number {
-	if (!Number.isFinite(ms) || ms <= 0) return DEFAULT_LOOP_POLL_MS;
-
-	return Math.max(
-		MIN_LOOP_POLL_MS,
-		Math.min(MAX_LOOP_POLL_MS, Math.ceil(ms))
-	);
 }

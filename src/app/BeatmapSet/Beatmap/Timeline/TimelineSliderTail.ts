@@ -1,16 +1,22 @@
-import { SliderTail } from 'osu-standard-stable';
+import { Slider, SliderEnd } from 'osu-standard-stable';
 import Skin, { BLANK_TEXTURE } from '../../../Skinning/Skin.ts';
 import DrawableSlider from '../HitObjects/DrawableSlider.ts';
 import TimelineHitCircle from './TimelineHitCircle.ts';
-import { TAIL_LENIENCY } from '../HitObjects/DrawableSliderTail.ts';
 
 export default class TimelineSliderTail extends TimelineHitCircle {
-	constructor(object: SliderTail) {
-		object.startTime += TAIL_LENIENCY;
+	protected actualTime: number;
+
+	constructor(parent: Slider, object: SliderEnd) {
 		super(object);
 
 		this.container.removeChild(this.defaults.container);
 		this.defaults.destroy();
+
+		this.actualTime = parent.duration;
+	}
+
+	override get time() {
+		return this.actualTime;
 	}
 
 	override refreshSprite() {

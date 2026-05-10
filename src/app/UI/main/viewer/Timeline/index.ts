@@ -37,7 +37,7 @@ export default class Timeline {
 		}
 	});
 
-	private _objectsContainer = new Container();
+	private _objectsContainer = new Container({ sortableChildren: true });
 	private _dragWindow = new Graphics({ roundPixels: true })
 		.rect(0, 0, 1, 80)
 		.fill({ color: 0xffffff, alpha: 0.3 });
@@ -255,7 +255,12 @@ export default class Timeline {
 		}
 
 		this._objects = objects
-			.map((object) => object.timelineObject)
+			.map((object, index) => {
+				if (!object.timelineObject) return undefined;
+
+				object.timelineObject.container.zIndex = index + 1;
+				return object.timelineObject;
+			})
 			.filter((object) => object !== undefined)
 			.sort((a, b) => a.object.startTime - b.object.startTime);
 
@@ -342,8 +347,7 @@ export default class Timeline {
 			(idx) => this._timingPoints[idx].container,
 			start,
 			this._timingPoints.length,
-			(idx) => this._timingPoints[idx].data.startTime <= max,
-			true
+			(idx) => this._timingPoints[idx].data.startTime <= max
 		);
 	}
 
@@ -358,8 +362,7 @@ export default class Timeline {
 			(idx) => this._objects[idx].container,
 			this.firstObjectIndexAfter(min - 800),
 			this._objects.length,
-			(idx) => this._objects[idx].object.startTime <= max,
-			false
+			(idx) => this._objects[idx].object.startTime <= max
 		);
 	}
 
@@ -370,8 +373,7 @@ export default class Timeline {
 		getContainer: (idx: number) => Container,
 		start: number,
 		end: number,
-		shouldContinue: (idx: number) => boolean,
-		before: boolean
+		shouldContinue: (idx: number) => boolean
 	) {
 		for (let i = visible.length - 1; i >= 0; i--) {
 			const idx = visible[i];
@@ -391,10 +393,7 @@ export default class Timeline {
 
 			marks[idx] = 1;
 			visible.push(idx);
-			if (before)
-				this._objectsContainer.addChildAt(getContainer(idx), 0);
-			else
-				this._objectsContainer.addChild(getContainer(idx));
+			this._objectsContainer.addChild(getContainer(idx));
 		}
 	}
 
@@ -485,72 +484,53 @@ export default class Timeline {
 
 		const scale = inject<TimelineConfig>('config/timeline')?.scale ?? 1;
 		const divisor = inject<TimelineConfig>('config/timeline')?.divisor ?? 4;
-		const duration = this._objects.at(-1)!.getTimeRange().end + 5000;
-
-		const xMult = scale / DEFAULT_SCALE;
+		const duration = inject<BeatmapSet>('beatmapset')?.context.consume<Audio>('audio')?.duration ??
+			this._objects.at(-1)!.getTimeRange().end + 5000;
 
 		this._ruler.clear();
 
 		for (let ti = 0; ti < this._timingPoints.length; ti++) {
-			const { beatLength, timeSignature, startTime } = this._timingPoints[ti].data;
+			const { beatLength, timeSignature, startTime } =
+				this._timingPoints[ti].data;
 			const sectionEnd = ti + 1 < this._timingPoints.length
 				? this._timingPoints[ti + 1].data.startTime
 				: duration;
 
-			const beatStep = beatLength / divisor;
-			const ticksPerMeasure = timeSignature * divisor;
-
-			const styleBatches = new Map<number, { y: number, h: number, fill: { color: number }, x: number[] }>();
-			const tickToBatch = new Array(ticksPerMeasure);
-
-			for (let i = 0; i < ticksPerMeasure; i++) {
-				const isWholeBeat = i % divisor === 0;
-				const isDominant = i === 0;
+			let t = startTime;
+			while (t <= sectionEnd) {
+				const isWholeBeat = Math.round(
+					t -
+					(Math.round((t - startTime) / beatLength) * beatLength + startTime)
+				) === 0;
+				const isDominant = isWholeBeat &&
+					Math.round((t - startTime) / beatLength) % timeSignature === 0;
 
 				let color = 0xffffff;
 				if (!isWholeBeat) {
-					const tickInBeat = i % divisor;
-					const denominator = divisor / gcd(divisor, tickInBeat);
-					color = BEAT_LINE_COLOR[denominator as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9] ?? 0x929292;
+					const nearestWholeBeat =
+						Math.floor((t - startTime) / beatLength) * beatLength + startTime;
+					const idx = Math.round(
+						(t - nearestWholeBeat) / (beatLength / divisor)
+					);
+					const denominator = divisor / gcd(divisor, idx);
+					color =
+						BEAT_LINE_COLOR[denominator as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9] ??
+						0x929292;
 				}
 
-				const y = isDominant ? 0 : 1;
-				const h = isDominant ? 8 : 6;
+				this._ruler
+					.rect(
+						t / (DEFAULT_SCALE / scale),
+						isDominant ? 0 : 1,
+						1,
+						isDominant ? 8 : 6
+					)
+					.fill({ color });
 
-				const key = color | (y << 24) | (h << 25);
-
-				if (!styleBatches.has(key)) {
-					styleBatches.set(key, { y, h, fill: { color }, x: [] });
-				}
-
-				tickToBatch[i] = styleBatches.get(key)!;
+				t += beatLength / divisor;
 			}
 
-			const totalTicks = Math.floor((sectionEnd - startTime) / beatStep) + 1;
-
-			for (let i = 0; i < totalTicks; i++) {
-				const t = startTime + i * beatStep;
-				if (t > sectionEnd) break;
-
-				tickToBatch[i % ticksPerMeasure].x.push(t * xMult);
-			}
-
-			for (const batch of styleBatches.values()) {
-				if (batch.x.length === 0) continue;
-
-				for (let j = 0; j < batch.x.length; j++) {
-					const xPos = batch.x[j];
-					this._ruler.moveTo(xPos, batch.y);
-					this._ruler.lineTo(xPos, batch.y + batch.h);
-				}
-
-				this._ruler.stroke({
-					color: batch.fill.color,
-					pixelLine: true
-				});
-			}
+			this._ruler.scale.y = 10;
 		}
-
-		this._ruler.scale.y = 10;
 	}
 }

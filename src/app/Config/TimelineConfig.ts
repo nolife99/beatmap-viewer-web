@@ -14,7 +14,7 @@ export default class TimelineConfig extends ConfigSection {
 		if (!defaultOptions) return;
 
 		const { scale, divisor } = defaultOptions;
-		this.scale = Clamp(scale ?? 1, 0.5, 1.5);
+		this.scale = Clamp(scale ?? 1, 0.2, 1.5);
 		this.divisor = divisor ?? 4;
 	}
 
@@ -24,7 +24,7 @@ export default class TimelineConfig extends ConfigSection {
 	}
 
 	set scale(val: number) {
-		this._scale = Clamp(val, 0.5, 1.5);
+		this._scale = Clamp(val, 0.2, 1.5);
 		this.emitChange('scale', val);
 	}
 

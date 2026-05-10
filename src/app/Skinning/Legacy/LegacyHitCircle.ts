@@ -45,15 +45,14 @@ export const update = (drawable: DrawableHitCircle, time: number) => {
 
 	if (isHD) return applyHidden(drawable, time);
 	if (!inject<GameplayConfig>('config/gameplay')?.hitAnimation) {
-		return surpressAnimation(drawable, time);
+		return suppressAnimation(drawable, time);
 	}
 
 	if (time < startTime) {
-		const opacity = Math.min(
+		drawable.wrapper.alpha = Math.min(
 			1,
 			Math.max(0, (time - startFadeInTime) / drawable.object.timeFadeIn)
 		);
-		drawable.wrapper.alpha = opacity;
 
 		return;
 	}
@@ -73,8 +72,7 @@ export const update = (drawable: DrawableHitCircle, time: number) => {
 	}
 
 	if (!shouldHit && time > maxThreshold) {
-		const opacity = 1 - Math.min(1, Math.max(0, (time - maxThreshold) / 100));
-		drawable.wrapper.alpha = opacity;
+		drawable.wrapper.alpha = 1 - Math.min(1, Math.max(0, (time - maxThreshold) / 100));
 		drawable.sprite.scale.set(1);
 	}
 };
@@ -100,7 +98,7 @@ const applyHidden = (drawable: DrawableHitCircle, time: number) => {
 	return;
 };
 
-const surpressAnimation = (drawable: DrawableHitCircle, time: number) => {
+const suppressAnimation = (drawable: DrawableHitCircle, time: number) => {
 	const startFadeInTime = drawable.object.startTime -
 		drawable.object.timePreempt;
 
