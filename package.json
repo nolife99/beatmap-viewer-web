@@ -5,7 +5,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "deno run -A --watch src/server/index.ts",
-		"build": "deno run -A npm:vite build",
+		"build": "deno run -A npm:vite build && deno run -A scripts/copy-server.ts",
 		"preview": "deno run -A npm:vite preview --port 5000"
 	},
 	"peerDependencies": {

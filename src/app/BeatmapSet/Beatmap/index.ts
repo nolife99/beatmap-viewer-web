@@ -67,15 +67,15 @@ export default class Beatmap extends ScopedClass {
 	private workerUpdate: ((this: Worker, ev: MessageEvent) => void) | null =
 		null;
 
-	constructor(public raw: ArrayBuffer, public beatmapSet: BeatmapSet) {
+	constructor(public raw: string, public beatmapSet: BeatmapSet) {
 		super();
 
-		this.md5 = crypto.createHash('md5').update(new Uint8Array(raw)).digest('hex');
+		this.md5 = crypto.createHash('md5').update(raw).digest('hex');
 
 		const initialMods =
 			inject<ExperimentalConfig>('config/experimental')?.getModsString() ?? '';
 
-		const base = decoder.decodeFromBuffer(raw);
+		const base = decoder.decodeFromString(raw);
 		this.data = ruleset.applyToBeatmapWithMods(
 			base,
 			ruleset.createModCombination(initialMods)

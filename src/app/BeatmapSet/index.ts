@@ -118,7 +118,7 @@ export default class BeatmapSet extends ScopedClass {
 				osuFiles.map(async ([, blob]) => {
 					if (!blob) return null;
 
-					const raw = await blob.arrayBuffer();
+					const raw = await blob.text();
 					if (!raw) return null;
 
 					return new Beatmap(raw, this).hook(this.context);

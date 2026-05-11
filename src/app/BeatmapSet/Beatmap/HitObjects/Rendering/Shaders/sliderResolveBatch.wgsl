@@ -5,7 +5,7 @@ struct CustomUniforms {
 struct VertexOutput {
 	@builtin(position) position : vec4<f32>,
 	@location(0) coverageUv : vec2<f32>,
-	@location(1) @interpolate(flat) styleParams : vec4<f32>,
+	@location(1) @interpolate(flat) styleParams : vec3<f32>,
 	@location(2) @interpolate(flat) borderColor : vec3<f32>,
 	@location(3) @interpolate(flat) innerColor : vec3<f32>,
 	@location(4) @interpolate(flat) outerColor : vec3<f32>,
@@ -19,7 +19,7 @@ struct VertexOutput {
 fn vsMain(
 	@location(0) aQuad : vec2<f32>,
 	@location(1) aAtlas : vec4<f32>,
-	@location(2) aParams : vec4<f32>,
+	@location(2) aParams : vec3<f32>,
 	@location(3) aBorderColor : vec4<f32>,
 	@location(4) aInnerColor : vec4<f32>,
 	@location(5) aOuterColor : vec4<f32>,

@@ -10,30 +10,19 @@ import Easings from '../../Easings.ts';
 import { millisecondsToMinutesString } from '../../../utils.ts';
 import BeatmapSet from '../../../BeatmapSet/index.ts';
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
-const ROW_H = 45;  // stride between row tops (px)
-const ROW_VISIBLE_H = 40;  // drawn height of each row (5 px gap beneath)
+const ROW_H = 45;
+const ROW_VISIBLE_H = 40;
 const COL_TS_X = 20;
 const COL_C1_X = 100;
-const COL_C2_RPAD = 20;  // right-anchor padding
+const COL_C2_RPAD = 20;
 
-// With lineHeight: ROW_H, Pixi allocates a ROW_H-tall slot per line and centres
-// the glyph inside it.  To make that centred glyph land inside the visible 40 px
-// row we shift the whole BitmapText up by half the surplus:
-//   TEXT_Y = (ROW_VISIBLE_H − ROW_H) / 2 = (40 − 45) / 2 = −2.5 → −2
-// The selection BitmapTexts use the same lineHeight so they get the same offset,
-// then are positioned at   rowY + TEXT_Y   to match the column slot exactly.
-const TEXT_Y = Math.round((ROW_VISIBLE_H - ROW_H) / 2); // −2
+const TEXT_Y = Math.round((ROW_VISIBLE_H - ROW_H) / 2);
+const INDICATOR_Y_IN_ROW = Math.round((ROW_VISIBLE_H - 10) / 2);
 
-// Indicator arrow is 10 px tall; centre it in ROW_VISIBLE_H:
-const INDICATOR_Y_IN_ROW = Math.round((ROW_VISIBLE_H - 10) / 2); // 15
-
-// ─── Scroll ───────────────────────────────────────────────────────────────────
 const VELOCITY_WINDOW_MS = 80;
 const FRICTION_PER_FRAME = 0.90;
 const TAP_THRESHOLD_PX = 8;
 
-// ─── Accent colours ───────────────────────────────────────────────────────────
 const ACCENT_TIMING = 0xf38ba8;
 const ACCENT_DIFFICULTY = 0xa6e3a1;
 
@@ -49,7 +38,6 @@ function trackOf(p: ControlPoint): 0 | 1 | 2 {
 	return 2;
 }
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
 function fmtC1(p: ControlPoint): string {
 	if (p.pointType === ControlPointType.TimingPoint)
 		return `${Math.round((p as TimingPoint).bpm)} BPM`;
@@ -66,11 +54,6 @@ function fmtC2(p: ControlPoint): string {
 	return `Volume ${(p as SamplePoint).volume}%`;
 }
 
-// ─── Shared style factories ────────────────────────────────────────────────────
-// Both column texts and selection texts specify lineHeight: ROW_H so that Pixi
-// positions the glyph inside the same sized slot in both cases.  The column texts
-// use this for multi-line spacing; the selection texts use it for the single line
-// they display so the glyph offset within the slot is identical.
 function colStyle(bold = false): TextStyleOptions {
 	return {
 		fontSize: 14,
@@ -81,8 +64,6 @@ function colStyle(bold = false): TextStyleOptions {
 	};
 }
 
-// ─── Timing ───────────────────────────────────────────────────────────────────
-
 interface Track {
 	ts: BitmapText;
 	c1: BitmapText;
@@ -91,16 +72,10 @@ interface Track {
 
 export default class Timing {
 	container: LayoutContainer;
-
-	// Scrolling layer — holds the nine column BitmapTexts (3 tracks × 3 columns).
-	// alpha = 0.5 fades all unselected rows uniformly.
 	private _scroll: Container;
 
-	// Nine column BitmapTexts.  Each track owns one full-list text per column;
-	// rows belonging to other tracks are blank lines (no quads, but spacing preserved).
 	private _tracks: [Track, Track, Track];
 
-	// Selected-row overlay, full opacity, above _scroll.
 	private _selLayer: Container;
 	private _selBg: Graphics;
 	private _selIndicator: Graphics;
@@ -108,13 +83,10 @@ export default class Timing {
 	private _selC1: BitmapText;
 	private _selC2: BitmapText;
 
-	// Last values used to draw each Graphics object.
-	// When they haven't changed we skip the redraw + recache and only reposition.
-	private _cachedBgAccent = -1; // accent colour last drawn into _selBg
-	private _cachedBgWidth = -1; // container width last drawn into _selBg
-	private _cachedIndColor = -1; // bg colour last drawn into _selIndicator
+	private _cachedBgAccent = -1;
+	private _cachedBgWidth = -1;
+	private _cachedIndColor = -1;
 
-	// State
 	private _points: ControlPoint[] = [];
 	private _currentIdx = 0;
 	private _width = 360;
@@ -123,7 +95,6 @@ export default class Timing {
 	private _scrollOffset = 0;
 	private _animCtrl = new AnimationController();
 
-	// Drag / inertia
 	private _isDown = false;
 	private _startPosition = 0;
 	private _cacheOffset = 0;
@@ -150,7 +121,6 @@ export default class Timing {
 			visible: false
 		});
 
-		// ── Scroll layer ──────────────────────────────────────────────────────
 		this._scroll = new Container();
 		this._scroll.alpha = 0.5;
 		this.container.addChild(this._scroll);
@@ -176,12 +146,9 @@ export default class Timing {
 			return { ts: make(COL_TS_X), c1: make(COL_C1_X, false, true), c2: make(0, true) };
 		}) as [Track, Track, Track];
 
-		// ── Selection overlay ─────────────────────────────────────────────────
 		this._selBg = new Graphics();
 		this._selIndicator = new Graphics();
 
-		// Selection texts use lineHeight: ROW_H — identical glyph-in-slot offset as columns.
-		// Positioned at   rowY + TEXT_Y   so they sit in the same vertical position.
 		const makeSel = (x: number, anchorRight = false, bold = false): BitmapText => {
 			const t = new BitmapText({ text: '', style: colStyle(bold), layout: false });
 			if (anchorRight) {
@@ -199,7 +166,6 @@ export default class Timing {
 		this._selLayer.addChild(this._selBg, this._selIndicator, this._selTs, this._selC1, this._selC2);
 		this.container.addChild(this._selLayer);
 
-		// ── Config reactivity ─────────────────────────────────────────────────
 		cfg?.onChange('color', ({ mantle, text }) => {
 			this._bg = mantle;
 			this._textAccent = text;
@@ -210,7 +176,6 @@ export default class Timing {
 			this._applySelection(this._currentIdx);
 		});
 
-		// ── Responsive ────────────────────────────────────────────────────────
 		inject<ResponsiveHandler>('responsiveHandler')?.on('layout', (dir) => {
 			this.container.layout = dir === 'landscape' ? { width: 360 } : { width: '100%' };
 		});
@@ -230,7 +195,6 @@ export default class Timing {
 			this.container.visible = s === 'OPENED';
 		});
 
-		// ── Input ─────────────────────────────────────────────────────────────
 		this.container.on('wheel', (e) => {
 			this._lastUserScroll = performance.now();
 			this.scrollTo(this._scrollOffset + e.deltaY * 2);
@@ -240,8 +204,6 @@ export default class Timing {
 		this.container.on('pointerup', (e) => this._onUp(e));
 		this.container.on('pointerout', () => this._onUp());
 	}
-
-	// ── Public API ────────────────────────────────────────────────────────────
 
 	updateTimingPoints(points: ControlPoint[]) {
 		this._points = points;
@@ -290,8 +252,6 @@ export default class Timing {
 		);
 	}
 
-	// ── Input ─────────────────────────────────────────────────────────────────
-
 	private _onDown(e: FederatedPointerEvent) {
 		this._isDown = true;
 		this._lastUserScroll = performance.now();
@@ -319,7 +279,6 @@ export default class Timing {
 		if (!this._isDown) return;
 		this._isDown = false;
 
-		// Tap → seek
 		if (e && Math.abs(this._scrollOffset - this._cacheOffset) < TAP_THRESHOLD_PX) {
 			const local = this.container.toLocal(e.global);
 			const contentY = local.y + this._scrollOffset;
@@ -336,7 +295,6 @@ export default class Timing {
 			return;
 		}
 
-		// Flick
 		if (this._moveHistory.length >= 2) {
 			const newest = this._moveHistory[this._moveHistory.length - 1];
 			const oldest = this._moveHistory[0];
@@ -372,8 +330,6 @@ export default class Timing {
 		}
 	}
 
-	// ── Internal ─────────────────────────────────────────────────────────────
-
 	private _scrollTo(offset: number) {
 		this._scrollOffset = offset;
 		this._scroll.y = -offset;
@@ -401,8 +357,6 @@ export default class Timing {
 		return false;
 	}
 
-	// ── Column builder ────────────────────────────────────────────────────────
-
 	private _buildColumns() {
 		const ts: [string[], string[], string[]] = [[], [], []];
 		const c1: [string[], string[], string[]] = [[], [], []];
@@ -424,8 +378,6 @@ export default class Timing {
 		}
 	}
 
-	// ── Selection overlay ─────────────────────────────────────────────────────
-
 	private _applySelection(idx: number) {
 		if (!this._points.length || !this._points[idx]) {
 			this._selLayer.visible = false;
@@ -436,9 +388,6 @@ export default class Timing {
 		const accent = pointAccent(p, this._textAccent);
 		const rowY = idx * ROW_H;
 
-		// ── Background ────────────────────────────────────────────────────────
-		// Drawn at local (0, 0); rowY applied via .y so repositioning never
-		// triggers a redraw.  Only redraw + recache when colour or width changes.
 		if (accent !== this._cachedBgAccent || this._width !== this._cachedBgWidth) {
 			this._selBg
 				.clear()
@@ -450,8 +399,6 @@ export default class Timing {
 		}
 		this._selBg.y = rowY;
 
-		// ── Indicator ─────────────────────────────────────────────────────────
-		// Same pattern: shape is static, colour tracks _bg, position via .y.
 		if (this._bg !== this._cachedIndColor) {
 			this._selIndicator
 				.clear()
@@ -463,7 +410,6 @@ export default class Timing {
 		this._selIndicator.x = 10;
 		this._selIndicator.y = rowY + INDICATOR_Y_IN_ROW;
 
-		// ── Text ──────────────────────────────────────────────────────────────
 		const textY = rowY + TEXT_Y;
 		this._selTs.tint = this._bg;
 		this._selC1.tint = this._bg;
@@ -478,8 +424,6 @@ export default class Timing {
 
 		this._selLayer.visible = true;
 	}
-
-	// ── Width change ──────────────────────────────────────────────────────────
 
 	private _repositionRightEdge(w: number) {
 		for (const track of this._tracks) track.c2.x = w - COL_C2_RPAD;

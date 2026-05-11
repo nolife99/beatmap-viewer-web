@@ -35,20 +35,19 @@ const BASE_COLOR = new Color([69 / 255, 71 / 255, 90 / 255, 0]);
 
 export const DEFAULT_BODY_STYLE: SliderInstanceStyle = createStyle({
 	borderColor: [205 / 255, 214 / 255, 244 / 255],
-	innerColor: lighten(BASE_COLOR.toArray(), 0.5),
-	outerColor: darken(BASE_COLOR.toArray(), 0.1),
+	innerColor: lighten(BASE_COLOR, 0.5),
+	outerColor: darken(BASE_COLOR, 0.1),
 	borderWidth: 0.128,
 	bodyAlpha: 0.7
 });
 
 export const DEFAULT_SELECTION_STYLE: SliderInstanceStyle = createStyle({
 	borderColor: [49 / 255, 151 / 255, 255 / 255],
-	innerColor: lighten(BASE_COLOR.toArray(), 0.5),
-	outerColor: darken(BASE_COLOR.toArray(), 0.1),
+	innerColor: lighten(BASE_COLOR, 0.5),
+	outerColor: darken(BASE_COLOR, 0.1),
 	borderWidth: 0.128,
 	bodyAlpha: 0.0
 });
-
 export function normalizeResolution(value: number): number {
 	return Number.isFinite(value) ? Math.max(1, value) : 1;
 }
@@ -112,4 +111,11 @@ export function patchStyle(base: SliderInstanceStyle, patch: SliderUniformPatch)
 		borderWidth: patch.borderWidth ?? base.borderWidth,
 		bodyAlpha: patch.bodyAlpha ?? base.bodyAlpha
 	};
+}
+export function isUsableRect(rect: Rectangle): boolean {
+	return Number.isFinite(rect.x) && Number.isFinite(rect.y) && isUsableDimension(rect.width) && isUsableDimension(rect.height);
+}
+
+export function isUsableDimension(value: number): boolean {
+	return Number.isFinite(value) && value > 0 && value <= 32768;
 }

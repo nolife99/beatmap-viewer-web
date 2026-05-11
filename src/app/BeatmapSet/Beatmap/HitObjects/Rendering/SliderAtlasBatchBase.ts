@@ -1,22 +1,11 @@
 import pool from '@stdlib/array-pool';
-import {
-	BLEND_MODES,
-	Buffer,
-	BufferUsage,
-	type Color,
-	Geometry,
-	Mesh,
-	type Renderer,
-	RendererType,
-	Shader,
-	UniformGroup
-} from 'pixi.js';
+import { Buffer, BufferUsage, Geometry, Mesh, type Color, type Renderer, RendererType, Shader, UniformGroup } from 'pixi.js';
 
 const GROWTH = 0.5 * (1 + Math.sqrt(5));
-const HEADROOM = 1.15;
-const SHRINK_RATIO = 0.35;
-const SHRINK_AFTER = 90;
-const EMPTY_FREE_AFTER = 180;
+const HEADROOM = 1.05;
+const SHRINK_RATIO = 0.5;
+const SHRINK_AFTER = 20;
+const EMPTY_FREE_AFTER = 30;
 
 export type InstanceGeometry = { geometry: Geometry; buffer: Buffer };
 export type InstanceAttribute = { format: string; offset: number };
@@ -31,11 +20,7 @@ export function createInstanceGeometry(
 	stride: number,
 	attributes: Record<string, InstanceAttribute>
 ): InstanceGeometry {
-	const buffer = new Buffer({
-		data: new Uint8Array(stride),
-		usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
-		shrinkToFit: false
-	});
+	const buffer = new Buffer({ data: new Uint8Array(stride), usage: BufferUsage.VERTEX | BufferUsage.COPY_DST, shrinkToFit: false });
 	const geometryAttributes: Record<string, unknown> = { aQuad: { buffer: quad, format: 'float32x2' } };
 
 	for (const name in attributes) {
@@ -80,12 +65,9 @@ export default class SliderAtlasBatchBase {
 		this.mesh.renderable = false;
 	}
 
-	beginFrame() {
-		this.count = 0;
-		this.mesh.renderable = false;
-	}
+	beginFrame() { this.count = 0; this.mesh.renderable = false; }
 
-	applyBaseRenderState(renderer: Renderer, params: Float32Array, uniforms: UniformGroup, blendMode: BLEND_MODES) {
+	applyBaseRenderState(renderer: Renderer, params: Float32Array, uniforms: UniformGroup, blendMode: string) {
 		const isWebGPU = renderer.type === RendererType.WEBGPU;
 		this.mesh.state.depthTest = false;
 		this.mesh.state.depthMask = false;
@@ -185,18 +167,9 @@ export default class SliderAtlasBatchBase {
 	}
 }
 
-export function freePooled(value?: Uint32Array) {
-	if (value) pool.free(value);
-}
-
-export function packUnorm16(value: number) {
-	return (clamp01(value) * 65535 + 0.5) | 0;
-}
-
-export function clamp01(value: number) {
-	return value <= 0 ? 0 : value >= 1 ? 1 : value;
-}
-
+export function freePooled(value?: Uint32Array) { if (value) pool.free(value); }
+export function packUnorm16(value: number) { return (clamp01(value) * 65535 + 0.5) | 0; }
+export function clamp01(value: number) { return value <= 0 ? 0 : value >= 1 ? 1 : value; }
 export function packRgbAlphaByte(color: Color, alphaByte = 255) {
 	const rgb = color.toNumber();
 	return (((alphaByte & 0xFF) << 24) | ((rgb & 0xFF) << 16) | (((rgb >> 8) & 0xFF) << 8) | ((rgb >> 16) & 0xFF));

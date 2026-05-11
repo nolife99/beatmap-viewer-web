@@ -17,7 +17,7 @@ fn vsMain(
 	@location(1) aSegment : vec4<f32>,
 	@location(2) aRender : vec4<f32>,
 	@location(3) aAtlas : vec4<f32>,
-	@location(4) aParams : vec2<f32>,
+	@location(4) aRadius : f32,
 ) -> VertexOutput {
 	let p = customUniforms.params;
 	let a = aSegment.xy;
@@ -26,7 +26,7 @@ fn vsMain(
 	let invLen = inverseSqrt(lenSq);
 	let len = lenSq * invLen;
 	let ndir = dir * invLen;
-	let radius = max(aParams.x, 0.0001);
+	let radius = max(aRadius, 0.0001);
 	let uOffset = aQuad.x * 2.0 - 1.0;
 	let offset = vec2<f32>(
 		ndir.x * uOffset - ndir.y * aQuad.y,

@@ -1,21 +1,16 @@
-import { type Renderer, RendererType, Shader, type Texture, UniformGroup } from 'pixi.js';
-import SliderAtlasBatchBase, {
-	createInstanceGeometry,
-	createUniforms,
-	packRgbAlphaByte,
-	packUnorm16
-} from './SliderAtlasBatchBase.ts';
+import { Shader, type Renderer, RendererType, type Texture, UniformGroup } from 'pixi.js';
+import SliderAtlasBatchBase, { createInstanceGeometry, createUniforms, packRgbAlphaByte, packUnorm16 } from './SliderAtlasBatchBase.ts';
 import { ATLAS_RESOLVE_GL, ATLAS_RESOLVE_GPU, resolveQuadPositions } from './SliderAtlasPrograms.ts';
 import type { AtlasSlot, SliderInstanceStyle } from './SliderAtlasTypes.ts';
 
-const STRIDE = 36;
+const STRIDE = 32;
 const STRIDE_U32 = STRIDE >>> 2;
 const STRIDE_U16 = STRIDE >>> 1;
 const ATLAS = 0;
 const PARAMS = 8 >>> 2;
-const BORDER = 24 >>> 2;
-const INNER = 28 >>> 2;
-const OUTER = 32 >>> 2;
+const BORDER = 20 >>> 2;
+const INNER = 24 >>> 2;
+const OUTER = 28 >>> 2;
 
 export default class SliderResolveBatch extends SliderAtlasBatchBase {
 	readonly uniforms: UniformGroup;
@@ -25,10 +20,10 @@ export default class SliderResolveBatch extends SliderAtlasBatchBase {
 		const { params, uniforms } = createUniforms(width, height);
 		const { geometry, buffer } = createInstanceGeometry(resolveQuadPositions, STRIDE, {
 			aAtlas: { format: 'unorm16x4', offset: 0 },
-			aParams: { format: 'float32x4', offset: 8 },
-			aBorderColor: { format: 'unorm8x4', offset: 24 },
-			aInnerColor: { format: 'unorm8x4', offset: 28 },
-			aOuterColor: { format: 'unorm8x4', offset: 32 }
+			aParams: { format: 'float32x3', offset: 8 },
+			aBorderColor: { format: 'unorm8x4', offset: 20 },
+			aInnerColor: { format: 'unorm8x4', offset: 24 },
+			aOuterColor: { format: 'unorm8x4', offset: 28 }
 		});
 
 		super(width, height, STRIDE, STRIDE_U32, 32, buffer, geometry, new Shader({
@@ -65,7 +60,6 @@ export default class SliderResolveBatch extends SliderAtlasBatchBase {
 		f32[base32 + PARAMS] = style.borderWidth;
 		f32[base32 + PARAMS + 1] = style.bodyAlpha;
 		f32[base32 + PARAMS + 2] = Math.min(1, 1.25 / Math.max(1, radius * Math.max(Math.abs(slot.scaleX), Math.abs(slot.scaleY))));
-		f32[base32 + PARAMS + 3] = 0;
 		u32[base32 + BORDER] = packRgbAlphaByte(style.borderColor);
 		u32[base32 + INNER] = packRgbAlphaByte(style.innerColor);
 		u32[base32 + OUTER] = packRgbAlphaByte(style.outerColor);

@@ -11,7 +11,6 @@ import { inject } from '../../../Context.ts';
 import BeatmapSet from '../../index.ts';
 import { StoryboardAnimation } from './StoryboardAnimation.ts';
 import StoryboardSprite from './StoryboardSprite.ts';
-import { Buffer } from 'node:buffer';
 
 export default class Storyboard {
 	container: Container = new Container({
@@ -102,7 +101,7 @@ export default class Storyboard {
 		await Promise.all(promises);
 	}
 
-	async loadMaster(raw: ArrayBuffer) {
+	async loadMaster(raw: string) {
 		const { sprites, tree } = await this.load(raw);
 
 		if (this._masterTree) {
@@ -139,7 +138,7 @@ export default class Storyboard {
 	}
 
 	async loadCurrent() {
-		const raw = await this.blob.arrayBuffer();
+		const raw = await this.blob.text();
 		const { sprites, tree } = await this.load(raw);
 
 		this.sprites = sprites;
@@ -307,9 +306,9 @@ export default class Storyboard {
 		this.container.destroy(true);
 	}
 
-	private async load(raw: ArrayBuffer) {
+	private async load(raw: string) {
 		const decoder = new StoryboardDecoder();
-		const data = decoder.decode(Buffer.from(raw).toString('utf8')).result;
+		const data = decoder.decode(raw).result;
 
 		const sprites = await Promise.all([
 			...[...(data.layers.Background?.elements ?? [])]

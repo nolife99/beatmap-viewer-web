@@ -1,14 +1,14 @@
-import { type Renderer, Shader, UniformGroup } from 'pixi.js';
+import { Shader, type Renderer, UniformGroup } from 'pixi.js';
 import SliderAtlasBatchBase, { createInstanceGeometry, createUniforms, packUnorm16 } from './SliderAtlasBatchBase.ts';
 import { ATLAS_COVERAGE_GL, ATLAS_COVERAGE_GPU, segmentQuadPositions } from './SliderAtlasPrograms.ts';
 
-const STRIDE = 48;
+const STRIDE = 44;
 const STRIDE_U32 = STRIDE >>> 2;
 const STRIDE_U16 = STRIDE >>> 1;
 const SEGMENT = 0;
 const RENDER = 16 >>> 2;
 const ATLAS = 32 >>> 1;
-const PARAMS = 40 >>> 2;
+const RADIUS = 40 >>> 2;
 
 export default class SliderCoverageBatch extends SliderAtlasBatchBase {
 	readonly uniforms: UniformGroup;
@@ -20,7 +20,7 @@ export default class SliderCoverageBatch extends SliderAtlasBatchBase {
 			aSegment: { format: 'float32x4', offset: 0 },
 			aRender: { format: 'float32x4', offset: 16 },
 			aAtlas: { format: 'unorm16x4', offset: 32 },
-			aParams: { format: 'float32x2', offset: 40 }
+			aRadius: { format: 'float32', offset: 40 }
 		});
 
 		super(width, height, STRIDE, STRIDE_U32, 60, buffer, geometry, new Shader({
@@ -32,9 +32,7 @@ export default class SliderCoverageBatch extends SliderAtlasBatchBase {
 		this.uniforms = uniforms;
 	}
 
-	applyRenderState(renderer: Renderer) {
-		this.applyBaseRenderState(renderer, this.params, this.uniforms, 'max');
-	}
+	applyRenderState(renderer: Renderer) { this.applyBaseRenderState(renderer, this.params, this.uniforms, 'max'); }
 
 	pushSegment(
 		ax: number, ay: number, bx: number, by: number,
@@ -59,8 +57,7 @@ export default class SliderCoverageBatch extends SliderAtlasBatchBase {
 		u16[base16 + ATLAS + 1] = packUnorm16(atlasY * this.dataScaleY);
 		u16[base16 + ATLAS + 2] = packUnorm16(atlasW * this.dataScaleX);
 		u16[base16 + ATLAS + 3] = packUnorm16(atlasH * this.dataScaleY);
-		f32[base32 + PARAMS] = radius;
-		f32[base32 + PARAMS + 1] = 0;
+		f32[base32 + RADIUS] = radius;
 		this.count++;
 	}
 }

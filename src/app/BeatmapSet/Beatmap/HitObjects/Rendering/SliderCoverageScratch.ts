@@ -33,7 +33,7 @@ export default class SliderCoverageScratch {
 }
 
 function createTexture(width: number, height: number): RenderTexture {
-	return RenderTexture.create({
+	const texture = RenderTexture.create({
 		width,
 		height,
 		resolution: 1,
@@ -43,4 +43,7 @@ function createTexture(width: number, height: number): RenderTexture {
 		scaleMode: 'linear',
 		alphaMode: 'no-premultiply-alpha'
 	});
+
+	texture.label = `slider-coverage-scratch-${width}x${height}`;
+	return texture;
 }

@@ -1,6 +1,4 @@
-import type { ViteDevServer } from "vite";
-
-const corsHeaders = {
+﻿const corsHeaders = {
 	"Access-Control-Allow-Origin": "*",
 	"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 	"Access-Control-Allow-Headers": "Content-Type",
@@ -8,12 +6,43 @@ const corsHeaders = {
 	"Cross-Origin-Embedder-Policy": "require-corp"
 };
 
+const htmlTemplate = await Deno.readTextFile("./index.html");
+
 function escapeHtml(value: string): string {
 	return value
 		.replaceAll("&", "&amp;")
 		.replaceAll('"', "&quot;")
 		.replaceAll("<", "&lt;")
 		.replaceAll(">", "&gt;");
+}
+
+function getContentType(path: string): string {
+	if (path.endsWith(".html")) return "text/html; charset=utf-8";
+	if (path.endsWith(".js")) return "text/javascript; charset=utf-8";
+	if (path.endsWith(".css")) return "text/css; charset=utf-8";
+	if (path.endsWith(".json")) return "application/json; charset=utf-8";
+	if (path.endsWith(".wasm")) return "application/wasm";
+	if (path.endsWith(".png")) return "image/png";
+	if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+	if (path.endsWith(".webp")) return "image/webp";
+	if (path.endsWith(".svg")) return "image/svg+xml";
+	if (path.endsWith(".ico")) return "image/x-icon";
+	if (path.endsWith(".woff")) return "font/woff";
+	if (path.endsWith(".woff2")) return "font/woff2";
+	if (path.endsWith(".ttf")) return "font/ttf";
+	if (path.endsWith(".ogg")) return "audio/ogg";
+	if (path.endsWith(".mp3")) return "audio/mpeg";
+	if (path.endsWith(".wav")) return "audio/wav";
+
+	return "application/octet-stream";
+}
+
+function withHeaders(response: Response): Response {
+	for (const [key, value] of Object.entries(corsHeaders)) {
+		response.headers.set(key, value);
+	}
+
+	return response;
 }
 
 async function handleDownload(req: Request): Promise<Response> {
@@ -81,24 +110,31 @@ async function getMetaTags(url: URL): Promise<string> {
 	`;
 }
 
-function withHeaders(response: Response): Response {
-	for (const [key, value] of Object.entries(corsHeaders)) {
-		response.headers.set(key, value);
+async function serveStatic(pathname: string): Promise<Response | undefined> {
+	const cleanPath = decodeURIComponent(pathname);
+
+	if (cleanPath.includes("..")) {
+		return new Response("Bad Request", {
+			status: 400,
+			headers: corsHeaders
+		});
 	}
 
-	return response;
+	const filePath = cleanPath === "/" ? "./index.html" : `.${cleanPath}`;
+
+	try {
+		const file = await Deno.open(filePath, { read: true });
+
+		return new Response(file.readable, {
+			headers: {
+				...corsHeaders,
+				"Content-Type": getContentType(filePath)
+			}
+		});
+	} catch {
+		return undefined;
+	}
 }
-
-const { createServer } = await import("vite");
-
-const vite: ViteDevServer = await createServer({
-	appType: "custom",
-	server: {
-		port: 5173
-	}
-});
-
-await vite.listen();
 
 const port = Number(Deno.env.get("PORT") ?? 5000);
 
@@ -119,11 +155,8 @@ Deno.serve(
 		}
 
 		if (req.method === "GET" && url.pathname === "/") {
-			const raw = await Deno.readTextFile("./index.html");
-			const transformed = await vite.transformIndexHtml(req.url, raw);
 			const metaTags = await getMetaTags(url);
-
-			const html = transformed.replace("</head>", `${metaTags}</head>`);
+			const html = htmlTemplate.replace("</head>", `${metaTags}</head>`);
 
 			return new Response(html, {
 				headers: {
@@ -133,10 +166,17 @@ Deno.serve(
 			});
 		}
 
-		return fetch(`http://localhost:5173${url.pathname}${url.search}`, {
-			method: req.method,
-			headers: req.headers,
-			body: req.body
+		if (req.method === "GET" || req.method === "HEAD") {
+			const response = await serveStatic(url.pathname);
+
+			if (response) {
+				return response;
+			}
+		}
+
+		return new Response("Not Found", {
+			status: 404,
+			headers: corsHeaders
 		});
 	}
 );

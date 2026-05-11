@@ -28,9 +28,7 @@ export default class SliderAtlasPage {
 		this.resolveBatch.beginFrame();
 	}
 
-	markUsed() {
-		this.used = true;
-	}
+	markUsed() { this.used = true; }
 
 	upload() {
 		this.batch.upload();
